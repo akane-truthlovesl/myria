@@ -52,7 +52,9 @@ export class Mote extends Entity {
   }
   // a mote at rest is static light → painted once into the backdrop, lifted out again the moment a feeler takes it
   bake(ink) {
-    if (this.free) return; const c = this.col, r = this.r;
+    // (a light already eaten or already in a feeler's grip must never be painted: the plate can finish developing a moment *after* the first lights are taken,
+    //  and lifting a neighbour re-bakes everything around it — either way a dead light would be left on the floor as a ghost nobody can pick up)
+    if (this.free || this.dead || this.held) return; const c = this.col, r = this.r;
     this.baked = true; this.bx = this.hx; this.by = this.hy; this.bakeR = r * 4.4;
     ink.light(this.hx, this.hy, r * 4.2, PROF.halo, c[0], c[1], c[2], 0.20);
     ink.light(this.hx, this.hy, r * 1.5, PROF.glow, c[0], c[1], c[2], 1.15);
@@ -186,18 +188,24 @@ export class Film extends Entity {
       const along = rx * Math.cos(this.ang) + ry * Math.sin(this.ang), off = rx * this.nx + ry * this.ny;
       if (Math.abs(along) > this.len / 2 + B.r * 0.5 || Math.abs(off) > B.r + (this.tough ? 30 : 16)) continue;
       const vn = -(B.vx * this.nx + B.vy * this.ny) * Math.sign(off || 1);         // speed toward the film
-      if (this.tough ? (O.flightT > 0 || O.flew > 0) && vn > 140 : vn > this.speed) { this.pop(O); if (this.tough) { O.flightT = Math.max(O.flightT, 0.3); O.flightKeep = 0; } break; } else if (vn > 60) this.wob = Math.max(this.wob, Math.min(1, vn / this.speed));
+      if (this.tough ? (O.flightT > 0 || O.flew > 0) && vn > 140 : vn > this.speed) { this.pop(O); if (this.tough) { O.flightT = Math.max(O.flightT, 0.3); O.flightKeep = 0; if (O.banked > 0) W.emit('bank', this, O); } break; } else if (vn > 60) this.wob = Math.max(this.wob, Math.min(1, vn / this.speed));
     }
   }
   pop(O) {
-    const W = this.W; this.S.active = false; this.down = 1.6;
+    const W = this.W; this.S.active = false; this.down = this.tough ? Infinity : 1.6;      // a soap film heals; torn lace stays torn — the way back is open
     const ca = Math.cos(this.ang), sa = Math.sin(this.ang);
     for (let k = -4; k <= 4; k++) W.fx.burst(this.x + ca * k * this.len / 9, this.y + sa * k * this.len / 9, 3, this.col, 150, { type: 1, size: 2.6, life: 0.6 });
     W.fx.ring(O.B.cx, O.B.cy, this.col, 90, 0.5); W.sound && W.sound.pop(1); W.sound && W.sound.bounce(0.8); W.shake = Math.min(1, W.shake + 0.25);
     W.hitStop = 0.06; W.emit('film', this, O);
   }
   over(ov) {
-    if (!this.S.active) return; const ca = Math.cos(this.ang), sa = Math.sin(this.ang), h = this.len / 2;
+    const ca = Math.cos(this.ang), sa = Math.sin(this.ang), h = this.len / 2;
+    if (!this.S.active) {
+      if (!this.tough) return;
+      // what is left of the lace: two frayed ends curling at the posts
+      const g = [1, 0.85, 0.6]; for (const sg of [-1, 1]) for (let k = 0; k < 3; k++) { const x0 = this.x + ca * h * sg, y0 = this.y + sa * h * sg, L = h * (0.16 + 0.07 * k), sw = Math.sin(this.t * (1.3 + 0.4 * k) + k * 2 + sg) * 7 + (k - 1) * 6; ov.line(x0, y0, x0 - ca * L * sg + this.nx * sw, y0 - sa * L * sg + this.ny * sw, 1.1, k === 1 ? this.col : g, 0.42); }
+      return;
+    }
     const sh = 0.55 + 0.25 * Math.sin(this.t * 3) + 0.5 * this.wob;
     ov.line(this.x - ca * h, this.y - sa * h, this.x + ca * h, this.y + sa * h, 2.2 + 2 * this.wob, this.col, sh);
     if (this.tough) {      // a doubled skin, laced: thicker than any dart
@@ -215,7 +223,7 @@ export class Film extends Entity {
 export class Bumper extends Entity {
   constructor(W, d) {
     // to: the point its throw is focused on
-    super(W, d); this.len = d.len ?? 130; this.to = d.to || null; this.ang = this.to ? Math.atan2(this.to.y - d.y, this.to.x - d.x) - Math.PI / 2 : d.a ?? 0; this.kick = d.kick ?? 580; this.fly = d.fly ?? 0.9; this.wob = 0; this.col = d.col || [0.74, 1.0, 0.36]; this.t = 0;
+    super(W, d); this.len = d.len ?? 130; this.to = d.to || null; this.ang = this.to ? Math.atan2(this.to.y - d.y, this.to.x - d.x) - Math.PI / 2 : d.a ?? 0; this.kick = d.kick ?? 580; this.fly = d.fly ?? 0.9; this.wob = 0; this.mirror = !!d.mirror; this.col = d.col || (this.mirror ? [0.78, 0.95, 1.0] : [0.74, 1.0, 0.36]); this.t = 0;
     this.S = makeShape({ type: 1, x: d.x, y: d.y, hl: this.len / 2, r: 6, surf: SURF.BOUNCE, rest: 0.9, angle: this.ang, tough: true }); W.phys.shapes.push(this.S);
     this.nx = -Math.sin(this.ang); this.ny = Math.cos(this.ang); this.cd = new Map(); this.curious = true;
   }
@@ -227,8 +235,13 @@ export class Bumper extends Entity {
       if (off < 0 || Math.abs(along) > this.len / 2 + 8 || off > B.r * 0.85 + 12) continue;            // only its bright face launches
       const vn = -(B.vx * this.nx + B.vy * this.ny); if (vn < 10 && !(B.contact > 2 && Math.hypot(O.intent.x, O.intent.y) > 0.2 && O.intent.x * this.nx + O.intent.y * this.ny < -0.1)) continue;
       // the band is a shallow dish: wherever you touch it, it throws you at its focus
-      const fx = this.to ? this.to.x : this.x + this.nx * 420, fy = this.to ? this.to.y : this.y + this.ny * 420; let dx = fx - B.cx, dy = fy - B.cy; const dl = Math.hypot(dx, dy) + 1e-3; dx /= dl; dy /= dl;
-      O.launch(dx * this.kick, dy * this.kick, this.fly); O.flightKeep = 0; this.cd.set(O, W.time + 0.5); this.wob = 1;
+      const fx = this.to ? this.to.x : this.x + this.nx * 420, fy = this.to ? this.to.y : this.y + this.ny * 420; let dx = fx - B.cx, dy = fy - B.cy; const dl = Math.hypot(dx, dy) + 1e-3; dx /= dl; dy /= dl; let kick = this.kick;
+      if (this.mirror) {
+        // a flat, taut band aims nothing: it answers a strike with its mirror image (angle in = angle out), and a mere lean with a plain shove
+        const k = Math.min(1, Math.max(0, (vn - 70) / 170)), mx = B.vx + 2 * vn * this.nx, my = B.vy + 2 * vn * this.ny, ml = Math.hypot(mx, my) + 1e-3;
+        dx = this.nx * (1 - k) + mx / ml * k; dy = this.ny * (1 - k) + my / ml * k; const l2 = Math.hypot(dx, dy) + 1e-3; dx /= l2; dy /= l2; kick *= 0.62 + 0.38 * k; this.struck = k;
+      }
+      O.launch(dx * kick, dy * kick, this.fly); O.flightKeep = 0; O.flightSteer = this.to ? 0.25 : this.mirror ? 0.5 : 1; O.banked = this.mirror && this.struck > 0.5 ? 1.2 : 0; this.cd.set(O, W.time + 0.5); this.wob = 1;
       W.fx.ring(B.cx, B.cy, this.col, 110, 0.45); for (let k = -3; k <= 3; k++) W.fx.sparks(this.x + ca * k * this.len / 7, this.y + sa * k * this.len / 7, 1, dx, dy, this.col, 260, { spread: 0.6, life: 0.4 });
       if (C === W.player) { W.sound && W.sound.bounce(1); W.sound && W.sound.whoosh(); W.host.haptics && W.host.haptics.thump && W.host.haptics.thump(0.8); W.hitStop = 0.035; W.emit('bumper', this, O); }
     }
@@ -236,11 +249,22 @@ export class Bumper extends Entity {
   bake(ink) {         // posts, and the way it throws
     const ca = Math.cos(this.ang), sa = Math.sin(this.ang), h = this.len / 2, c = this.col;
     for (const sg of [-1, 1]) { ink.ring(this.x + ca * h * sg, this.y + sa * h * sg, 5, 3.4, c[0] * 0.5, c[1] * 0.5, c[2] * 0.5, 0.9, 2); ink.ring(this.x + ca * h * sg, this.y + sa * h * sg, 10, 0.6, c[0] * 0.4, c[1] * 0.4, c[2] * 0.4, 0.5, 0); }
+    if (this.mirror) {
+      // the law of this band, etched beside it: a ray comes in, the same ray leaves
+      const bx = this.x + this.nx * 10, by = this.y + this.ny * 10, R = 64, n0 = Math.hypot(0.72, 0.69);
+      const head = (hx, hy, ux, uy) => { ink.beam(hx, hy, hx - ux * 9 - uy * 5, hy - uy * 9 + ux * 5, 1.3, c[0], c[1], c[2], 0.36); ink.beam(hx, hy, hx - ux * 9 + uy * 5, hy - uy * 9 - ux * 5, 1.3, c[0], c[1], c[2], 0.36); };
+      for (const sg of [-1, 1]) {
+        const ux = (this.nx * 0.72 + ca * 0.69 * sg) / n0, uy = (this.ny * 0.72 + sa * 0.69 * sg) / n0;
+        for (let q = 0; q < 5; q++) { const u0 = (q / 5 + 0.05) * R, u1 = u0 + 0.11 * R; ink.beam(bx + ux * u0, by + uy * u0, bx + ux * u1, by + uy * u1, 1.3, c[0], c[1], c[2], 0.30); }
+        if (sg < 0) head(bx + ux * R * 0.42, by + uy * R * 0.42, -ux, -uy); else head(bx + ux * R, by + uy * R, ux, uy);
+      }
+      return;
+    }
     for (let k = 1; k <= 3; k++) { const d = 30 + k * 24, w = 14 - k * 2.5, px = this.x + this.nx * d, py = this.y + this.ny * d; const a = 0.30 - k * 0.06;
       ink.beam(px - ca * w - this.nx * w * 0.7, py - sa * w - this.ny * w * 0.7, px, py, 1.4, c[0], c[1], c[2], a); ink.beam(px + ca * w - this.nx * w * 0.7, py + sa * w - this.ny * w * 0.7, px, py, 1.4, c[0], c[1], c[2], a); }
   }
   // the band is a drawn sling: it sags away from its bright face at rest, and snaps through when it throws
-  _bow() { return 10 * (1 - this.wob) - 13 * Math.sin(this.t * 34) * this.wob; }
+  _bow() { return (this.mirror ? 0 : 10) * (1 - this.wob) - (this.mirror ? 7 : 13) * Math.sin(this.t * 34) * this.wob; }
   _arc(fn, lift = 0, k = 1) {
     const ca = Math.cos(this.ang), sa = Math.sin(this.ang), h = this.len / 2 * k, bow = this._bow() * k; let px = 0, py = 0;
     for (let q = 0; q <= 8; q++) { const u = q / 4 - 1, off = lift - bow * (1 - u * u); const x = this.x + ca * h * u + this.nx * off, y = this.y + sa * h * u + this.ny * off; if (q) fn(px, py, x, y); px = x; py = y; }
@@ -252,29 +276,53 @@ export class Bumper extends Entity {
     this._arc((ax, ay, bx, by) => ov.line(ax, ay, bx, by, 1.2, c, 0.35), -5);                       // its dull back
     for (const sg of [-1, 1]) ov.glow(this.x + ca * h * sg, this.y + sa * h * sg, 12, c, 0.7);
     // ripples leaving its bright face, again and again: this way
+    if (this.mirror) { const u = (this.t * 0.45) % 1 * 2 - 1; ov.glow(this.x + ca * h * u + this.nx * 3, this.y + sa * h * u + this.ny * 3, 16, [1, 1, 1], 0.5 * (1 - u * u)); return; }
     for (let r = 0; r < 2; r++) { const u = (this.t * 0.8 + r * 0.5) % 1; this._arc((ax, ay, bx, by) => ov.line(ax, ay, bx, by, 1.6, c, 0.5 * (1 - u) * (1 - u)), 12 + u * 64, 1 - 0.45 * u); }
   }
 }
 
 // ── Valve: a one-way semi-permeable skin. Whatever moves with its cilia passes as if it were not there; nothing comes back. ──
 export class Valve extends Entity {
+  // a: the capsule's angle (the way through is its normal) · small: semi-permeable — any piece of you below ~46 % of the whole of you (and never less than `small`
+  // grains) passes either way as if nothing were there · sieve: no way through at all for anything bigger (a mesh, no cilia)
   constructor(W, d) {
-    super(W, d); this.len = d.len ?? 120; this.ang = d.a ?? 0; this.col = d.col || [1.0, 0.62, 0.86]; this.t = 0; this.stir = 0;
+    super(W, d); this.len = d.len ?? 120; this.ang = d.a ?? 0; this.sieve = !!d.sieve; this.small = d.small ?? (this.sieve ? 30 : 0); this.col = d.col || (this.sieve ? [0.72, 0.95, 1.0] : [1.0, 0.62, 0.86]); this.t = 0; this.stir = 0; this.bonk = 0;
     this.nx = -Math.sin(this.ang); this.ny = Math.cos(this.ang);      // the way through
-    this.S = makeShape({ type: 1, x: d.x, y: d.y, hl: this.len / 2, r: 5, surf: SURF.MEMBRANE, angle: this.ang, oneWay: true, passX: this.nx, passY: this.ny }); W.phys.shapes.push(this.S);
+    this.S = makeShape({ type: 1, x: d.x, y: d.y, hl: this.len / 2, r: 5, surf: SURF.MEMBRANE, angle: this.ang, oneWay: true, passX: this.nx, passY: this.ny, small: this.small, sieve: this.sieve }); W.phys.shapes.push(this.S);
   }
   update(dt) {
-    this.t += dt; this.stir = Math.max(0, this.stir - dt * 2.5); const pl = this.W.player; if (!pl) return;
-    for (const O of pl.orgs) { if (!O.alive) continue; const B = O.B, rx = B.cx - this.x, ry = B.cy - this.y; if (Math.abs(rx * Math.cos(this.ang) + ry * Math.sin(this.ang)) < this.len / 2 && Math.abs(rx * this.nx + ry * this.ny) < B.r + 8) { if (this.stir < 0.3 && this.W.sound) this.W.sound.squish(0.3); this.stir = 1; } }
+    this.t += dt; this.stir = Math.max(0, this.stir - dt * 2.5); this.bonk = Math.max(0, this.bonk - dt * 2.2); const pl = this.W.player; if (!pl) return;
+    if (this.small) this.S.small = Math.max(this.small, Math.floor(pl.mass * 0.46));          // "small" means: a part of you, never the whole of you
+    const ca = Math.cos(this.ang), sa = Math.sin(this.ang);
+    for (const O of pl.orgs) {
+      if (!O.alive) continue; const B = O.B, rx = B.cx - this.x, ry = B.cy - this.y; if (Math.abs(rx * ca + ry * sa) > this.len / 2 || Math.abs(rx * this.nx + ry * this.ny) > B.r + 8) continue;
+      const through = this.small && B.count <= this.S.small, off = rx * this.nx + ry * this.ny, vn = B.vx * this.nx + B.vy * this.ny;
+      if (through || !this.sieve && off < 0) { if (this.stir < 0.3) { this.W.sound && this.W.sound.squish(0.3); if (through && Math.abs(off) < B.r * 0.6) this.W.emit('seeped', this, O); } this.stir = 1; }
+      else if (Math.abs(off) < B.r + 4 && (this.sieve ? vn * off < -20 : vn < -20) && this.bonk < 0.2) { this.bonk = 1; this.W.sound && this.W.sound.bounce(0.35); if (this.small) this.W.emit('sieved', this, O); }       // too much of you: the mesh holds, and says so
+    }
   }
-  bake(ink) { const ca = Math.cos(this.ang), sa = Math.sin(this.ang), h = this.len / 2, c = this.col; for (const sg of [-1, 1]) ink.ring(this.x + ca * h * sg, this.y + sa * h * sg, 4, 3, c[0] * 0.5, c[1] * 0.5, c[2] * 0.5, 0.9, 2); }
+  bake(ink) {
+    const ca = Math.cos(this.ang), sa = Math.sin(this.ang), h = this.len / 2, c = this.col; for (const sg of [-1, 1]) ink.ring(this.x + ca * h * sg, this.y + sa * h * sg, 4, 3, c[0] * 0.5, c[1] * 0.5, c[2] * 0.5, 0.9, 2);
+    if (!this.small) return;
+    // its law, etched on both sides: a bead goes through and back; a whole body does not
+    for (const sg of [-1, 1]) {
+      const ux = this.nx * sg, uy = this.ny * sg, bx = this.x + ca * h * 0.52, by = this.y + sa * h * 0.52;
+      ink.ring(bx + ux * 30, by + uy * 30, 4.5, 1.3, c[0], c[1], c[2], 0.42, 0); for (let q = 0; q < 3; q++) ink.beam(bx + ux * (9 + q * 6), by + uy * (9 + q * 6), bx + ux * (12 + q * 6), by + uy * (12 + q * 6), 1.3, c[0], c[1], c[2], 0.34);
+      const gx = this.x - ca * h * 0.5 + ux * 36, gy = this.y - sa * h * 0.5 + uy * 36; if (this.sieve || sg < 0) { ink.ring(gx, gy, 19, 1.2, c[0], c[1], c[2], 0.26, 3); ink.beam(gx - ux * 27 - ca * 9, gy - uy * 27 - sa * 9, gx - ux * 27 + ca * 9, gy - uy * 27 + sa * 9, 2, c[0], c[1], c[2], 0.36); }
+    }
+  }
   over(ov) {
     const ca = Math.cos(this.ang), sa = Math.sin(this.ang), h = this.len / 2, c = this.col; const n = Math.max(4, Math.round(this.len / 11));
-    ov.line(this.x - ca * h, this.y - sa * h, this.x + ca * h, this.y + sa * h, 1.6, c, 0.55);
-    // cilia: a row of soft hairs all leaning the way through, with a wave running along them
-    for (let k = 0; k < n; k++) {
+    const hot = this.bonk > 0 ? [1, 0.55 + 0.4 * (1 - this.bonk), 0.45 + 0.5 * (1 - this.bonk)] : c;
+    if (this.small) {
+      // a mesh: a row of open pores (they wink as something small slips through, and flush when something too big leans on them)
+      const m = Math.max(5, Math.round(this.len / 15)); for (let k = 0; k < m; k++) { const u = ((k + 0.5) / m * 2 - 1) * h, w = Math.sin(this.t * 2.1 + k * 0.9); ov.ring(this.x + ca * u, this.y + sa * u, 4.2 + 0.5 * w + 2.2 * this.stir, 1.3, hot, 0.62 + 0.3 * this.bonk); }
+      for (const sg of [-1, 1]) ov.line(this.x - ca * h + this.nx * 4 * sg, this.y - sa * h + this.ny * 4 * sg, this.x + ca * h + this.nx * 4 * sg, this.y + sa * h + this.ny * 4 * sg, 0.9, hot, 0.3 + 0.4 * this.bonk);
+    } else ov.line(this.x - ca * h, this.y - sa * h, this.x + ca * h, this.y + sa * h, 1.6, c, 0.55);
+    // cilia: a row of soft hairs all leaning the way through, with a wave running along them (a pure sieve has none: it has no way through)
+    if (!this.sieve) for (let k = 0; k < n; k++) {
       const u = ((k + 0.5) / n * 2 - 1) * h, bx = this.x + ca * u, by = this.y + sa * u; const w = Math.sin(this.t * 3.2 - k * 0.7), L = 11 + 2.5 * w + 6 * this.stir, lean = 0.28 * w;
-      ov.line(bx, by, bx + (this.nx + ca * lean) * L, by + (this.ny + sa * lean) * L, 1.5, c, 0.8);
+      ov.line(bx + this.nx * 5, by + this.ny * 5, bx + this.nx * 5 + (this.nx + ca * lean) * L, by + this.ny * 5 + (this.ny + sa * lean) * L, 1.5, [1.0, 0.62, 0.86], 0.8);
     }
     for (const sg of [-1, 1]) ov.glow(this.x + ca * h * sg, this.y + sa * h * sg, 9, c, 0.5);
   }

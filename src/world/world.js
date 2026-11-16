@@ -12,6 +12,7 @@ import { PROF } from '../render/ink.js';
 import { rng, TAU } from '../core/util.js';
 import { Brain, SPECIES } from '../life/brains.js';
 import { growDecor } from './decor.js';
+import { Nav } from '../core/nav.js';
 
 const MAXP = 4096, MAXB = 512;
 let SHARED = null;      // one solver for the whole session (typed arrays are reused between rooms)
@@ -67,6 +68,20 @@ export class World {
   }
   entity(id) { return this.ents.find(e => e.id === id); }
   release(e) { if (e.baked) (this._rel || (this._rel = [])).push(e); }
+  // Coming home is not a straight line: when a wall, a gate or a membrane stands between a called sibling and the body that called it, it walks the way
+  // round (planned three times a second on the same map the bot uses, built for a body of its size). Returns the point to head for, or null for "straight there".
+  homeWay(O, T) {
+    const B = O.B, P = this.phys; let h = O._home; if (!h) h = O._home = { t: -1, x: 0, y: 0, on: false };
+    if (this.time - h.t < 0.33 && this.time >= h.t) return h.on ? h : null;
+    h.t = this.time; h.on = false;
+    if (!P.blocked(B.cx, B.cy, T.cx, T.cy, 3)) return null;
+    if (!this._nav || this._navFor !== this.spec) { this._nav = new Nav(this); this._navFor = this.spec; }
+    const nav = this._nav; nav.build(0, { count: B.count, films: false }); const path = nav.path(B.cx, B.cy, T.cx, T.cy); if (!path || path.pts.length < 3) return null;
+    // the farthest point of the path it can see — and, when that is right under its nose (a membrane it may pass looks like a wall to the eye), the one just beyond
+    const pts = path.pts; let k = 1; for (let q = Math.min(pts.length - 1, 14); q > 1; q--) if (!P.blocked(B.cx, B.cy, pts[q][0], pts[q][1], 3)) { k = q; break; }
+    if (Math.hypot(pts[k][0] - B.cx, pts[k][1] - B.cy) < 34) k = Math.min(pts.length - 1, k + 3);
+    h.x = pts[k][0]; h.y = pts[k][1]; h.on = true; return h;
+  }
   addColony(group, x, y, n, opts = {}) { const C = new Colony(this, group, opts); C.spawn(x, y, n, opts.mat ?? MAT.LUMEN); this.colonies.push(C); return C; }
   // another organism of the slide (group ids ≥ 1), with a species brain
   addRival(kind, x, y, n) {
@@ -396,9 +411,10 @@ export class World {
       if (n[s] < 6) { for (const p of idx) if (P.alive[p] && P.body[p] === b.id && P.bodies[P.body[p]] === b) this.shed(p, cx, cy, [0.75, 1, 0.5], 12); if (s) { P.freeBody(b); } continue; }
       b.fuseT = 600; b.spores = 0; if (!s) continue;                // what a trap has scattered never knits back together
       b.tint = T.tint; b.count = n[s]; b.cx = cx + Math.cos(am) * R * 0.6; b.cy = cy + Math.sin(am) * R * 0.6; b.r = R * 0.5;
-      const S = D.adopt(b); S.brain = new Brain(D.kind); S.speedMul = O.speedMul; S.hurtT = 1; S.cleftT = this.time + 1.5; S.crown.startle(1);
+      // what is left of it is no hunter: morsels that wander, shy from anything bigger, and never swallow again — the reversal is yours to eat
+      const S = D.adopt(b); S.brain = new Brain('morsel'); S.speedMul = (O.speedMul || 1) * 0.72; S.hurtT = 1; S.cleftT = this.time + 1.5; S.crown.startle(1);
     }
-    O.boomT = 0; O.cleftT = this.time + 1.5; O.hurtT = 1; P.forceComponents = true;
+    O.boomT = 0; O.cleftT = this.time + 1.5; O.hurtT = 1; O.brain = new Brain('morsel'); O.coil = 0; O.speedMul = (O.speedMul || 1) * 0.72; P.forceComponents = true;
     this.fx.ring(cx, cy, [0.8, 1, 0.55], R * 4.2, 0.7, { w: 4 }); this.fx.ring(cx, cy, [1, 1, 0.9], R * 2.6, 0.45); this.fx.burst(cx, cy, 46, [0.8, 1, 0.5], 420, { life: 0.9, size: 3 });
     this.shake = 1; this.flash = 0.8; this.hitStop = 0.16; this.sound && this.sound.detonate(); this.host.haptics && this.host.haptics.snap && this.host.haptics.snap();
     // the blast shoves whatever stands near (nothing of yours is harmed by your own trap)

@@ -115,25 +115,35 @@ export class Organism {
     const heavy = Math.hypot(g[0], g[1]) > 60;
     let ax, ay, lead = 0, damp = 0, adhMul = 1;
     if (this.flightT > 0) {                                              // launched (a trampoline, a throw): it coasts — lean to bend the arc, but nothing brakes it until it lands
-      this.flightT -= dt; this.flew = 0.14;
+      this.flightT -= dt; this.flew = 0.14; if (this.banked > 0) this.banked -= dt;
       const sv = Math.hypot(B.vx, B.vy) + 1e-3, fx = B.vx / sv, fy = B.vy / sv; let fw = ix * fx + iy * fy; const lt = ix * -fy + iy * fx;     // forward / sideways lean
       if (fw < 0) fw = 0;                                                  // you can bend a flight; you cannot brake it (the pointer you pushed off with is behind you now)
-      ax = (fx * fw * 0.5 - fy * lt) * speed * 1.3; ay = (fy * fw * 0.5 + fx * lt) * speed * 1.3;
+      // a band's throw is aimed: the hand that leaned into it is still leaning somewhere else, and must not drag the flight off its line
+      const st = this.flightSteer ?? 1;
+      ax = (fx * fw * 0.5 - fy * lt * st) * speed * 1.3; ay = (fy * fw * 0.5 + fx * lt * st) * speed * 1.3;
       if (touching && this.flightT < this.flightT0 - 0.12 && !this.flightKeep) this.flightT = 0;
       if (this.flightT <= 0) this.flightKeep = 0;
     }
-    else if (im > 0.03) { ax = (ix * speed - B.vx) * ACCEL; ay = (iy * speed - B.vy) * ACCEL; lead = LEAD * im; }
+    // (it swims relative to the water it is in: in a torrent the will rides the stream instead of anchoring against it — see Physics.applyForces)
+    else if (im > 0.03) { ax = (ix * speed + (B.medX || 0) - B.vx) * ACCEL; ay = (iy * speed + (B.medY || 0) - B.vy) * ACCEL; lead = LEAD * im; }
     else if (this.budT > 0) { this.budT -= dt; ax = 0; ay = 0; }             // a thrown sibling coasts to where it was thrown
-    else { ax = -B.vx * BRAKE; ay = -B.vy * BRAKE; damp = 1.3; }           // no ice-parking: resting is a decision the body keeps
+    else { ax = ((B.medX || 0) - B.vx) * BRAKE; ay = ((B.medY || 0) - B.vy) * BRAKE; damp = 1.3; }           // no ice-parking: resting is a decision the body keeps (rest is rest in the water you are in)
     if (heavy && !touching) { ax *= 0.45; ay *= 0.2; }                   // under real gravity you steer a fall, you do not fly
     if (touching && im > 0.03) {
       const away = ix * cnx + iy * cny;                                  // + = pulling away from the surface
       if (cling && away > 0.55 && im > 0.5) { this.peelT = 0.3; W.onPeel && W.onPeel(this); }
       else if (cling && away < -0.2) { adhMul = 1.9; }                   // lean in → local suction, the gel wets the wall
     } else if (touching && cling) adhMul = 1.5;
+    // nothing keeps its grip in a torrent: a body that held the bank while the stream took the rest of it would be torn in two by a hand that only wanted to cross
+    { const tor = Math.hypot(B.medX || 0, B.medY || 0); if (tor > 150) adhMul *= Math.max(0.12, 1 - (tor - 150) / 220); }
     const am = Math.hypot(ax, ay); if (am > AMAX) { ax *= AMAX / am; ay *= AMAX / am; }
     // coming home: fast across the room, but it eases off as the two skins near each other — a kiss, not a collision (liquids would only splash apart again)
-    if (this.rallyTo) { const T = this.rallyTo; const dx = T.cx - B.cx, dy = T.cy - B.cy, d = Math.hypot(dx, dy) + 1; const gap = d - B.r - T.r; const s = Math.max(0.14, Math.min(1, gap / 90 + 0.14)); ax += dx / d * 1250 * s - B.vx * 2.6; ay += dy / d * 1250 * s - B.vy * 2.6; this.rallyTo = null; }
+    if (this.rallyTo) {
+      const T = this.rallyTo; let dx = T.cx - B.cx, dy = T.cy - B.cy, d = Math.hypot(dx, dy) + 1; const gap = d - B.r - T.r; const s = Math.max(0.14, Math.min(1, gap / 90 + 0.14));
+      // something in the way → head for the next corner of the way round instead (World.homeWay)
+      const way = W.homeWay ? W.homeWay(this, T) : null; if (way) { dx = way.x - B.cx; dy = way.y - B.cy; d = Math.hypot(dx, dy) + 1; }
+      ax += dx / d * 1250 * s - B.vx * 2.6; ay += dy / d * 1250 * s - B.vy * 2.6; this.rallyTo = null;
+    }
     if (this.seek) { const S = this.seek; const dx = S.x - B.cx, dy = S.y - B.cy, d = Math.hypot(dx, dy) + 1; const s = Math.min(1, d / 70); ax += dx / d * (S.k || 900) * s - B.vx * 2.4; ay += dy / d * (S.k || 900) * s - B.vy * 2.4; }
     if (this.cradle) { ax += this.cradle.ax; ay += this.cradle.ay; damp = Math.max(damp, this.cradle.damp); this.cradle = null; }
     if (LIQ !== 1 && M.spring[B.mat] === 0) lead *= LIQ;               // a springless liquid cannot be led by its nose without tearing: it is pushed more as one drop
@@ -286,7 +296,7 @@ export class Organism {
   launch(vx, vy, t = 0.8) {
     const P = this.W.phys, B = this.B;
     for (let k = 0; k < B.len; k++) { const i = P.bodyIdx[B.start + k]; if (P.body[i] !== B.id) continue; P.vx[i] = vx; P.vy[i] = vy; P.ox[i] = P.x[i] - vx / 120; P.oy[i] = P.y[i] - vy / 120; }
-    this.flightT = this.flightT0 = t; this.dartT = Math.max(this.dartT, 0.15); this.excite = Math.min(1, this.excite + 0.6); this.crown.startle(0.7);
+    this.flightT = this.flightT0 = t; this.flightSteer = 1; this.dartT = Math.max(this.dartT, 0.15); this.excite = Math.min(1, this.excite + 0.6); this.crown.startle(0.7);
   }
 
   // bud: eject a sibling droplet toward (tx,ty)
@@ -297,19 +307,21 @@ export class Organism {
     let dx = tx - B.cx, dy = ty - B.cy; const m = Math.hypot(dx, dy) || 1; dx /= m; dy /= m;
     const bx = B.cx + dx * B.r * 1.4, by = B.cy + dy * B.r * 1.4;
     const arr = [];
-    for (let q = 0; q < B.len; q++) { const i = P.bodyIdx[B.start + q]; const ex = P.x[i] - bx, ey = P.y[i] - by; arr.push([ex * ex + ey * ey, i]); }
+    for (let q = 0; q < B.len; q++) { const i = P.bodyIdx[B.start + q]; if (!P.alive[i] || P.body[i] !== B.id) continue; const ex = P.x[i] - bx, ey = P.y[i] - by; arr.push([ex * ex + ey * ey, i]); }
+    // (the body's own index can be a step behind its count — right after a sibling fused in, or a second bud in one breath — so the share is taken of what is really listed)
+    const k2 = Math.max(4, Math.round(arr.length * frac)); if (arr.length - k2 < 4) return null;
     arr.sort((a, b) => a[0] - b[0]);
     const NB = P.allocBody(B.group, 'fragment', B.mat);
     if (!NB) return null;
     NB.fuseT = 1.1; B.fuseT = Math.max(B.fuseT, 1.1); NB.tint = B.tint;
     const sp = Math.max(220, Math.min(660, m * ((P.drag || 1.5) + 0.25)));      // thrown just hard enough to arrive
-    for (let q = 0; q < k; q++) {
+    for (let q = 0; q < k2; q++) {
       const i = arr[q][1]; P.body[i] = NB.id;
       P.vx[i] = B.vx * 0.3 + dx * sp; P.vy[i] = B.vy * 0.3 + dy * sp;
       P.ox[i] = P.x[i] - P.vx[i] / 120; P.oy[i] = P.y[i] - P.vy[i] / 120; P.glow[i] = 1.2;
     }
-    for (let q = k; q < arr.length; q++) { const i = arr[q][1]; P.vx[i] -= dx * 90; P.vy[i] -= dy * 90; }
-    P.forceComponents = true; NB.count = k;
+    for (let q = k2; q < arr.length; q++) { const i = arr[q][1]; P.vx[i] -= dx * 90; P.vy[i] -= dy * 90; }
+    P.forceComponents = true; NB.count = k2;
     W.onBud && W.onBud(this, NB, dx, dy);
     return NB;
   }

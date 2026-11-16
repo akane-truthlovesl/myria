@@ -7,60 +7,10 @@
 //  the headless playtests that prove every chamber can be finished, the soak
 //  tests, and the `?bot` attract mode.
 // ─────────────────────────────────────────────────────────────────────────────
-import { shapeSDF } from '../sim/physics.js';
 import { SURF, MATS, MAT } from '../sim/materials.js';
+import { Nav, CS } from './nav.js';
 
-const CS = 16;      // nav cell (world units)
 
-class Nav {
-  constructor(W) { this.W = W; const s = W.spec; this.w = Math.ceil(s.W / CS); this.h = Math.ceil(s.H / CS); const n = this.w * this.h; this.cost = new Float32Array(n); this.g = new Float32Array(n); this.from = new Int32Array(n); this.state = new Uint8Array(n); this.heap = []; }
-  build(avoid = 1) {
-    const W = this.W, P = W.phys, w = this.w, h = this.h, cost = this.cost; const out = OUT;
-    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
-      const x = (i + 0.5) * CS, y = (j + 0.5) * CS; const d = P.sampleSDF(x, y);
-      cost[j * w + i] = d < 4.5 ? -1 : 1 + (d < 18 ? (18 - d) * 0.3 : 0);
-    }
-    for (const S of P.shapes) {
-      if (!S.active || S.cut) continue; const film = S.surf === SURF.BOUNCE && S.type === 1 && !S.tough;
-      const ca = Math.cos(S.angle), sa = Math.sin(S.angle);
-      const i0 = Math.max(0, Math.floor((S.bx0 - 10) / CS)), i1 = Math.min(w - 1, Math.floor((S.bx1 + 10) / CS)), j0 = Math.max(0, Math.floor((S.by0 - 10) / CS)), j1 = Math.min(h - 1, Math.floor((S.by1 + 10) / CS));
-      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { shapeSDF(S, (i + 0.5) * CS, (j + 0.5) * CS, ca, sa, out); const k = j * w + i; if (cost[k] < 0) continue; if (film) { if (out[0] < 8) cost[k] += 4; } else if (out[0] < 7) cost[k] = -1; else if (out[0] < 20) cost[k] += 2; }
-    }
-    for (const hz of W.hazards()) {
-      const R = hz.r + 34; const i0 = Math.max(0, Math.floor((hz.x - R) / CS)), i1 = Math.min(w - 1, Math.floor((hz.x + R) / CS)), j0 = Math.max(0, Math.floor((hz.y - R) / CS)), j1 = Math.min(h - 1, Math.floor((hz.y + R) / CS));
-      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const d = Math.hypot((i + 0.5) * CS - hz.x, (j + 0.5) * CS - hz.y); const k = j * w + i; if (cost[k] < 0) continue; if (d < hz.r + 8) cost[k] += 70 * avoid; else if (d < R) cost[k] += 14 * avoid * (1 - (d - hz.r) / 34); }
-    }
-    for (const e of W.ents) if (e.watch) {       // a watcher's cone is a place to cross quickly, not to linger
-      for (let r = 40; r < e.range; r += CS) for (let a = -e.half; a <= e.half; a += 0.12) { const x = e.x + Math.cos(e.ang + a) * r, y = e.y + Math.sin(e.ang + a) * r; const i = Math.floor(x / CS), j = Math.floor(y / CS); if (i >= 0 && j >= 0 && i < w && j < h && cost[j * w + i] > 0) cost[j * w + i] += 5 * avoid; }
-    }
-  }
-  free(x, y) { const i = Math.floor(x / CS), j = Math.floor(y / CS); return i >= 0 && j >= 0 && i < this.w && j < this.h && this.cost[j * this.w + i] > 0; }
-  // nearest walkable cell to a point (targets often sit on pads/pores that are fine, but be safe)
-  snap(x, y) { let i = Math.max(0, Math.min(this.w - 1, Math.floor(x / CS))), j = Math.max(0, Math.min(this.h - 1, Math.floor(y / CS))); if (this.cost[j * this.w + i] > 0) return j * this.w + i; for (let r = 1; r < 8; r++) for (let dj = -r; dj <= r; dj++) for (let di = -r; di <= r; di++) { const a = i + di, b = j + dj; if (a >= 0 && b >= 0 && a < this.w && b < this.h && this.cost[b * this.w + a] > 0) return b * this.w + a; } return -1; }
-  // A* → { pts:[[x,y]…], len } or null
-  path(x0, y0, x1, y1) {
-    const w = this.w, h = this.h, cost = this.cost, g = this.g, from = this.from, st = this.state; const s = this.snap(x0, y0), t = this.snap(x1, y1); if (s < 0 || t < 0) return null;
-    st.fill(0); const heap = this.heap; heap.length = 0; g[s] = 0; from[s] = -1; st[s] = 1; const tx = t % w, ty = (t / w) | 0;
-    const push = (k, f) => { heap.push([f, k]); let c = heap.length - 1; while (c > 0) { const p = (c - 1) >> 1; if (heap[p][0] <= heap[c][0]) break; const q = heap[p]; heap[p] = heap[c]; heap[c] = q; c = p; } };
-    const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let c = 0; for (;;) { let l = c * 2 + 1, r = l + 1, m = c; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === c) break; const q = heap[m]; heap[m] = heap[c]; heap[c] = q; c = m; } } return top; };
-    push(s, 0); let found = false;
-    while (heap.length) {
-      const k = pop()[1]; if (st[k] === 2) continue; st[k] = 2; if (k === t) { found = true; break; }
-      const i = k % w, j = (k / w) | 0;
-      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
-        if (!di && !dj) continue; const a = i + di, b = j + dj; if (a < 0 || b < 0 || a >= w || b >= h) continue; const n = b * w + a; if (cost[n] < 0 || st[n] === 2) continue;
-        if (di && dj && (cost[j * w + a] < 0 || cost[b * w + i] < 0)) continue;       // no corner cutting
-        const ng = g[k] + cost[n] * (di && dj ? 1.414 : 1);
-        if (st[n] === 0 || ng < g[n]) { g[n] = ng; from[n] = k; st[n] = 1; push(n, ng + Math.hypot(a - tx, b - ty)); }
-      }
-    }
-    if (!found) return null;
-    const pts = []; let k = t, len = 0; while (k >= 0) { pts.push([(k % w + 0.5) * CS, (((k / w) | 0) + 0.5) * CS]); k = from[k]; } pts.reverse();
-    for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
-    pts.push([x1, y1]); return { pts, len, cost: g[t] };
-  }
-}
-const OUT = new Float32Array(3);
 const hz2 = (W) => (W.hazards ? W.hazards() : []);
 
 export class Bot {
@@ -80,6 +30,8 @@ export class Bot {
     if (F.heat < -0.25) for (const e of W.ents) if (e.d.type === 'vent') add(e.x, e.y, 'vent', e, 1.5, e.r * 0.4);
     for (const e of W.ents) if (e.d.type === 'iceplug' && e.hp > 0) { if (F.heat > 0.25) add(e.S.x, e.S.y, 'ice', e, 2.4, 4); else for (const v of W.ents) if (v.d.type === 'vent') add(v.x, v.y, 'vent', v, 1.4, v.r * 0.4); }
     if (need.length) for (const p of need) add(p.x, p.y, 'pad', p, 3, p.r * 0.3);
+    // a switch sealed behind a mesh: the place to go is the window in front of it (the room says where) — a piece of us will do the rest
+    for (const p of need) if (p.d.from && !pl.orgs.some(o => o.alive && o !== F && Math.hypot(o.B.cx - p.x, o.B.cy - p.y) < p.r * 1.8)) add(p.d.from.x, p.d.from.y, 'sow', p, 3, 14);
     const hz = W.hazards();
     const risky = (x, y) => { for (const h of hz) if (Math.hypot(h.x - x, h.y - y) < h.r + 30) return true; return false; };
     const ready = pore && pore.open > 0.8;
@@ -116,7 +68,9 @@ export class Bot {
     const pads = W.ents.filter(e => e.d.type === 'pad'); const need = this.padsWanted();
     // several pads at once → throw siblings onto all but the last, sit on the last yourself
     if (need.length >= 2 && this.budT <= 0 && pl.orgs.filter(o => o.alive).length < pads.length) {
-      const p = need.slice().sort((a, b) => Math.hypot(a.x - B.cx, a.y - B.cy) - Math.hypot(b.x - B.cx, b.y - B.cy))[0]; const d = Math.hypot(p.x - B.cx, p.y - B.cy);
+      // (a pad we cannot walk to — it is behind a one-way door — is the one to throw at; otherwise the nearest)
+      const reach = (q) => (this.nav.sc ? !!this.nav.path(B.cx, B.cy, q.x, q.y) : true); const cand = need.filter(q => !q.d.from);
+      const p = cand.slice().sort((a, b) => (reach(a) ? 1 : 0) - (reach(b) ? 1 : 0) || Math.hypot(a.x - B.cx, a.y - B.cy) - Math.hypot(b.x - B.cx, b.y - B.cy))[0] || need[0]; const d = Math.hypot(p.x - B.cx, p.y - B.cy);
       const taken = pl.orgs.some(o => o.alive && o !== F && Math.hypot(o.B.cx - p.x, o.B.cy - p.y) < p.r * 1.7);
       if (!taken && d < 300 && d > 60 && !W.phys.raycast(B.cx, B.cy, (p.x - B.cx) / d, (p.y - B.cy) / d, d - 10) && B.count > p.need * 2 + 12) { ctl.buds = [{ x: p.x, y: p.y, frac: Math.min(0.45, (p.need + 9) / B.count) }]; this.budT = 2.2; this.skip.set(p, this.t + 6); this.note('bud→pad'); this.replan = 0; }
     }
@@ -124,11 +78,13 @@ export class Bot {
     if (need.length >= 2 && pl.orgs.filter(o => o.alive).length >= pads.length) { this.strayT = (this.strayT || 0) + dt; if (this.strayT > 5) { this.strayT = 0; this.rallyT = 3; this.budT = 3.4; this.note('regroup'); } } else this.strayT = 0;
     // siblings nothing is asking for: call them home (a comb, a cut, a throw scattered us) — and never leave through the pore without them
     const baiting = B.mat === MAT.SPORE && W.colonies.some(C => C.kind === 'hunter' && C.orgs.some(o => o.alive && o.B.count > B.count * 1.15));
+    // decoys that nothing has found in nine seconds are in the wrong place: call them home and lay them again
+    if (baiting) { const out = pl.orgs.some(o => o.alive && o !== F && o.B.count >= 6), lit = W.colonies.some(C => C.kind === 'hunter' && C.orgs.some(o => o.alive && (o.boomT > 0 || o.B.spores > 0))); this.staleT = out && !lit ? (this.staleT || 0) + dt : 0; if (this.staleT > 9) { this.rallyT = 2.6; this.staleT = 0; this.note('recall'); } }
     if (!pads.length && !baiting && this.rallyT < -2.5) { let stray = 0; for (const o of pl.orgs) if (o.alive && o !== F) stray += o.B.count; if (stray >= 6 && (stray > B.count * 0.25 || this.target && this.target.kind === 'pore')) { this.rallyT = 2.6; this.note('rally'); } }
     if (this.rallyT > 0) ctl.rally = true;
     // decide / re-plan
     if (this.replan <= 0 || !this.target || this.target.ref && (this.target.ref.dead || this.target.kind === 'lantern' && this.target.ref.lit)) {
-      this.replan = 0.45; this.nav.build(this.greed === 2 ? 0.4 : 1); this.target = this.choose(F); this.route = this.target ? this.target.route || this.nav.path(B.cx, B.cy, this.target.x, this.target.y) : null; this.wp = 1;
+      this.replan = 0.45; this.nav.build(this.greed === 2 ? 0.4 : 1, { count: B.count }); this.target = this.choose(F); this.route = this.target ? this.target.route || this.nav.path(B.cx, B.cy, this.target.x, this.target.y) : null; this.wp = 1;
     }
     const T = this.target; if (!T) return ctl;
     if ((T.kind === 'prey' || T.kind === 'cleave' || T.kind === 'bait') && T.ref.alive) { T.x = T.ref.B.cx; T.y = T.ref.B.cy; }
@@ -142,6 +98,7 @@ export class Bot {
     if (T.kind === 'pad' || T.kind === 'wait' || T.kind === 'pool' || T.kind === 'heal' || T.kind === 'vent' || T.kind === 'pore') thr = dT < T.r ? 0 : Math.min(1, dT / 70 + 0.15);       // arrive like a player does: ease in, then rest
     ctl.intent.x = dx / d * thr; ctl.intent.y = dy / d * thr; ctl.aim = { x: ax, y: ay };
     if (T.kind === 'prey' && dT < 150 && dT > T.ref.B.r + B.r * 0.6 && F.dartCD <= 0 && B.count > 40 && this.lanceT < this.t) { ctl.darts = [{ x: T.x - B.cx, y: T.y - B.cy, power: 1 }]; this.lanceT = this.t + 1.6; this.note('pounce'); }
+    if (T.kind === 'sow' && dT < 34 && this.budT <= 0 && B.count > T.ref.need * 2 + 8) { ctl.buds = [{ x: T.ref.x, y: T.ref.y, frac: Math.min(0.42, (T.ref.need + 10) / B.count) }]; this.budT = 2.4; this.skip.set(T.ref, this.t + 5); this.replan = 0; this.note('sow'); }
     if (T.kind === 'bait' && T.ref.alive && this.budT <= 0) { const edge = dT - T.ref.B.r - B.r; if (edge < 200) { const k = Math.min(0.42, Math.max(0.22, 16 / B.count)), reach = Math.max(40, edge * 0.45 + B.r); ctl.buds = [{ x: B.cx + (T.x - B.cx) / dT * reach, y: B.cy + (T.y - B.cy) / dT * reach, frac: k }]; this.budT = 5; this.skip.set(T.ref, this.t + 5); this.replan = 0; this.fleeT = this.t + 2.2; this.fleeFrom = T.ref; this.note('decoy'); } }
     if (this.fleeT > this.t && this.fleeFrom && this.fleeFrom.alive) { const ex = B.cx - this.fleeFrom.B.cx, ey = B.cy - this.fleeFrom.B.cy, ed = Math.hypot(ex, ey) + 1; if (ed < 420) { ctl.intent.x = ex / ed; ctl.intent.y = ey / ed; } }      // …and be elsewhere
     if (T.kind === 'cleave' && T.ref.alive && dT < T.ref.B.r + B.r + 70 && F.dartCD <= 0 && this.lanceT < this.t) { ctl.darts = [{ x: T.x - B.cx, y: T.y - B.cy, power: 1.5 }]; this.lanceT = this.t + 1.8; this.note('lance'); }

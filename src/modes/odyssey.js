@@ -18,6 +18,7 @@ const HINTS = {
   fly: 'lean into a bright band — and let it throw you',
   jet: '<span class="mouse-ic"></span> <span class="key">Space</span> as foam every dart is a jet — and a jet skims',
   decoy: '<span class="mouse-ic r"></span> <span class="key">E</span> leave a piece of yourself in its path — and be somewhere else',
+  sow: '<span class="mouse-ic r"></span> <span class="key">E</span> the mesh stops the whole of you — a part of you is small enough',
   swell: '<span class="key">F</span> or hold <span class="mouse-ic r"></span> — swell: they judge by size · let go to pop',
 };
 
@@ -33,6 +34,7 @@ const HINTS_TOUCH = {
   fly: HINTS.fly,
   jet: '<b>tap, tap, tap</b> — as foam every dart is a jet, and a jet skims',
   decoy: 'second-finger <b>tap</b>: leave a piece of yourself in its path — and be somewhere else',
+  sow: 'second-finger <b>tap</b>: the mesh stops the whole of you — a part of you is small enough',
 };
 // every named trick, with the riddle the journal shows until you have found it
 export const TRICKS = [
@@ -41,6 +43,8 @@ export const TRICKS = [
   ['Cleave', 'part a giant in two'], ['Slingshot', 'be thrown by one pole and caught by the other'],
   ['Gravity Assist', 'go in among a well\'s nearest light, and leave having paid it nothing'], ['Comet', 'twenty-four lights without a pause'],
   ['Hole in One', 'leave two bands behind and do not land until you are home'],
+  ['Bank Shot', 'open what no band is aimed at'],
+  ['Go-Between', 'be on both sides of a wall that has no door'],
   ['Trojan Swallow', 'be swallowed — by something that will never swallow again'],
   ['Outrun', 'come home before your own echo does'],
   ['Phoenix', 'leave a chamber whole after being an ember in it'], ['Immaculate', 'all three stars in a single visit'],
@@ -96,6 +100,8 @@ export class Odyssey {
   pop(O) { if (this.room.hint === 'swell') this.usedHint = true; const W = this.app.world; if (W.colonies.some(C => C.kind === 'hunter' && C.orgs.some(o => o.alive && o.brain && o.brain.state === 'flee' && Math.hypot(o.B.cx - O.B.cx, o.B.cy - O.B.cy) < 260))) this.trick('Paper Tiger'); }
   bumper() { if (this.room.hint === 'fly') this.usedHint = true; this.air = (this.air || 0) + 1; this.groundT = 0; }      // bands touched in one unbroken flight
   trojan() { this.trick('Trojan Swallow'); if (this.room.hint === 'decoy') this.usedHint = true; }
+  bank() { this.trick('Bank Shot'); }
+  seeped(v, O) { if (this.room.hint === 'sow') this.usedHint = true; const F = this.app.world.player.focus; if (F && O !== F && F.B.count > v.S.small) this.trick('Go-Between'); }
   thrown(core) { this.thrownT = this.app.world.time; this.thrownTo = core.twin; }                    // a pole threw us: if its twin catches us out of the air, that is a Slingshot
   cleave() { this.trick('Cleave'); if (this.room.hint === 'coil') this.usedHint = true; }
   hurt(B, n, gone) { const W = this.app.world; if (W.stats.lost === GRACE + 1) this.app.hud.toast('grace lost', '◇', 'cool'); }

@@ -13,6 +13,7 @@ export const SPACING = 7.0;        // nominal rest spacing (for spawning)
 export const PR = 4.0;             // particle wall radius
 export const AREA_PER_P = SPACING * SPACING * 0.95;
 const EV = (k, d) => +(globalThis.process && globalThis.process.env && globalThis.process.env[k] || d);
+const COHERE = EV('COHERE', 0.7);      // share of a current's drag that a body spreads across its whole self
 const INF_F = EV('INF_F', 2200), INF_D = EV('INF_D', 0.70);      // a held breath: how hard the cavity pushes outward · how far the gel thins around it
 const ADH_RANGE = 6.0;
 const SPR = 6;                     // springs stored per particle
@@ -225,6 +226,28 @@ export class Physics {
     const { x, y, vx, vy, fx, fy, alive, hi, mat, body, bodies } = this;
     const zones = this.zones, nz = zones.length;
     const gx0 = this.gx, gy0 = this.gy;
+    // A current does not act on loose grains: a cohesive body shares most of the drag across its whole self (the part standing in the stream
+    // pulls the rest in after it), so a river carries you away in one piece instead of shearing off whatever dipped a toe in.
+    let flows = 0; for (let z = 0; z < nz; z++) if (zones[z].flow) flows++;
+    const flx = this._flx && this._flx.length >= hi ? this._flx : (this._flx = new Float32Array(x.length)), fly = this._fly && this._fly.length >= hi ? this._fly : (this._fly = new Float32Array(x.length));
+    if (flows) {
+      for (let b = 0; b < bodies.length; b++) { const B = bodies[b]; if (B) { B.fsx = 0; B.fsy = 0; B.fwx = 0; B.fwy = 0; B.fwk = 0; } }
+      for (let i = 0; i < hi; i++) {
+        if (!alive[i]) continue; let ax = 0, ay = 0; const px = x[i], py = y[i], B = bodies[body[i]];
+        for (let z = 0; z < nz; z++) {
+          const Z = zones[z]; if (!Z.flow || px < Z.x0 || px > Z.x1 || py < Z.y0 || py > Z.y1) continue;
+          const w = Z.weight ? Z.weight(px, py) : 1; if (w <= 0) continue;
+          const k = Z.flowK * w * (1 - 1.3 * B.glide);                // a body in flight skims over a current instead of sitting in it
+          let fvx = Z.fvx, fvy = Z.fvy; if (Z.flowAt) { const f = Z.flowAt(px, py); fvx = f[0]; fvy = f[1]; }
+          ax += (fvx - vx[i]) * k; ay += (fvy - vy[i]) * k; const kk = Z.flowK * w; B.fwx += fvx * kk; B.fwy += fvy * kk; B.fwk += kk;
+        }
+        flx[i] = ax; fly[i] = ay; B.fsx += ax; B.fsy += ay;
+      }
+      // …and a torrent (k well above what a body can swim against) becomes the body's frame of reference: `B.medX/Y` is the water's velocity as the body feels it.
+      //  A will that servoed to the *ground* in a torrent would pin its leading edge in place while the rest was carried off — i.e. tear itself apart.
+      for (let b = 0; b < bodies.length; b++) { const B = bodies[b]; if (!B) continue; if (B.count > 0 && B.fwk > 0) { const im = Math.min(1, Math.max(0, (B.fwk / B.count - 5) / 7)); B.medX = B.fwx / B.fwk * im; B.medY = B.fwy / B.fwk * im; B.fsx /= B.count; B.fsy /= B.count; } else { B.medX = 0; B.medY = 0; } }
+    } else if (this._hadFlow) for (let b = 0; b < bodies.length; b++) { const B = bodies[b]; if (B) { B.medX = 0; B.medY = 0; B.fsx = 0; B.fsy = 0; } }
+    this._hadFlow = flows > 0;
     for (let i = 0; i < hi; i++) {
       if (!alive[i]) continue;
       const m = mat[i];
@@ -234,18 +257,13 @@ export class Physics {
       let ax = fx[i], ay = fy[i];
       let drag = this.drag * (1 - B.glide) + M.drag[m];             // a launched body slips through the medium
       const px = x[i], py = y[i];
+      if (flows) { const c = B.count >= 6 ? COHERE : 0; ax += flx[i] * (1 - c) + B.fsx * c; ay += fly[i] * (1 - c) + B.fsy * c; }
       for (let z = 0; z < nz; z++) {
         const Z = zones[z];
         if (px < Z.x0 || px > Z.x1 || py < Z.y0 || py > Z.y1) continue;
         const w = Z.weight ? Z.weight(px, py) : 1;
         if (w <= 0) continue;
         if (Z.gravity) { gx += (Z.gx - gx) * w; gy += (Z.gy - gy) * w; }
-        if (Z.flow) {
-          const k = Z.flowK * w * (1 - 1.3 * B.glide);                // a body in flight skims over a current instead of sitting in it
-          let fvx = Z.fvx, fvy = Z.fvy;
-          if (Z.flowAt) { const f = Z.flowAt(px, py); fvx = f[0]; fvy = f[1]; }
-          ax += (fvx - vx[i]) * k; ay += (fvy - vy[i]) * k;
-        }
         if (Z.attract) {
           // gravity well: a = S / (r + soft) — long reach, finite at the core
           const dx = Z.ax - px, dy = Z.ay - py; const r = Math.sqrt(dx * dx + dy * dy) + 1e-3;
@@ -602,8 +620,9 @@ export class Physics {
         const nxw = out[1], nyw = out[2];
         // one-way membranes: only resist motion against the allowed direction
         if (S.oneWay) {
-          const vdot = (x[i] - ox[i]) * S.passX + (y[i] - oy[i]) * S.passY;
-          if (vdot > -0.05) continue;
+          // semi-permeable: a body small enough passes either way as if nothing were there; a pure sieve stops everything bigger, both ways
+          if (S.small && bodies[body[i]].count <= S.small) continue;
+          if (!S.sieve) { const vdot = (x[i] - ox[i]) * S.passX + (y[i] - oy[i]) * S.passY; if (vdot > -0.05) continue; }
         }
         const m = mat[i]; const B = bodies[body[i]];
         const sm = S.surf;
@@ -976,7 +995,7 @@ export function updateShapeBounds(S) {
 
 export function makeShape(o) {
   const S = Object.assign({ type: 0, x: 0, y: 0, angle: 0, vx: 0, vy: 0, omega: 0, r: 10, hl: 0, hw: 10, hh: 10, R: 0, gap: 0,
-    surf: SURF.METAL, active: true, cut: false, oneWay: false, passX: 0, passY: -1, rest: 0, grip: 0 }, o);
+    surf: SURF.METAL, active: true, cut: false, oneWay: false, passX: 0, passY: -1, small: 0, sieve: false, rest: 0, grip: 0 }, o);
   updateShapeBounds(S);
   return S;
 }

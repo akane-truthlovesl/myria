@@ -90,7 +90,7 @@ def(MAT.CRYO, { ...base, name: 'cryo',
   absorb: [0.7, 0.22, 0.06], emit: [0.6, 0.88, 1.0], glow: 0.4, clarity: 0.45, f0: 0.09 });
 
 def(MAT.FOAM, { ...base, name: 'foam',
-  phase: PHASE.FOAM, k: 0.04, kn: 0.22, rho0: 2.2, sigma: 0.9, spring: 1, sk: 0.42, adh: 0.12, grav: 0.35,
+  phase: PHASE.FOAM, k: 0.04, kn: 0.22, rho0: 2.2, sigma: 0.9, spring: 1, sk: 0.72, adh: 0.12, grav: 0.35,
   absorb: [0.30, 0.10, 0.04], emit: [0.80, 0.96, 1.0], glow: 0.20, clarity: 0.72, f0: 0.075, halo: 0.3 });
 
 def(MAT.DEW, { ...base, name: 'dew',

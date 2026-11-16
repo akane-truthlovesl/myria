@@ -132,7 +132,9 @@ export const ROOMS = [
     const mu = 0.51 * f.Lu, mv = 0.5 * f.Lv; const F1 = f.P(u1, 0.5), F2 = f.P(u2, v2), pore = f.P(0.865, v2);
     const A = Q(50, mv), B = Q(mu + 62, mv + 178), C = Q(mu - 100, v2 * f.Lv);
     const along = (p, q, n, v, e) => moteTrail([[p.x + (q.x - p.x) * 0.22, p.y + (q.y - p.y) * 0.22], [p.x + (q.x - p.x) * 0.84, p.y + (q.y - p.y) * 0.84]], n, v, e);
-    const g = { col: [0.80, 1, 0.50] }; const s1 = Q(mu - 104, mv + 150), s2 = Q(f.Lu * 0.86, f.Lv * 0.74);
+    const g = { col: [0.80, 1, 0.50] }; const s1 = Q(mu - 104, mv + 150), s2 = Q(f.Lu * 0.865, f.Lv * 0.80);
+    // the last court keeps a vault under a lid of lace. No band is aimed at it: the pale one on the far wall is flat — it gives back the mirror of whatever strikes it.
+    const lu0 = u2 * f.Lu + th / 2 - 4, lu1 = f.Lu - 24, lid = Q((lu0 + lu1) / 2, 0.60 * f.Lv), D = Q(f.Lu - 46, 0.44 * f.Lv);
     const ents = [
       { type: 'bumper', id: 'A', ...A, len: 150, to: F1 }, ...along(A, F1, 4, 2, g),
       { type: 'film', ...F1, len: open + 10, a: fa, tough: true },
@@ -140,7 +142,9 @@ export const ROOMS = [
       { type: 'bumper', id: 'C', ...C, len: 124, to: F2, kick: 620 }, ...along(C, F2, 4, 2, g),
       { type: 'film', ...F2, len: open + 10, a: fa, tough: true },
       ...trail(f, [[0.10, 0.22], [0.22, 0.20]], 3), ...trail(f, [[0.10, 0.78], [0.22, 0.80]], 3),
-      ...moteRing(s1.x, s1.y, 26, 4, 3), ...moteRing(s2.x, s2.y, 30, 5, 3),
+      { type: 'film', ...lid, len: lu1 - lu0, a: f.land ? 0 : Math.PI / 2, tough: true },
+      { type: 'bumper', id: 'D', ...D, len: 150, mirror: true, a: f.land ? Math.PI / 2 : Math.PI, kick: 600, fly: 0.8 },
+      ...moteRing(s1.x, s1.y, 26, 4, 3), ...moteRing(s2.x, s2.y, 40, 6, 3, { col: [1, 0.86, 0.5] }), { type: 'mote', ...s2, value: 6, col: [1, 0.9, 0.6] },
       ...moteRing(pore.x, pore.y, 66, 6, 3), { type: 'pore', ...pore },
     ];
     return { W, H, geo, ents, pal: PAL.glass, spawn: { ...f.P(0.17, 0.5), n: 80 }, minMass: 80 };
@@ -225,8 +229,8 @@ export const ROOMS = [
     const m = [0.92, 0.97, 1];
     const ents = [
       cur(0.51, 0.50, 0.28 * f.Lu, 0.96 * f.Lv, 0, 1, 700, 14),           // the river (it runs all the way down into the flume: no ledge to stand on)
-      cur(0.40, 0.865, 0.62 * f.Lu, 0.17 * f.Lv, -1, 0, 540, 12),         // the flume
-      cur(0.075, 0.80, 0.11 * f.Lu, 0.26 * f.Lv, 0, -1, 400, 9),          // …and up through the valve
+      cur(0.40, 0.865, 0.62 * f.Lu, 0.28 * f.Lv, -1, 0, 540, 12),         // the flume (the zone reaches into the floor above and below: its feathered edge must not leave slow water along the walls to cling in)
+      cur(0.085, 0.80, 0.21 * f.Lu, 0.30 * f.Lv, 0, -1, 430, 13),         // …and up through the valve (a torrent too, and wider than the opening: it takes all of you through, not half)
       { type: 'valve', ...f.P(0.08, fl), len: 0.105 * f.Lu, a: va },
       { type: 'pool', kind: 'morph', mat: MAT.FOAM, morph: { speed: 1.1, tonus: 0.85, dart: 1.0, jet: 1 }, ...f.P(0.24, 0.50), r: 46 },
       ...trail(f, [[0.10, 0.14], [0.30, 0.14]], 4), ...trail(f, [[0.40, 0.24], [0.62, 0.36]], 5, 3, { col: m }),
@@ -235,6 +239,31 @@ export const ROOMS = [
       ...moteRing(f.P(0.84, 0.42).x, f.P(0.84, 0.42).y, 64, 6, 2), { type: 'pore', ...f.P(0.84, 0.42) },
     ];
     return { W, H, geo, ents, pal: PAL.amber, spawn: { ...f.P(0.12, 0.34), n: 80 }, minMass: 80 };
+  } },
+  { id: 'osmosis', name: 'Osmosis', par: 64, hint: 'sow', build(a) {
+    // Membranes. A mesh stops the whole of you and lets any part of you through, both ways; cilia let everything through one way only — and a part of you the other way too.
+    //  1. the switch for the first door is sealed behind a mesh: send a piece in.   2. the second door is cilia: once through, there is no going back — for the whole of you.
+    //  3. the way out wants two switches held at once, one on each side of that door: leave a piece behind, or send one back.
+    const f = L(a), { W, H } = f; const geo = dish(W, H); const th = 40, open = 124, half = (f.Lv - open) / 2; const u1 = 0.33, u2 = 0.61, u3 = 0.855;
+    for (const u of [u1, u2, u3]) geo.push(f.box(u, 0, th, half * 2 - 6, 20), f.box(u, 1, th, half * 2 - 6, 20));
+    // the sealed cell: a shelf across the first room, with one mesh window in it
+    const sv = 0.335, ua = 0.165, gap = 104, sh = 24; const a0 = 14, a1 = ua * f.Lu - gap / 2, b0 = ua * f.Lu + gap / 2, b1 = u1 * f.Lu - th / 2 + 6;
+    geo.push(f.box((a0 + a1) / 2 / f.Lu, sv, a1 - a0, sh, 11), f.box((b0 + b1) / 2 / f.Lu, sv, b1 - b0, sh, 11));
+    const gd = f.vec(0, 1), gs = f.land ? [th * 0.62, open + 26] : [open + 26, th * 0.62]; const along = f.land ? 0 : Math.PI / 2, across = f.land ? -Math.PI / 2 : 0;
+    const A = f.P(ua, 0.17), B = f.P(0.485, 0.5), C = f.P(0.735, 0.21), pore = f.P(0.925, 0.5), m = { col: [0.72, 0.95, 1.0] };
+    const ents = [
+      { type: 'valve', ...f.P(ua, sv), len: gap + 8, a: along, sieve: true },
+      { type: 'pad', id: 'A', ...A, need: 14, r: 40, from: f.P(ua, 0.47) }, ...moteRing(A.x, A.y, 62, 5, 2, m),
+      { type: 'gate', id: 'G1', ...f.P(u1, 0.5), w: gs[0], h: gs[1], dx: gd[0] * (open + 30), dy: gd[1] * (open + 30), need: ['A'], latch: true },
+      ...trail(f, [[0.07, 0.80], [0.27, 0.84]], 5), ...trail(f, [[0.24, 0.50], [0.29, 0.50]], 2),
+      ...trail(f, [[0.40, 0.16], [0.56, 0.16]], 4), ...trail(f, [[0.40, 0.84], [0.56, 0.84]], 4), ...moteRing(B.x, B.y, 58, 6, 2),
+      { type: 'pad', id: 'B', ...B, need: 14, r: 40 },
+      { type: 'valve', ...f.P(u2, 0.5), len: open + 10, a: across, small: 30 },
+      { type: 'pad', id: 'C', ...C, need: 14, r: 40 }, ...trail(f, [[0.68, 0.74], [0.79, 0.84]], 4, 3), ...trail(f, [[0.68, 0.50], [0.80, 0.50]], 3),
+      { type: 'gate', id: 'G2', ...f.P(u3, 0.5), w: gs[0], h: gs[1], dx: gd[0] * (open + 30), dy: gd[1] * (open + 30), need: ['B', 'C'], latch: true },
+      ...moteRing(pore.x, pore.y, 50, 4, 3), { type: 'pore', ...pore, r: 34, key: 'G2' },
+    ];
+    return { W, H, geo, ents, pal: PAL.amber, spawn: { ...f.P(0.10, 0.62), n: 90 }, minMass: 90 };
   } },
   { id: 'oil-water', name: 'Oil & Water', par: 32, build(a) {
     const f = L(a), { W, H } = f; const geo = dish(W, H); const th = 60, gap = 96; const half = (f.Lv - gap) / 2;

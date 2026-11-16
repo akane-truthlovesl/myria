@@ -16,8 +16,8 @@ const last = (out, n = 1) => out.trim().split('\n').slice(-n).join(' | ');
 check('build (single-file index.html, no warnings)', () => { const o = run(['tools/build.mjs']); const warn = (o.match(/\[WARNING\][^\n]*/g) || []); return [/index\.html\s+\d+ KB/.test(o) && !warn.length, warn.length ? warn.join(' · ') : last(o)]; });
 check('eight physics laws, measured', () => { const o = run(['tools/axioms.mjs']); const n = (o.match(/^PASS/gm) || []).length; return [/all laws hold/.test(o), `${n} measurements pass`]; });
 const solve = (a, b, w, h) => { const o = run(['tools/solve.mjs', String(a), String(b), String(w), String(h), '1']); const done = (o.match(/ DONE /g) || []).length; const m = /total .*?(\d+) unfinished/.exec(o); return [!!m && m[1] === '0' && done === b - a + 1, `${done}/${b - a + 1} chambers finished by the bot at ${w}×${h}`]; };
-if (quick) check('bot plays chambers 0, 7, 13, 23 (landscape)', () => { let ok = true, n = 0; for (const i of [0, 7, 13, 23]) { const [k] = solve(i, i, 1280, 720); ok = ok && k; n += k ? 1 : 0; } return [ok, `${n}/4 finished`]; });
-else { check('bot plays every chamber, landscape', () => solve(0, 25, 1280, 720)); check('bot plays every chamber, portrait', () => solve(0, 25, 900, 1060)); }
+if (quick) check('bot plays chambers 0, 7, 13, 14, 24 (landscape)', () => { let ok = true, n = 0; for (const i of [0, 7, 13, 14, 24]) { const [k] = solve(i, i, 1280, 720); ok = ok && k; n += k ? 1 : 0; } return [ok, `${n}/5 finished`]; });
+else { check('bot plays every chamber, landscape', () => solve(0, 26, 1280, 720)); check('bot plays every chamber, portrait', () => solve(0, 26, 900, 1060)); }
 const B = path.join(ROOT, 'tools', 'browser');
 check('browser: opens from file://', () => { const o = run(['filetest.mjs'], B); return [/"state":"play"/.test(o), last(o).slice(0, 110)]; });
 check('browser: first three seconds on a new save (mouse)', () => { const o = run(['ftue.mjs', '1280', '720', '0'], B); return [/FTUE OK/.test(o) && /no console errors/.test(o), last(o, 3).slice(0, 150)]; });
@@ -27,7 +27,7 @@ check('browser: optional gyro tilt', () => { const o = run(['tilttest.mjs'], B);
 check('browser: two players on one screen (Duet and co-op dive)', () => { const o = run(['duettest.mjs'], B); return [/DUET OK/.test(o), last(o, 3).slice(0, 200)]; });
 check('browser: echo (ghost on replay, share code)', () => { const o = run(['echotest.mjs'], B); return [/ECHO OK/.test(o) && /no console errors/.test(o), last(o, 2)]; });
 if (!quick) check('browser: every mode opens and runs; Atrium menus', () => { const o = run(['modes.mjs', '5'], B); const n = (o.match(/^ok /gm) || []).length; return [/MODES OK/.test(o), `${n} modes and menus alive, no console errors`]; });
-if (!quick) check('browser: every chamber loads and runs (autopilot soak)', () => { const o = run(['soak.mjs', '2500'], B); const n = (o.match(/state=play/g) || []).length; return [n === 26 && /no console errors/.test(o), `${n}/26 chambers in play, ${/no console errors/.test(o) ? 'no console errors' : 'console errors!'}`]; });
+if (!quick) check('browser: every chamber loads and runs (autopilot soak)', () => { const o = run(['soak.mjs', '2500'], B); const n = (o.match(/state=play/g) || []).length; return [n === 27 && /no console errors/.test(o), `${n}/27 chambers in play, ${/no console errors/.test(o) ? 'no console errors' : 'console errors!'}`]; });
 if (!quick) check('abyss: nine depths, careless pilot, no deaths', () => { mkdirSync(path.join(ROOT, '.verify'), { recursive: true }); const o = run(['tools/abyss.mjs', path.join(ROOT, '.verify', 'abyss'), '1280', '720', '9', '30', '31337', 'naive']); const d = (o.match(/deaths=(\d+)/g) || []).map(s => +s.slice(7)); return [d.length === 9 && d.every(x => x === 0), `${d.length} depths, deaths ${d.join(',')}`]; });
 
 const bad = rows.filter(r => !r[0]).length;
