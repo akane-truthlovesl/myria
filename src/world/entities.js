@@ -46,6 +46,7 @@ export class Mote extends Entity {
     if (this.dead) return; this.dead = true;
     const W = this.W; W.release(this);
     W.feed(O.B, (this.value + (O.colony === W.player ? W.moteBonus || 0 : 0)) * (O.colony === W.player && W.ember ? 2 : 1), this.x, this.y, this.col);
+    if (this.d.pity) { if (O.colony === W.player) { W.sound && W.sound.heal(); } return; }                    // wept light feeds, but is not the room's light: it counts for nothing
     if (O.colony === W.player || O.colony && O.colony.ally) { W.stats.motes++; const chain = W.chainUp(this, O); W.sound && W.sound.mote((this.x / W.spec.W) * 1.6 - 0.8, chain); W.host.haptics && W.host.haptics.tick(); W.emit('mote', this, O, chain); }
     else W.emit('moteLost', this, O);
   }

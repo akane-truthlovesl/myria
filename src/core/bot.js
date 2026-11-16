@@ -85,6 +85,8 @@ export class Bot {
     if (!(ready && this.greed === 0)) for (const m of W.pickups) { if (m.dead || m.held) continue; if (this.greed < 2 && risky(m.x, m.y)) continue; add(m.x, m.y, 'mote', m, 4, 8); }
     // neighbours: prey is food, especially when the pore asks for it
     for (const C of W.colonies) { if (C === pl || C.ally || !C.kind || C.kind === 'oil' || C.kind === 'thorn') continue; for (const O of C.orgs) { if (!O.alive) continue; if (O.B.count * 1.2 < B.count && MATS[O.B.mat].phase === MATS[B.mat].phase) add(O.B.cx, O.B.cy, 'prey', O, C.kind === 'hunter' ? 3.5 : 4.2, 6); } }
+    // nothing left to eat but something too big to swallow: go and cleave it (a lance parts any neighbour in two)
+    if (!cands.some(c => c.kind === 'mote' || c.kind === 'prey') && B.count > 30) for (const C of W.colonies) { if (C === pl || C.ally || C.kind !== 'hunter') continue; for (const O of C.orgs) if (O.alive && O.B.count >= 18 && O.B.count * 1.2 >= B.count) add(O.B.cx, O.B.cy, 'cleave', O, 5, 6); }
     if (ready) add(pore.x, pore.y, 'pore', pore, cands.some(c => c.kind === 'mote' || c.kind === 'prey') && this.greed > 0 ? 6 : 1, pore.r * 0.3);
     if (!cands.length) { if (pore) return { x: pore.x, y: pore.y, kind: 'wait', ref: pore, r: pore.r * 2.2 }; return null; }
     // lowest priority class first; inside a class the shortest real path wins (checked for the few nearest by air)
@@ -116,7 +118,7 @@ export class Bot {
       this.replan = 0.45; this.nav.build(this.greed === 2 ? 0.4 : 1); this.target = this.choose(F); this.route = this.target ? this.target.route || this.nav.path(B.cx, B.cy, this.target.x, this.target.y) : null; this.wp = 1;
     }
     const T = this.target; if (!T) return ctl;
-    if (T.kind === 'prey' && T.ref.alive) { T.x = T.ref.B.cx; T.y = T.ref.B.cy; }
+    if ((T.kind === 'prey' || T.kind === 'cleave') && T.ref.alive) { T.x = T.ref.B.cx; T.y = T.ref.B.cy; }
     // follow the route: aim at the furthest waypoint still in line of sight
     let ax = T.x, ay = T.y;
     if (this.route) { const pts = this.route.pts; let k = Math.min(this.wp, pts.length - 1); while (k < pts.length - 1 && Math.hypot(pts[k][0] - B.cx, pts[k][1] - B.cy) < 26) k++; let far = k; for (let q = Math.min(pts.length - 1, k + 6); q > k; q--) { const dx = pts[q][0] - B.cx, dy = pts[q][1] - B.cy, d = Math.hypot(dx, dy) + 1; if (!W.phys.raycast(B.cx, B.cy, dx / d, dy / d, d - 6) && this.clear(B.cx, B.cy, pts[q][0], pts[q][1])) { far = q; break; } } this.wp = k; ax = pts[far][0]; ay = pts[far][1]; }
@@ -125,10 +127,11 @@ export class Bot {
     if (T.kind === 'pad' || T.kind === 'wait' || T.kind === 'pool' || T.kind === 'heal' || T.kind === 'vent') thr = dT < T.r ? 0 : Math.min(1, dT / 70 + 0.15);
     ctl.intent.x = dx / d * thr; ctl.intent.y = dy / d * thr; ctl.aim = { x: ax, y: ay };
     if (T.kind === 'prey' && dT < 150 && dT > T.ref.B.r + B.r * 0.6 && F.dartCD <= 0 && B.count > 40 && this.lanceT < this.t) { ctl.darts = [{ x: T.x - B.cx, y: T.y - B.cy, power: 1 }]; this.lanceT = this.t + 1.6; this.note('pounce'); }
+    if (T.kind === 'cleave' && T.ref.alive && dT < T.ref.B.r + B.r + 70 && F.dartCD <= 0 && this.lanceT < this.t) { ctl.darts = [{ x: T.x - B.cx, y: T.y - B.cy, power: 1.5 }]; this.lanceT = this.t + 1.8; this.note('lance'); }
     // a film ahead means: dart
     for (const e of W.ents) if (e.d.type === 'film' && e.S.active && F.dartCD <= 0) { const fx = e.x - B.cx, fy = e.y - B.cy; const along = (fx * dx + fy * dy) / d; if (along > 0 && along < 120 && Math.abs(fx * dy - fy * dx) / d < e.len * 0.5) { ctl.darts = [{ x: dx, y: dy, power: 1.4 }]; this.note('dart→film'); } }
     // bigger neighbours: keep away (unless we are a different phase and cannot be siphoned)
-    for (const C of W.colonies) { if (C === pl || C.ally || !C.kind || C.kind === 'oil') continue; for (const O of C.orgs) { if (!O.alive) continue; const big = O.B.count > B.count * 1.1 * (1 + 1.2 * (B.inflate || 0)) && MATS[O.B.mat].phase === MATS[B.mat].phase || C.kind === 'thorn' && B.mat !== 3; if (!big) continue; const ex = B.cx - O.B.cx, ey = B.cy - O.B.cy, ed = Math.hypot(ex, ey) - O.B.r - B.r; if (ed < 130) { const s = (1 - Math.max(0, ed) / 130) * 2.4; ctl.intent.x += ex / (ed + O.B.r + B.r) * s; ctl.intent.y += ey / (ed + O.B.r + B.r) * s; if (ed < 46 && C.kind === 'hunter' && F.canSwell && this.puffT < -1.5) this.puffT = 1.2; if (ed < 60 && ed > 8 && C.kind === 'hunter' && F.dartCD <= 0 && B.count > 30 && this.lanceT < this.t) { ctl.darts = [{ x: -ex, y: -ey, power: 1.5 }]; this.lanceT = this.t + 2.5; this.note('lance'); continue; } if (ed < 26 && F.dartCD <= 0 && B.count > 20) { ctl.darts = [{ x: ex, y: ey, power: 1 }]; this.note('dart-away'); } } } }
+    for (const C of W.colonies) { if (C === pl || C.ally || !C.kind || C.kind === 'oil') continue; for (const O of C.orgs) { if (!O.alive) continue; const big = O.B.count > B.count * 1.1 * (1 + 1.2 * (B.inflate || 0)) && MATS[O.B.mat].phase === MATS[B.mat].phase || C.kind === 'thorn' && B.mat !== 3; if (!big || T.kind === 'cleave' && T.ref === O) continue; const ex = B.cx - O.B.cx, ey = B.cy - O.B.cy, ed = Math.hypot(ex, ey) - O.B.r - B.r; if (ed < 130) { const s = (1 - Math.max(0, ed) / 130) * 2.4; ctl.intent.x += ex / (ed + O.B.r + B.r) * s; ctl.intent.y += ey / (ed + O.B.r + B.r) * s; if (ed < 46 && C.kind === 'hunter' && F.canSwell && this.puffT < -1.5) this.puffT = 1.2; if (ed < 60 && ed > 8 && C.kind === 'hunter' && F.dartCD <= 0 && B.count > 30 && this.lanceT < this.t) { ctl.darts = [{ x: -ex, y: -ey, power: 1.5 }]; this.lanceT = this.t + 2.5; this.note('lance'); continue; } if (ed < 26 && F.dartCD <= 0 && B.count > 20) { ctl.darts = [{ x: ex, y: ey, power: 1 }]; this.note('dart-away'); } } } }
     if (this.puffT > 0) { ctl.swell = true; this.note('puff'); }
     const m = Math.hypot(ctl.intent.x, ctl.intent.y); if (m > 1) { ctl.intent.x /= m; ctl.intent.y /= m; }
     // stuck? push harder, then think again

@@ -30,7 +30,7 @@ export class Body {
     this.fuseT = 0;         // fusion cooldown (fresh-cut passivation)
     this.contact = 0; this.cnx = 0; this.cny = 0; this.clingContact = 0;
     // drive (written by controllers, consumed every substep)
-    this.ax = 0; this.ay = 0; this.lx = 0; this.ly = 0; this.lead = 0;
+    this.ax = 0; this.ay = 0; this.lx = 0; this.ly = 0; this.lead = 0; this.trail = 0;
     this.tonus = 0; this.tonusReach = 1.15;
     this.waveA = 0; this.waveW = 2.0; this.wavePh = Math.random() * 6.28;
     this.gs = 1; this.adhMul = 1; this.fricMul = 1; this.damp = 0; this.stiff = 1; this.visc = 1;
@@ -294,8 +294,7 @@ export class Physics {
         let w = 1;
         if (B.lead > 0 && B.r > 0) {
           const s = ((px - B.cx) * B.lx + (py - B.cy) * B.ly) / (B.r + 4);
-          const t = s < 0.1 ? 0 : s > 1 ? 1 : (s - 0.1) / 0.9;
-          w = (1 + B.lead * t * t * (3 - 2 * t)) * B.leadNorm;
+          w = leadW(s, B.lead, B.trail) * B.leadNorm;
         }
         ax += B.ax * w; ay += B.ay * w;
       }
@@ -722,8 +721,7 @@ export class Physics {
         for (let k = 0; k < n; k++) {
           const i = bodyIdx[B.start + k];
           const ss = ((x[i] - B.cx) * B.lx + (y[i] - B.cy) * B.ly) / (B.r + 4);
-          const t = ss < 0.1 ? 0 : ss > 1 ? 1 : (ss - 0.1) / 0.9;
-          sw += 1 + B.lead * t * t * (3 - 2 * t);
+          sw += leadW(ss, B.lead, B.trail);
         }
         B.leadNorm = n / Math.max(1e-3, sw);
       } else B.leadNorm = 1;
@@ -912,6 +910,13 @@ export class Physics {
 }
 
 // ── dynamic shape SDFs (CPU mirror of the GPU versions) ─────────────────────
+// how much of the body's drive one particle receives, by where it sits along the heading (s: −1 tail … +1 front):
+// the front reaches (a pseudopod), the tail is slow to follow — so a moving body is a comet, never a sliding coin
+function leadW(s, lead, trail) {
+  if (s > 0.1) { const t = s > 1 ? 1 : (s - 0.1) / 0.9; return 1 + lead * t * t * (3 - 2 * t); }
+  if (s < -0.1 && trail > 0) { const t = s < -1 ? 1 : (-s - 0.1) / 0.9; return 1 - trail * t * t * (3 - 2 * t); }
+  return 1;
+}
 const SD_OUT = new Float32Array(3);
 export function shapeSDF(S, px, py, ca, sa, out) {
   const dx = px - S.x, dy = py - S.y;

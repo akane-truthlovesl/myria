@@ -277,6 +277,15 @@ export class World {
       if (m > 0 && m <= 10) this.ember = true; else if (m >= 26 || m === 0) this.ember = false;
       if (this.ember !== was) { for (const O of pl.orgs) { O.emberK = this.ember ? 1 : 0; } if (this.ember) { const F2 = pl.focus; if (F2) { this.fx.ring(F2.B.cx, F2.B.cy, [1, 0.95, 0.8], 150, 0.8); this.fx.burst(F2.B.cx, F2.B.cy, 18, [1, 0.9, 0.6], 240, { life: 0.8 }); } this.sound && this.sound.bloom(); this.emit('ember', true); } else if (m > 0) this.emit('ember', false); }
       if (this.ember) for (const O of pl.orgs) { O.emberK = 1; O.B.energy = 1.2; }
+      // the floor is unbreakable in practice, not just on paper: if an ember has nothing left to drink, the slide
+      // itself weeps a little light near it — a clutch way back, never a dead end
+      if (this.ember && pl.focus && pl.focus.alive) {
+        this.pityT = (this.pityT || 0) + dt;
+        if (this.pityT > 2.2) {
+          this.pityT = 0; const B = pl.focus.B; let near = 0; for (const p of this.pickups) if (p.isMote && !p.dead && Math.hypot(p.x - B.cx, p.y - B.cy) < 260) near++;
+          if (near < 2) for (let k = 0; k < 12; k++) { const a = Math.random() * TAU, d = 70 + Math.random() * 70; const x = B.cx + Math.cos(a) * d, y = B.cy + Math.sin(a) * d; if (x < 50 || y < 50 || x > this.spec.W - 50 || y > this.spec.H - 50 || P.solidAt(x, y) < 24 || P.blocked(B.cx, B.cy, x, y, 2)) continue; this.spawn({ type: 'mote', x, y, free: true, value: 2, col: [1, 0.9, 0.7], pity: true }); this.fx.ring(x, y, [1, 0.9, 0.7], 30, 0.5, { a: 0.6 }); break; }
+        }
+      } else this.pityT = 0;
     }
     for (const C of this.colonies) C.update(dt, C === pl ? ctl.intent : null, C === pl ? ctl.aim : null, C === pl ? !!ctl.rally : false);
     this._dewHoming(dt);

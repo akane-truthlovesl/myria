@@ -14,6 +14,9 @@ import { clamp } from '../core/util.js';
 let ORG_ID = 1;
 export const CRUISE = 255;          // world units / s at full throttle (mass 130)
 const ACCEL = 7.0, BRAKE = 6.5, AMAX = 2600;
+const E = (k, d) => +(globalThis.process && globalThis.process.env && globalThis.process.env[k] || d);
+const DART0 = E('DART0', 0.80), DART1 = E('DART1', 0.42);
+const LEAD = E('LEAD', 3.3), TRAIL = E('TRAIL', 0.75), TONE_GO = E('TONE_GO', 0.8);       // pseudopod reach, tail lag, how much the pearl relaxes when it moves
 
 export class Organism {
   constructor(world, body, opts = {}) {
@@ -87,9 +90,9 @@ export class Organism {
     const g = W.gravityAt ? W.gravityAt(B.cx, B.cy) : ZERO;
     const heavy = Math.hypot(g[0], g[1]) > 60;
     let ax, ay, lead = 0, damp = 0, adhMul = 1;
-    if (im > 0.03) { ax = (ix * speed - B.vx) * ACCEL; ay = (iy * speed - B.vy) * ACCEL; lead = 1.45 * im; }
+    if (im > 0.03) { ax = (ix * speed - B.vx) * ACCEL; ay = (iy * speed - B.vy) * ACCEL; lead = LEAD * im; }
     else if (this.budT > 0) { this.budT -= dt; ax = 0; ay = 0; }             // a thrown sibling coasts to where it was thrown
-    else { ax = -B.vx * BRAKE; ay = -B.vy * BRAKE; damp = 2.4; }           // no ice-parking: resting is a decision the body keeps
+    else { ax = -B.vx * BRAKE; ay = -B.vy * BRAKE; damp = 1.3; }           // no ice-parking: resting is a decision the body keeps
     if (heavy && !touching) { ax *= 0.45; ay *= 0.2; }                   // under real gravity you steer a fall, you do not fly
     if (touching && im > 0.03) {
       const away = ix * cnx + iy * cny;                                  // + = pulling away from the surface
@@ -100,14 +103,14 @@ export class Organism {
     if (this.rallyTo) { const T = this.rallyTo; const dx = T.cx - B.cx, dy = T.cy - B.cy, d = Math.hypot(dx, dy) + 1; const s = Math.min(1, d / 110); ax += dx / d * 1250 * s - B.vx * 2.6; ay += dy / d * 1250 * s - B.vy * 2.6; this.rallyTo = null; }
     if (this.seek) { const S = this.seek; const dx = S.x - B.cx, dy = S.y - B.cy, d = Math.hypot(dx, dy) + 1; const s = Math.min(1, d / 70); ax += dx / d * (S.k || 900) * s - B.vx * 2.4; ay += dy / d * (S.k || 900) * s - B.vy * 2.4; }
     if (this.cradle) { ax += this.cradle.ax; ay += this.cradle.ay; damp = Math.max(damp, this.cradle.damp); this.cradle = null; }
-    B.ax = ax; B.ay = ay; B.lead = lead;
+    B.ax = ax; B.ay = ay; B.lead = lead; B.trail = TRAIL * Math.min(1, lead / LEAD);
     B.lx = im > 0.03 ? ix / im : this.facing.x; B.ly = im > 0.03 ? iy / im : this.facing.y;
     B.adhMul = this.peelT > 0 || this.dartT > 0 ? 0.05 : adhMul;
     B.damp = damp; B.gs = 1;
     // ── tonus: a gathered pearl at rest, supple when reaching or squeezing ──
     const squeezing = this.spread > 1.25 ? Math.min(1, (this.spread - 1.25) / 0.8) : 0;
     this.squeeze += (squeezing - this.squeeze) * Math.min(1, dt * 6);
-    let tonus = this.baseTonus * (1 - 0.42 * im) * (1 - 0.7 * this.squeeze) * (1 + 0.4 * this.excite) * (this.morph ? this.morph.tonus : 1);
+    let tonus = this.baseTonus * (1 - TONE_GO * im) * (1 - 0.7 * this.squeeze) * (1 + 0.4 * this.excite) * (this.morph ? this.morph.tonus : 1);
     if (this.dartT > 0) tonus *= 0.35;
     tonus *= 1 + 0.07 * Math.sin(this.breathT * 1.25) + 0.25 * this.gulp + 0.9 * (this.coil || 0);      // coiling for a lance: the pearl tightens
     B.tonus = tonus; B.tonusReach = 1.15;
@@ -212,7 +215,7 @@ export class Organism {
       const i = P.bodyIdx[B.start + k];
       const s = ((P.x[i] - B.cx) * dx + (P.y[i] - B.cy) * dy) / (B.r + 4);
       const vd = P.vx[i] * dx + P.vy[i] * dy; const keep = vd < 0 ? vd : 0;        // cancel backwards motion
-      const add = sp * (0.82 + 0.28 * s);
+      const add = sp * (DART0 + DART1 * s);                                  // the head outruns the tail: for a moment the body is a lance
       P.vx[i] += dx * (add - keep); P.vy[i] += dy * (add - keep);
       const lat = P.vx[i] * -dy + P.vy[i] * dx; P.vx[i] -= -dy * lat * 0.5; P.vy[i] -= dx * lat * 0.5;
       P.ox[i] = P.x[i] - P.vx[i] / 120; P.oy[i] = P.y[i] - P.vy[i] / 120;

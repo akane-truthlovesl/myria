@@ -29,7 +29,7 @@ export class Odyssey {
       (spec) => ({ mass: this.startMass = this.massFor(spec) }), {
         minDark: fromPore ? 1.9 : 0.5,
         onDark: () => app.applyBudget(),
-        onLoad: (W) => { for (const e of W.ents) if (e.d.type === 'pore' && !e.need) e.need = Math.ceil(W.stats.motesTotal * (this.spec.quota ?? 0.6)); },
+        onLoad: (W) => { for (const e of W.ents) if (e.d.type === 'pore' && !e.need) e.need = Math.ceil(W.stats.motesTotal * (this.room.quota ?? this.spec.quota ?? 0.6)); },
         onReveal: () => { app.hud.hideResult(); app.hud.showTitle(ROMAN[this.i] || '', room.name); app.hud.setCorner(true, () => app.pause()); app.sound.ready && app.sound.ambience('deep', 50 - (this.i % 4) * 2); },
       });
   }
@@ -44,6 +44,7 @@ export class Odyssey {
   tier(name) { this.app.hud.toast(name, '✺'); }
   ember(on) { this.app.hud.toast(on ? 'ember — nothing can drink you · light counts double' : 'whole again', '✺', on ? '' : 'cool'); }
   mote(m, O, chain) { if (chain && chain % 8 === 0) this.app.hud.toast(`Chain ×${chain} <small>+${1 + Math.min(3, chain >> 3)}</small>`, '♪', 'cool'); }
+  moteLost() { for (const e of this.app.world.ents) if (e.d.type === 'pore' && e.need > 0) e.need--; }      // light a neighbour drank can no longer be asked of you
   film() { this.usedHint = this.room.hint === 'dart' || this.usedHint; }
   bud() { if (this.room.hint === 'bud') this.usedHint = true; }
   split(parent, child, cut) { if (cut && !this.tricks.includes('Surgical Shear')) this.pendingShear = this.app.world.time; }
@@ -93,7 +94,7 @@ export class Odyssey {
     app.travel((aspect) => { const s = room.build(aspect); s.name = room.name; s.no = this.i + 1; s.seed = s.seed || (this.i * 97 + 13); this.spec = s; return s; }, (spec) => ({ mass: this.startMass = this.massFor(spec) }), {
       from: { x: pore.x, y: pore.y }, minDark: 2.3,
       onDark: () => { app.applyBudget(); app.hud.showResult(result); },
-      onLoad: (W) => { for (const e of W.ents) if (e.d.type === 'pore' && !e.need) e.need = Math.ceil(W.stats.motesTotal * (this.spec.quota ?? 0.6)); },
+      onLoad: (W) => { for (const e of W.ents) if (e.d.type === 'pore' && !e.need) e.need = Math.ceil(W.stats.motesTotal * (this.room.quota ?? this.spec.quota ?? 0.6)); },
       onReveal: () => { app.hud.hideResult(); app.hud.showTitle(ROMAN[this.i] || '', room.name); app.hud.setCorner(true, () => app.pause()); },
     });
   }
