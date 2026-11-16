@@ -2,7 +2,8 @@
 import { open, sleep, errs } from './lib.mjs';
 const { browser, page, logs } = await open('/dev.html?room=0&bot&maxpx=900000', { w: 1100, h: 900 });
 await sleep(3000);
-for (let i = 0; i < 20; i++) {
+const N = await page.evaluate(() => window.__rooms || 22);
+for (let i = 0; i < N; i++) {
   await page.evaluate((i) => window.__app.startOdyssey(i), i);
   const t0 = Date.now(); while (Date.now() - t0 < 15000) { if (await page.evaluate(() => window.__app.state === 'play')) break; await sleep(150); }
   await sleep(+(process.argv[2] || 5000));

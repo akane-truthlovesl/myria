@@ -19,7 +19,7 @@ export const AXIOMS = [
   { id: 'swift', name: 'Quick Tide', sub: 'you, and everything else, move faster', apply: (s) => { s.speedScale = 1.3; } },
 ];
 
-export function abyssRoom(aspect, depth, seed, axiom) {
+export function abyssRoom(aspect, depth, seed, axiom, mass = 60) {
   const { W, H } = frame(aspect); const R = rng(seed + depth * 7919);
   const geo = dish(W, H, { r: Math.min(W, H) * R.range(0.16, 0.3) });
   const ents = [], rivals = []; const taken = [];
@@ -48,6 +48,8 @@ export function abyssRoom(aspect, depth, seed, axiom) {
     else if (kind === 'frost') { const p = place(110); if (p) { ents.push({ type: 'frost', ...p, r: 110 }, ...moteRing(p.x, p.y, 46, 6, 3, { col: [0.7, 0.92, 1] })); const v = place(60); if (v) ents.push({ type: 'vent', ...v }); } }
     else if (kind === 'crusher') { const p = place(120); if (p) ents.push({ type: 'crusher', ...p, w: 90, h: 110, travel: 110, period: R.range(2.4, 3.2), dir: R.chance(0.5) ? [0, 1] : [1, 0] }); }
   }
+  // a vault: a ring of glass turning around a hoard of bright motes — worth the wait at its doorway
+  if (!arena && depth >= 3 && R.chance(0.45)) { const rr = R.range(58, 74); const p = place(rr + 44, 60); if (p) { ents.push({ type: 'rotor', ...p, R: rr, r: 7, gap: R.range(0.5, 0.62), spin: R.sign() * R.range(0.5, 0.8), col: [1.0, 0.8, 0.5] }, ...moteRing(p.x, p.y, rr * 0.45, 5, 4, { col: [1.0, 0.8, 0.5] })); } }
   if (axiom && axiom.apply) axiom.apply(spec, R, W, H);
   // light
   if (!arena) {
@@ -57,10 +59,13 @@ export function abyssRoom(aspect, depth, seed, axiom) {
   }
   // neighbours
   const nG = Math.round((arena ? 3 : Math.min(3, 1 + Math.floor(depth / 3))) * spec.rivalMul), nH = arena ? 1 + Math.floor(depth / 10) : depth >= 3 ? Math.min(2, Math.floor(depth / 4) + (R.chance(0.5) ? 1 : 0)) : 0;
-  for (let k = 0; k < nG; k++) { const p = place(50); if (p) rivals.push({ kind: 'grazer', ...p, n: R.int(18, 30 + depth * 2) }); }
-  for (let k = 0; k < nH; k++) { const p = place(60); if (p) rivals.push({ kind: 'hunter', ...p, n: R.int(40, 50 + depth * 5) }); }
+  // neighbours are measured against you: grazers are always a meal, lancers hover around your own size —
+  // and from the fourth depth on one of them is an apex, bigger than you, that only wit (a lance, a held breath) will answer
+  const m = Math.max(40, Math.min(260, mass));
+  for (let k = 0; k < nG; k++) { const p = place(50); if (p) rivals.push({ kind: 'grazer', ...p, n: Math.round(Math.max(18, Math.min(120, m * R.range(0.28, 0.6)))) }); }
+  for (let k = 0; k < nH; k++) { const p = place(60); const apex = k === 0 && depth >= 4; if (p) rivals.push({ kind: 'hunter', ...p, n: Math.round(Math.max(40, Math.min(340, m * (apex ? R.range(1.25, 1.6) : R.range(0.6, 1.05))))) }); }
   if (depth >= 6 && R.chance(0.6)) { const p = place(60); if (p) rivals.push({ kind: 'thorn', ...p, n: R.int(40, 60) }); }
   if (depth >= 2 && R.chance(0.5)) { const p = place(50); if (p) rivals.push({ kind: 'oil', ...p, n: R.int(30, 60) }); }
-  const pp = place(70) || { x: W * 0.85, y: H * 0.5 }; ents.push({ type: 'pore', ...pp, col: arena ? [1, 0.5, 0.62] : undefined });
+  const pp = place(70, 80) || place(52, 80) || place(40, 120) || { x: W * 0.85, y: H * 0.5 }; ents.push({ type: 'pore', ...pp, r: 38, col: arena ? [1, 0.5, 0.62] : undefined });
   return spec;
 }

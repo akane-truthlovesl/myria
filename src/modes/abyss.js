@@ -45,7 +45,7 @@ export class Abyss {
 
   load(from) {
     const app = this.app; this.finished = false; this.roomLight = 0;
-    app.travel((aspect) => (this.spec = abyssRoom(aspect, this.depth, this.seed, this.axiom)), () => ({ mass: Math.min(260, this.mass), mat: this.T.mat ?? MAT.LUMEN, crown: this.T.crown || 'sun' }), {
+    app.travel((aspect) => (this.spec = abyssRoom(aspect, this.depth, this.seed, this.axiom, Math.min(260, this.mass))), () => ({ mass: Math.min(260, this.mass), mat: this.T.mat ?? MAT.LUMEN, crown: this.T.crown || 'sun' }), {
       from, minDark: from ? 0.6 : 0.4, hold: () => !this.choosing,
       onDark: () => { app.applyBudget(); if (from && this.depth % 2 === 1 && this.depth > 1) this.choose(); },
       onLoad: (W) => {

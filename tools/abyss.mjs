@@ -7,8 +7,8 @@ const [out, w = '1280', h = '720', depths = '6', secs = '40'] = process.argv.sli
 const R = new Renderer(fakeCanvas(+w, +h)); R.maxPixels = 4e6; R.resize(true);
 let mass = 40;
 for (let d = 1; d <= +depths; d++) {
-  const spec = abyssRoom(R.fb.w / R.fb.h, d, 12345, AXIOMS[0]);
-  const W = new World({}); W.load(spec, { mass });
+  const spec = abyssRoom(R.fb.w / R.fb.h, d, 12345, AXIOMS[0], Math.min(260, mass));
+  const W = new World({}); W.load(spec, { mass: Math.min(260, mass) });
   const st = { done: false, dev: 0 };
   const rivals = () => W.colonies.filter(C => C !== W.player && C.kind !== 'oil' && C.kind !== 'thorn' && C.orgs.some(o => o.alive)).length;
   W.listener = { complete() { st.done = true; }, devour() { st.dev++; }, poreReady(p) { return spec.arena ? rivals() === 0 : W.stats.motes >= p.need || W.pickups.filter(q => q.isMote && !q.dead).length === 0; } };
