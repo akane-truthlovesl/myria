@@ -91,3 +91,15 @@ canvas#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block;
 .h-result.on ~ .h-loader, .h-veil.on ~ .h-loader { opacity: 0; }
 @keyframes ldPulse { 0%, 100% { transform: scale(.82); } 50% { transform: scale(1.08); } }
 @keyframes ldSpin { to { transform: rotate(360deg); } }
+/* chain, multiplier, clock (Bloom) */
+.h-top .ex { font-variant-numeric: tabular-nums; color: #cfe8f2; }
+.h-top .ex .mu { font-weight: 600; color: var(--dim); transition: color .3s, text-shadow .3s; }
+.h-top .ex .mu.hot { color: #ffd98f; text-shadow: 0 0 12px rgba(255,200,120,.8); }
+.h-top .ex .warn { color: #ff9a8a; animation: warnBlink .9s ease-in-out infinite; }
+@keyframes warnBlink { 50% { opacity: .45; } }
+.h-toast small { margin-left: 8px; color: var(--warm); letter-spacing: .1em; }
+.medals { display: flex; justify-content: center; gap: 18px; margin: 14px 0 2px; font-size: 10px; letter-spacing: .26em; text-transform: uppercase; color: var(--dim); }
+.medals span { display: flex; flex-direction: column; align-items: center; gap: 8px; opacity: .32; }
+.medals span i { width: 13px; height: 13px; transform: rotate(45deg); border: 1px solid rgba(255,215,150,.6); display: block; }
+.medals span.on { opacity: 1; color: #ffe9d2; }
+.medals span.on i { background: #ffe2a8; box-shadow: 0 0 16px #ffcf85, 0 0 40px rgba(255,200,120,.5); border-color: #fff; }

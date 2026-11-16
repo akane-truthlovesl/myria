@@ -31,11 +31,12 @@ export class Mote extends Entity {
     this.value = d.value ?? 2; this.r = 5 + this.value * 0.9;
     this.hx = this.x; this.hy = this.y; this.vx = d.vx || 0; this.vy = d.vy || 0;
     this.seed = Math.random(); this.col = d.col || COL.mote; this.held = null; this.claim = null; this.owner = d.owner ?? null;
-    this.free = !!d.free; this.spawnT = d.delay ? -d.delay : 0.0001; this.pop = 0;
+    this.free = !!d.free; this.spawnT = d.delay ? -d.delay : 0.0001; this.pop = 0; this.ttl = d.ttl || 0; this.age = 0;
   }
   update(dt) {
     this.t += dt;
     if (this.spawnT < 0.35) this.spawnT += dt;
+    if (this.ttl && this.spawnT > 0 && !this.held) { this.age += dt; if (this.age > this.ttl) { this.dead = true; this.W.fx.ring(this.x, this.y, this.col, 14, 0.3, { a: 0.4 }); this.W.emit('moteGone', this); return; } }
     if (this.held) { if (this.baked) this.W.release(this); return; }
     if (this.baked) return;                           // at home, painted into the plate: costs nothing until something wants it
     if (this.free) { const dr = Math.max(0, 1 - 2.2 * dt); this.vx *= dr; this.vy *= dr; this.hx += this.vx * dt; this.hy += this.vy * dt; }
@@ -59,7 +60,8 @@ export class Mote extends Entity {
   }
   under(ink) {
     if (this.baked || this.spawnT < 0) return;
-    const k = Math.min(1, this.spawnT / 0.35); const s = k * (2 - k);
+    const k = Math.min(1, this.spawnT / 0.35); let s = k * (2 - k);
+    if (this.ttl) { const left = this.ttl - this.age; if (left < 1.6) s *= 0.55 + 0.45 * Math.abs(Math.sin(left * 9)) * Math.min(1, left / 0.4 + 0.3); }      // about to fade: it flickers
     const c = this.col, r = this.r * s;
     ink.light(this.x, this.y, r * 3.0, PROF.halo, c[0], c[1], c[2], 0.20);
     ink.light(this.x, this.y, r * 1.5, PROF.glow, c[0], c[1], c[2], 1.25);

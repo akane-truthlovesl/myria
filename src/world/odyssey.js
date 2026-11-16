@@ -82,7 +82,7 @@ export const ROOMS = [
     ];
     return { W, H, geo, ents, pal: PAL.dew, spawn: { ...f.P(0.10, 0.5), n: 70 }, minMass: 70 };
   } },
-  { id: 'lock', name: 'The Lock', par: 44, boss: true, quota: 0.55, build(a) {
+  { id: 'lock', name: 'The Lock', par: 52, boss: true, quota: 0.55, build(a) {
     const f = L(a), { W, H } = f; const geo = dish(W, H, { r: Math.min(W, H) * 0.34 }); const c = f.P(0.5, 0.5);
     // two rings of glass turning against each other around a heart of light: every doorway is a moment, not a place
     const R2 = Math.min(W, H) / 2 - 86, R1 = R2 * 0.52; const a0 = f.land ? Math.PI : -Math.PI / 2;
