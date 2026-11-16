@@ -96,6 +96,7 @@ export class Bloom {
     const W = app.world; const F = W.player.focus; if (F && F.alive) { F.crown.joy(); W.fx.ring(F.B.cx, F.B.cy, GOLD, 300, 1.2); W.fx.burst(F.B.cx, F.B.cy, 40, GOLD, 320, { life: 1.2, size: 3 }); }
     app.hud.panel(medal ? `${medal}` : 'The rain passes', `${this.eaten} motes · longest chain ${this.bestChain}`, [
       { label: 'Again', cls: 'pri', fn: () => { app.hud.closePanel(); app.setMode(new Bloom(app)); } },
+      { label: 'Copy result', fn: (b) => { app.copyText(`MYRIA · Bloom\n✦ ${this.score} · ${this.eaten} motes · chain ${this.bestChain}${medal ? ' · ' + medal : ''}`); b.textContent = 'Copied ✓'; } },
       { label: 'Atrium', fn: () => { app.hud.closePanel(); app.toHub({ awake: true }); } }],
       `<div style="font-size:52px;font-weight:200;letter-spacing:.08em;margin:6px 0 2px">${this.score}</div><div class="sub">${best ? 'a new brightest bloom' : 'best ' + prev}${next ? ` &nbsp;·&nbsp; ${next[1]} at ${next[0]}` : ''}</div>
        <div class="medals">${MEDALS.map(([s, n]) => `<span class="${this.score >= s ? 'on' : ''}"><i></i>${n}</span>`).join('')}</div>`);

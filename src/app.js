@@ -88,6 +88,12 @@ export class App {
   }
   // the first backdrop tells us how fast this machine paints → choose an internal pixel budget it can afford
 
+  // a result as a line of text for the clipboard (works from file:// too, via the old textarea trick)
+  copyText(text) {
+    const old = () => { try { const t = document.createElement('textarea'); t.value = text; t.style.cssText = 'position:fixed;left:-99px;top:0;opacity:0'; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); } catch (_) { /* nothing to be done */ } };
+    try { if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).catch(old); else old(); } catch (_) { old(); }
+    this.sound.ui && this.sound.ui();
+  }
   // the frame on the glass, as a PNG: every screenshot of this game should be worth keeping
   snapshot() {
     try {

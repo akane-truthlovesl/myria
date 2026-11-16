@@ -27,7 +27,7 @@ export const TRAITS = [
 export class Abyss {
   constructor(app, o = {}) {
     this.app = app; this.daily = !!o.daily; this.coop = !!o.coop; this.mass2 = 40;
-    const day = new Date().toISOString().slice(0, 10);
+    const day = this.day = new Date().toISOString().slice(0, 10);
     this.seed = this.daily ? hashStr('myria' + day) : (Math.random() * 1e9) | 0;
     this.axiom = this.daily ? AXIOMS[1 + (this.seed % (AXIOMS.length - 1))] : AXIOMS[0];
     this.depth = 1; this.embers = 3; this.T = {}; this.traits = []; this.light = 0; this.devoured = 0; this.mass = Math.max(40, o.mass || 40);
@@ -108,6 +108,8 @@ export class Abyss {
     app.sound.boom(); app.hud.setTop(null);
     app.hud.panel(this.daily ? 'The day\'s dive ends' : 'The dive ends', `depth ${this.depth} · ${this.light} light · ${this.devoured} devoured`, [
       { label: 'Dive again', cls: 'pri', fn: () => { app.hud.closePanel(); app.setMode(new Abyss(app, { daily: this.daily, coop: this.coop })); } },
+      { label: 'Copy result', fn: (b) => { const names = this.traits.map(id => (TRAITS.find(t => t.id === id) || {}).name).filter(Boolean);
+        app.copyText(`MYRIA · ${this.daily ? `Daily ${this.day} · ${this.axiom.name}` : this.coop ? 'Abyss, together' : 'Abyss'}\ndepth ${this.depth} · ${this.light} light · ${this.devoured} devoured · ✦ ${score}${names.length ? '\n' + names.join(' · ') : ''}`); b.textContent = 'Copied ✓'; } },
       { label: 'Atrium', fn: () => { app.hud.closePanel(); app.toHub({ awake: true }); } }],
       `<div style="font-size:44px;font-weight:200;letter-spacing:.1em;margin:6px 0 2px">${score}</div><div class="sub">${score > prev ? 'a new deepest light' : 'best ' + prev}</div>`);
   }
