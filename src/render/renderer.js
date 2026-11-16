@@ -29,7 +29,7 @@ export class Renderer {
     this.pool = [];
     this.developing = null;      // {y, done} while a backdrop is being painted in slices
     this.stats = { underMs: 0, fluidMs: 0, presentMs: 0, dirty: 0, frameMs: 0, backdropMs: 0 };
-    this.time = 0;
+    this.time = 0; this._solids = [];
   }
 
   // internal resolution: device pixels, capped by a pixel budget, times the adaptive scale
@@ -141,6 +141,10 @@ export class Renderer {
     const lo = Math.min(x0, x1) - R, hi = Math.max(x0, x1) + R, lo2 = Math.min(y0, y1) - R, hi2 = Math.max(y0, y1) + R;
     if (lo < C.x0) C.x0 = lo; if (hi > C.x1) C.x1 = hi; if (lo2 < C.y0) C.y0 = lo2; if (hi2 > C.y1) C.y1 = hi2;
   }
+
+  // a moving solid: in a browser it is deferred to the canvas rasteriser (drawn right after the frame is presented);
+  // headless (no canvas compositor) it is stamped into the framebuffer in software
+  solid(sp, wx, wy, rot = 0, alpha = 1) { if (this.ov.ok) this._solids.push(sp, wx, wy, rot, alpha); else this.ink.blit(sp, wx, wy, rot, alpha); }
 
   // a single bead of gel (a dew-pearl on a feeler tip): w = visible radius in world units
   addDot(C, x, y, w, glow) {

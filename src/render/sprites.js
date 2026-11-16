@@ -39,6 +39,7 @@ export function solidSprite(S, z, o = {}) {
     const ndh = Math.max(0, Nx * KEY[0] * 0.5 + Ny * KEY[1] * 0.5 + Nz * (KEY[2] + 1) * 0.5) / 0.88;
     const spec = Math.pow(Math.min(1, ndh), 26) * gloss * 0.38; const lip = Math.exp(-depth / 1.6) * 0.085 * rimK * (0.45 + 0.9 * diff);
     const r = cr * (0.34 + 0.72 * diff) + RIM[0] * (spec + lip) + er, g = cg * (0.34 + 0.72 * diff) + RIM[1] * (spec + lip) + eg, b = cb * (0.34 + 0.72 * diff) + RIM[2] * (spec + lip) + eb;
+    if (o.hub && wx * wx + wy * wy < o.hub * o.hub) { const hq = Math.sqrt(wx * wx + wy * wy) / o.hub; px[j * w + i] = ((18 + 30 * hq * hq) | 0) << 16 | ((13 + 22 * hq * hq) | 0) << 8 | ((11 + 20 * hq * hq) | 0); al[j * w + i] = (cov * 255) | 0; continue; }
     px[j * w + i] = (Math.min(255, b * 255) | 0) << 16 | (Math.min(255, g * 255) | 0) << 8 | (Math.min(255, r * 255) | 0);
     al[j * w + i] = (cov * 255) | 0;
   }

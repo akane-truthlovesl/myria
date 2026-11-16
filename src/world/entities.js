@@ -158,7 +158,7 @@ export class Gate extends Entity {
     const e = this.k * this.k * (3 - 2 * this.k);
     moveShape(this.S, this.ox + this.dx * e, this.oy + this.dy * e, this.ang, dt);
   }
-  under(ink, R) { ink.blit(spriteFor(this, R, this.S, {}), this.S.x, this.S.y, this.S.angle); }
+  under(ink, R) { R.solid(spriteFor(this, R, this.S, {}), this.S.x, this.S.y, this.S.angle); }
   over(ov) { if (this.k < 0.9) { const c = this.W.check(this.need) ? COL.green : COL.cyan; ov.glow(this.S.x, this.S.y, 16, c, 0.35 * (1 - this.k)); } }
 }
 
@@ -232,7 +232,7 @@ export class Grinder extends Entity {
     });
     if (shed) { W.sound && W.sound.grind(); W.hurt(who, shed, this.S.x, this.S.y); }
   }
-  under(ink, R) { ink.blit(spriteFor(this, R, { ...this.S, r: this.r - 5 }, { teeth: 11, toothH: 8, surf: SURF.GRIT }), this.S.x, this.S.y, this.S.angle); ink.disc(this.S.x, this.S.y, this.r * 0.22, 0.05, 0.06, 0.08, 1); }
+  under(ink, R) { R.solid(spriteFor(this, R, { ...this.S, r: this.r - 5 }, { teeth: 11, toothH: 8, surf: SURF.GRIT, hub: this.r * 0.22 }), this.S.x, this.S.y, this.S.angle); }
   over(ov) { ov.glow(this.S.x, this.S.y, this.r * 1.7, [1, 0.5, 0.2], 0.13 + 0.04 * Math.sin(this.t * 9)); }
 }
 
@@ -306,7 +306,7 @@ export class Crusher extends Entity {
     if (this._last !== undefined && this._last < 0.95 && k >= 0.999) { const W = this.W; W.sound && W.sound.boom(); W.shake = Math.min(1, W.shake + 0.4); W.fx.burst(this.S.x + this.dir[0] * this.w / 2, this.S.y + this.dir[1] * this.h / 2, 8, [0.8, 0.9, 1], 160, { size: 2.5, life: 0.5, type: 1 }); }
     this._last = k;
   }
-  under(ink, R) { ink.blit(spriteFor(this, R, this.S, {}), this.S.x, this.S.y, 0); }
+  under(ink, R) { R.solid(spriteFor(this, R, this.S, {}), this.S.x, this.S.y, 0); }
   over(ov) { if (this.warn > 0) ov.glow(this.S.x + this.dir[0] * this.w * 0.5, this.S.y + this.dir[1] * this.h * 0.5, 60, [1, 0.5, 0.3], this.warn * 0.5); }
 }
 
@@ -370,7 +370,7 @@ export class IcePlug extends Entity {
     for (const C of W.colonies) for (const O of C.orgs) { if (!O.alive || O.heat < 0.2) continue; const B = O.B; if (Math.abs(B.cx - S.x) < S.hw + B.r + 8 && Math.abs(B.cy - S.y) < S.hh + B.r + 8) { melt = true; O.heat -= dt * 0.45; } }
     if (melt) { this.hp -= dt * 0.8; if (Math.random() < dt * 14) W.fx.bubble(S.x + (Math.random() - 0.5) * S.hw * 2, S.y + (Math.random() - 0.5) * S.hh * 2, 3); if (this.hp <= 0) { S.active = false; W.fx.burst(S.x, S.y, 26, [0.75, 0.95, 1], 220, { type: 1, size: 3, life: 0.8 }); W.fx.ring(S.x, S.y, [0.7, 0.95, 1], 130, 0.7); W.sound && W.sound.open(); W.emit('melt', this); } }
   }
-  under(ink, R) { if (this.hp > 0) ink.blit(spriteFor(this, R, this.S, { surf: SURF.GLASS, tint: [0.7, 0.95, 1.2] }), this.S.x, this.S.y, 0, 0.35 + 0.65 * this.hp); }
+  under(ink, R) { if (this.hp > 0) R.solid(spriteFor(this, R, this.S, { surf: SURF.GLASS, tint: [0.7, 0.95, 1.2] }), this.S.x, this.S.y, 0, 0.35 + 0.65 * this.hp); }
   over(ov) { if (this.hp > 0) ov.glow(this.S.x, this.S.y, Math.max(this.S.hw, this.S.hh) * 1.4, [0.6, 0.9, 1], 0.16 + 0.3 * (1 - this.hp)); }
 }
 // ── Magnet: a pulsing pole. Ferrofluid leaps to it in a crown of spikes; nothing else notices. ──
@@ -381,8 +381,7 @@ export class Magnet extends Entity {
     this.S = makeShape({ type: 0, x: d.x, y: d.y, r: d.r ?? 15, surf: SURF.METAL }); W.phys.shapes.push(this.S);
   }
   update(dt) { this.t += dt; const on = !this.period || ((this.t / this.period + this.phase) % 1) < 0.62; this.onK += ((on ? 1 : 0) - this.onK) * Math.min(1, dt * 7); }
-  bake(ink) { for (let k = 1; k <= 3; k++) ink.ring(this.x, this.y, this.reach * k / 3.4, 0.4, 0.35, 0.45, 0.7, 0.5, 0); for (let k = 0; k < 10; k++) { const a = k / 10 * TAU; ink.beam(this.x + Math.cos(a) * 24, this.y + Math.sin(a) * 24, this.x + Math.cos(a) * this.reach * 0.86, this.y + Math.sin(a) * this.reach * 0.86, 1, 0.4, 0.5, 0.8, 0.07); } }
-  under(ink, R) { ink.blit(spriteFor(this, R, this.S, {}), this.x, this.y, 0); }
+  bake(ink, R) { ink.blit(spriteFor(this, R, this.S, {}), this.x, this.y, 0); for (let k = 1; k <= 3; k++) ink.ring(this.x, this.y, this.reach * k / 3.4, 0.4, 0.35, 0.45, 0.7, 0.5, 0); for (let k = 0; k < 10; k++) { const a = k / 10 * TAU; ink.beam(this.x + Math.cos(a) * 24, this.y + Math.sin(a) * 24, this.x + Math.cos(a) * this.reach * 0.86, this.y + Math.sin(a) * this.reach * 0.86, 1, 0.4, 0.5, 0.8, 0.07); } }
   over(ov) { const k = this.onK; if (k > 0.03) { for (let q = 0; q < 2; q++) { const u = 1 - ((this.t * 0.7 + q * 0.5) % 1); ov.ring(this.x, this.y, 20 + u * this.reach * 0.8, 1.3, this.col, 0.4 * k * u); } ov.glow(this.x, this.y, 34, this.col, 0.7 * k); } else ov.glow(this.x, this.y, 16, this.col, 0.15); }
 }
 

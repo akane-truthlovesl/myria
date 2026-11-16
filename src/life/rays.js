@@ -13,12 +13,15 @@ const NN = 7;                 // nodes per ray
 const BINS = 32;              // angular bins of the body's radial profile
 export const RAY = { IDLE: 0, REACH: 1, CARRY: 2, GRIP: 3, SNIFF: 4 };
 
+let RAY_SEED = 1;
 export class Ray {
-  constructor(k, n) {
+  constructor(ang) {
+    const q = RAY_SEED++;
     this.x = new Float32Array(NN); this.y = new Float32Array(NN); this.px = new Float32Array(NN); this.py = new Float32Array(NN);
-    this.ang = (k + 0.5) / n * TAU + (hash2(k, n) - 0.5) * 0.35;        // irregular spacing: a hand-drawn sun, not a gear
-    this.lk = 0.55 + 0.75 * hash2(k * 7 + 3, n);                         // relative rest length (long/short alternate irregularly)
-    this.phase = hash2(k + 11, n * 3) * TAU;
+    this.ang = ang; this.angT = ang;                                     // where it sits on the body, and where it is easing to
+    this.jit = (hash2(q, 7) - 0.5) * 0.35;                               // irregular spacing: a hand-drawn sun, not a gear
+    this.lk = 0.55 + 0.75 * hash2(q * 7 + 3, 11);                        // relative rest length (long/short alternate irregularly)
+    this.phase = hash2(q + 11, 31) * TAU;
     this.len = 0; this.mode = RAY.IDLE; this.t = 0;
     this.tx = 0; this.ty = 0; this.item = null; this.hold = 0; this.born = false; this.glow = 0;
     this.gx = 0; this.gy = 0;      // grip anchor
@@ -50,10 +53,28 @@ export class Crown {
   }
   maxReach(R) { return (46 + R * 1.25) * (this.O.reachK || 1); }
 
+  // the crown grows and thins one ray at a time: a new feeler buds in the widest gap, the others ease over to make room
+  // (nothing ever snaps — a ray that is reaching or carrying keeps doing so)
   resize(n) {
     if (n === this.count) return;
-    const old = this.rays; this.rays = [];
-    for (let k = 0; k < n; k++) { const r = new Ray(k, n); if (old[k]) { r.len = Math.min(old[k].len, 6); } this.rays.push(r); }
+    const rays = this.rays;
+    if (!rays.length) { for (let k = 0; k < n; k++) rays.push(new Ray((k + 0.5) / n * TAU)); }
+    while (rays.length < n) {
+      rays.sort((a, b) => a.ang - b.ang);
+      let gi = 0, gap = -1; for (let k = 0; k < rays.length; k++) { const nx = rays[(k + 1) % rays.length]; let g = nx.ang - rays[k].ang; if (k === rays.length - 1) g += TAU; if (g > gap) { gap = g; gi = k; } }
+      let a = rays[gi].ang + gap / 2; if (a >= TAU) a -= TAU;
+      rays.push(new Ray(a));
+    }
+    while (rays.length > n) {
+      let ri = -1, rl = 1e9; for (let k = 0; k < rays.length; k++) { const r = rays[k]; const l = r.len + (r.mode !== RAY.IDLE ? 1e4 : 0); if (l < rl) { rl = l; ri = k; } }
+      const r = rays[ri]; if (r.item && !r.item.dead) { if (r.item.held === r) r.item.held = null; if (r.item.claim === r) r.item.claim = null; }
+      rays.splice(ri, 1);
+    }
+    // even out the spacing, keeping everyone's order (so nobody crosses over)
+    rays.sort((a, b) => a.ang - b.ang);
+    let sx = 0, sy = 0; for (let k = 0; k < n; k++) { const d = rays[k].ang - k / n * TAU; sx += Math.cos(d); sy += Math.sin(d); }
+    const a0 = Math.atan2(sy, sx);
+    for (let k = 0; k < n; k++) rays[k].angT = a0 + k / n * TAU + rays[k].jit * Math.min(1, 9 / n);
     this.count = n;
   }
 
@@ -107,6 +128,7 @@ export class Crown {
     const maxReach = this.maxReach(R);
     for (const r of this.rays) {
       r.t += dt;
+      { let d = r.angT - r.ang; d -= Math.round(d / TAU) * TAU; r.ang += d * Math.min(1, dt * 3); }
       const a = r.ang + O.phi;
       const rad = this.radiusAt(a) - 2.5;
       const ca = Math.cos(a), sa = Math.sin(a);

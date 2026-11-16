@@ -373,7 +373,7 @@ export class World {
     for (const e of this.ents) if (!e.dead && e.inner) e.inner(ink, R);
   }
   overlay(R) {
-    const ov = R.ov; ov.begin();
+    const ov = R.ov; ov.solids(R._solids); ov.begin();
     // the creature lights its world: a broad soft wash far beyond the gel's own halo
     for (const C of this.colonies) for (const O of C.orgs) {
       if (!O.alive || O.dormant) continue; const B = O.B; const em = (B.tint || MATS[B.mat]).emit; const g = MATS[B.mat].halo * (1 - O.veil);

@@ -65,7 +65,7 @@ export class FrameBuffer {
         if (!prev[o + tx]) { tx++; continue; }
         let e = tx + 1; while (e < tw && prev[o + e]) e++;
         const x0 = tx << TS, x1 = Math.min(w, e << TS), y0 = ty << TS, y1 = Math.min(h, (ty + 1) << TS);
-        for (let y = y0; y < y1; y++) { const r = y * w; for (let k = r + x0, ke = r + x1; k < ke; k++) px[k] = back[k]; }
+        for (let y = y0; y < y1; y++) { const r = y * w; px.set(back.subarray(r + x0, r + x1), r + x0); }      // memcpy per row
         tx = e;
       }
     }

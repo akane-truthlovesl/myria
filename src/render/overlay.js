@@ -25,6 +25,18 @@ export class Overlay {
     }
     return s;
   }
+  // moving solids (gears, pistons, gates): stamped by the browser's own rasteriser, straight onto the presented frame
+  solid(sp, wx, wy, rot = 0, alpha = 1) {
+    if (!sp.cv) { const cv = document.createElement('canvas'); cv.width = sp.w; cv.height = sp.h; const c = cv.getContext('2d'); const im = c.createImageData(sp.w, sp.h); const d = new Uint32Array(im.data.buffer); const n = sp.w * sp.h; for (let i = 0; i < n; i++) d[i] = (sp.al[i] << 24) | (sp.px[i] & 0xffffff); c.putImageData(im, 0, 0); sp.cv = cv; }
+    const v = this.R.view; const x = (wx - v.ox) * v.z, y = (wy - v.oy) * v.z, k = v.z / sp.z;
+    const cs = Math.abs(Math.cos(rot)), sn = Math.abs(Math.sin(rot)); const hw = sp.w * 0.5 * k, hh = sp.h * 0.5 * k; const ex = cs * hw + sn * hh + 1, ey = sn * hw + cs * hh + 1;
+    if (x + ex < 0 || y + ey < 0 || x - ex > this.fb.w || y - ey > this.fb.h) return;
+    this.fb.mark((x - ex) | 0, (y - ey) | 0, Math.ceil(x + ex) + 1, Math.ceil(y + ey) + 1);
+    const c = this.ctx; c.globalAlpha = alpha > 1 ? 1 : alpha;
+    if (rot === 0 && k === 1) { c.drawImage(sp.cv, Math.round(x - hw), Math.round(y - hh)); return; }
+    c.setTransform(Math.cos(rot) * k, Math.sin(rot) * k, -Math.sin(rot) * k, Math.cos(rot) * k, x, y); c.drawImage(sp.cv, -sp.w * 0.5, -sp.h * 0.5); c.setTransform(1, 0, 0, 1, 0, 0);
+  }
+  solids(list) { if (!this.ok || !list.length) { list.length = 0; return; } const c = this.ctx; c.globalCompositeOperation = 'source-over'; c.imageSmoothingEnabled = true; for (let i = 0; i < list.length; i += 5) this.solid(list[i], list[i + 1], list[i + 2], list[i + 3], list[i + 4]); c.globalAlpha = 1; list.length = 0; }
   begin() { if (this.ok) this.ctx.globalCompositeOperation = 'lighter'; }
   end() { if (this.ok) { this.ctx.globalCompositeOperation = 'source-over'; this.ctx.globalAlpha = 1; } }
 

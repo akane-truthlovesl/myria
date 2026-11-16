@@ -195,6 +195,8 @@ export class Backdrop {
             // the polished top catches the window: a broad diagonal sheen, broken by the glass's own waviness
             const sheen = Math.pow(0.5 + 0.5 * Math.sin((wx * 0.62 + wy) * 0.021 + n1 * 4.0), 6) * 0.055 * tb;
             cr += rim[0] * sheen; cg += rim[1] * sheen; cb += rim[2] * sheen;
+            // the stage lamp lights the glass as it lights the plate — a pillar standing in the pool is bright, not a hole
+            { const px_ = (wx - cxr) * ipw, py_ = (wy - cyr) * iph; const pv = Math.exp(-(px_ * px_ + py_ * py_)) * 0.85; cr += pool[0] * pv; cg += pool[1] * pv; cb += pool[2] * pv; }
             const line = Math.pow(strata, 10) * Math.exp(-depth / 60) * 0.050;     // contour etching
             cr += rim[0] * line; cg += rim[1] * line; cb += rim[2] * line;
             const bx = Math.floor(wx / 13), by = Math.floor(wy / 13); const bh = hash2(bx + 91, by + 17);

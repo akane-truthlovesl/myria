@@ -360,7 +360,7 @@ export class Fluid {
     const bx0 = g.amin * c, by0 = g.jmin * c, bx1 = Math.min(rw, (g.amax + 1) * c), by1 = Math.min(rh, (g.jmax + 1) * c);
     const grow = Math.ceil((R0 + R1 * HMAX * bulge) * z) + 2;     // …grown by the largest displacement a bent ray can have
     const cy0 = Math.max(0, by0 - grow), cy1 = Math.min(rh, by1 + grow), cx0 = Math.max(0, bx0 - grow), cx1 = Math.min(rw, bx1 + grow);
-    for (let y = cy0; y < cy1; y++) { const so = (Y0 + y) * W + X0, d = y * rw; for (let x = cx0; x < cx1; x++) scn[d + x] = fpx[so + x]; }
+    for (let y = cy0; y < cy1; y++) { const so = (Y0 + y) * W + X0, d = y * rw; scn.set(fpx.subarray(so + cx0, so + cx1), d + cx0); }
     fb.mark(X0 + bx0, Y0 + by0, X0 + bx1, Y0 + by1);
     g.cx0 = cx0; g.cx1 = cx1; g.cy0 = cy0; g.cy1 = cy1;
   }
