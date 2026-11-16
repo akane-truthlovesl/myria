@@ -289,7 +289,7 @@ export class Valve extends Entity {
   // a: the capsule's angle (the way through is its normal) · small: semi-permeable — any piece of you below ~46 % of the whole of you (and never less than `small`
   // grains) passes either way as if nothing were there · sieve: no way through at all for anything bigger (a mesh, no cilia)
   constructor(W, d) {
-    super(W, d); this.len = d.len ?? 120; this.ang = d.a ?? 0; this.sieve = !!d.sieve; this.small = d.small ?? (this.sieve ? 30 : 0); this.col = d.col || (this.sieve ? [0.72, 0.95, 1.0] : [1.0, 0.62, 0.86]); this.t = 0; this.stir = 0; this.bonk = 0;
+    super(W, d); this.len = d.len ?? 120; this.ang = d.a ?? 0; this.sieve = !!d.sieve; this.small = d.small ?? (this.sieve ? 30 : 0); this.col = d.col || (this.sieve ? [0.72, 0.95, 1.0] : [1.0, 0.62, 0.86]); this.t = 0; this.stir = 0; this.bonk = 0; this.side = new WeakMap();
     this.nx = -Math.sin(this.ang); this.ny = Math.cos(this.ang);      // the way through
     this.S = makeShape({ type: 1, x: d.x, y: d.y, hl: this.len / 2, r: 5, surf: SURF.MEMBRANE, angle: this.ang, oneWay: true, passX: this.nx, passY: this.ny, small: this.small, sieve: this.sieve }); W.phys.shapes.push(this.S);
   }
@@ -298,9 +298,10 @@ export class Valve extends Entity {
     if (this.small) this.S.small = Math.max(this.small, Math.floor(pl.mass * 0.46));          // "small" means: a part of you, never the whole of you
     const ca = Math.cos(this.ang), sa = Math.sin(this.ang);
     for (const O of pl.orgs) {
-      if (!O.alive) continue; const B = O.B, rx = B.cx - this.x, ry = B.cy - this.y; if (Math.abs(rx * ca + ry * sa) > this.len / 2 || Math.abs(rx * this.nx + ry * this.ny) > B.r + 8) continue;
+      if (!O.alive) continue; const B = O.B, rx = B.cx - this.x, ry = B.cy - this.y; if (Math.abs(rx * ca + ry * sa) > this.len / 2 || Math.abs(rx * this.nx + ry * this.ny) > B.r + 8) { this.side.delete(O); continue; }
       const through = this.small && B.count <= this.S.small, off = rx * this.nx + ry * this.ny, vn = B.vx * this.nx + B.vy * this.ny;
-      if (through || !this.sieve && off < 0) { if (this.stir < 0.3) { this.W.sound && this.W.sound.squish(0.3); if (through && Math.abs(off) < B.r * 0.6) this.W.emit('seeped', this, O); } this.stir = 1; }
+      if (through) { const sd = off > 0 ? 1 : -1, was = this.side.get(O); this.side.set(O, sd); if (was && was !== sd) this.W.emit('seeped', this, O); } else this.side.delete(O);
+      if (through || !this.sieve && off < 0) { if (this.stir < 0.3) this.W.sound && this.W.sound.squish(0.3); this.stir = 1; }
       else if (Math.abs(off) < B.r + 4 && (this.sieve ? vn * off < -20 : vn < -20) && this.bonk < 0.2) { this.bonk = 1; this.W.sound && this.W.sound.bounce(0.35); if (this.small) this.W.emit('sieved', this, O); }       // too much of you: the mesh holds, and says so
     }
   }

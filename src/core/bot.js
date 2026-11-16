@@ -29,9 +29,9 @@ export class Bot {
     for (const e of W.ents) if ((e.d.type === 'lantern' || e.d.type === 'core' && B.mat === 4) && !e.lit) add(e.x, e.y, 'lantern', e, 2, 12);
     if (F.heat < -0.25) for (const e of W.ents) if (e.d.type === 'vent') add(e.x, e.y, 'vent', e, 1.5, e.r * 0.4);
     for (const e of W.ents) if (e.d.type === 'iceplug' && e.hp > 0) { if (F.heat > 0.25) add(e.S.x, e.S.y, 'ice', e, 2.4, 4); else for (const v of W.ents) if (v.d.type === 'vent') add(v.x, v.y, 'vent', v, 1.4, v.r * 0.4); }
-    if (need.length) for (const p of need) add(p.x, p.y, 'pad', p, 3, p.r * 0.3);
+    if (need.length) for (const p of need) if (!p.d.from) add(p.x, p.y, 'pad', p, 3, p.r * 0.3);
     // a switch sealed behind a mesh: the place to go is the window in front of it (the room says where) — a piece of us will do the rest
-    for (const p of need) if (p.d.from && !pl.orgs.some(o => o.alive && o !== F && Math.hypot(o.B.cx - p.x, o.B.cy - p.y) < p.r * 1.8)) add(p.d.from.x, p.d.from.y, 'sow', p, 3, 14);
+    for (const p of need) if (p.d.from) add(p.d.from.x, p.d.from.y, 'sow', p, 3, 14);
     const hz = W.hazards();
     const risky = (x, y) => { for (const h of hz) if (Math.hypot(h.x - x, h.y - y) < h.r + 30) return true; return false; };
     const ready = pore && pore.open > 0.8;
@@ -72,7 +72,8 @@ export class Bot {
       const reach = (q) => (this.nav.sc ? !!this.nav.path(B.cx, B.cy, q.x, q.y) : true); const cand = need.filter(q => !q.d.from);
       const p = cand.slice().sort((a, b) => (reach(a) ? 1 : 0) - (reach(b) ? 1 : 0) || Math.hypot(a.x - B.cx, a.y - B.cy) - Math.hypot(b.x - B.cx, b.y - B.cy))[0] || need[0]; const d = Math.hypot(p.x - B.cx, p.y - B.cy);
       const taken = pl.orgs.some(o => o.alive && o !== F && Math.hypot(o.B.cx - p.x, o.B.cy - p.y) < p.r * 1.7);
-      if (!taken && d < 300 && d > 60 && !W.phys.raycast(B.cx, B.cy, (p.x - B.cx) / d, (p.y - B.cy) / d, d - 10) && B.count > p.need * 2 + 12) { ctl.buds = [{ x: p.x, y: p.y, frac: Math.min(0.45, (p.need + 9) / B.count) }]; this.budT = 2.2; this.skip.set(p, this.t + 6); this.note('bud→pad'); this.replan = 0; }
+      const frac = Math.min(0.45, (p.need + 9) / B.count);
+      if (!taken && d < 300 && d > 60 && B.count > p.need * 2 + 12 && !W._wayBlocked({ count: Math.round(B.count * frac) }, B.cx, B.cy, p.x, p.y)) { ctl.buds = [{ x: p.x, y: p.y, frac }]; this.budT = 2.2; this.skip.set(p, this.t + 6); this.note('bud→pad'); this.replan = 0; }
     }
     if (pads.length && !need.length && pl.orgs.length > 1 && this.rallyT < -4) { this.rallyT = 3.5; this.note('rally'); }
     if (need.length >= 2 && pl.orgs.filter(o => o.alive).length >= pads.length) { this.strayT = (this.strayT || 0) + dt; if (this.strayT > 5) { this.strayT = 0; this.rallyT = 3; this.budT = 3.4; this.note('regroup'); } } else this.strayT = 0;
@@ -98,7 +99,13 @@ export class Bot {
     if (T.kind === 'pad' || T.kind === 'wait' || T.kind === 'pool' || T.kind === 'heal' || T.kind === 'vent' || T.kind === 'pore') thr = dT < T.r ? 0 : Math.min(1, dT / 70 + 0.15);       // arrive like a player does: ease in, then rest
     ctl.intent.x = dx / d * thr; ctl.intent.y = dy / d * thr; ctl.aim = { x: ax, y: ay };
     if (T.kind === 'prey' && dT < 150 && dT > T.ref.B.r + B.r * 0.6 && F.dartCD <= 0 && B.count > 40 && this.lanceT < this.t) { ctl.darts = [{ x: T.x - B.cx, y: T.y - B.cy, power: 1 }]; this.lanceT = this.t + 1.6; this.note('pounce'); }
-    if (T.kind === 'sow' && dT < 34 && this.budT <= 0 && B.count > T.ref.need * 2 + 8) { ctl.buds = [{ x: T.ref.x, y: T.ref.y, frac: Math.min(0.42, (T.ref.need + 10) / B.count) }]; this.budT = 2.4; this.skip.set(T.ref, this.t + 5); this.replan = 0; this.note('sow'); }
+    if (T.kind === 'sow' && dT < 34 && this.budT <= 0) {
+      // a piece already in there that is not on the switch, or too little of us here to spare one: call everyone back and sow again
+      const inThere = pl.orgs.some(o => o.alive && o !== F && Math.hypot(o.B.cx - T.ref.x, o.B.cy - T.ref.y) < T.ref.r * 2.4), others = pl.orgs.some(o => o.alive && o !== F);
+      if (inThere || B.count <= T.ref.need * 2 + 8) { if (others) { this.rallyT = 2.8; this.budT = 3.4; this.note('regroup'); } }
+      else { ctl.buds = [{ x: T.ref.x, y: T.ref.y, frac: Math.min(0.42, (T.ref.need + 10) / B.count) }]; this.budT = 2.4; this.replan = 0; this.note('sow'); }
+    }
+    if (T.kind === 'pad' && dT < T.r && !T.ref.active && pl.orgs.some(o => o.alive && o !== F)) { this.lightT = (this.lightT || 0) + dt; if (this.lightT > 2.5) { this.lightT = 0; this.rallyT = 2.8; this.budT = 3.4; this.note('regroup'); } } else this.lightT = 0;
     if (T.kind === 'bait' && T.ref.alive && this.budT <= 0) { const edge = dT - T.ref.B.r - B.r; if (edge < 200) { const k = Math.min(0.42, Math.max(0.22, 16 / B.count)), reach = Math.max(40, edge * 0.45 + B.r); ctl.buds = [{ x: B.cx + (T.x - B.cx) / dT * reach, y: B.cy + (T.y - B.cy) / dT * reach, frac: k }]; this.budT = 5; this.skip.set(T.ref, this.t + 5); this.replan = 0; this.fleeT = this.t + 2.2; this.fleeFrom = T.ref; this.note('decoy'); } }
     if (this.fleeT > this.t && this.fleeFrom && this.fleeFrom.alive) { const ex = B.cx - this.fleeFrom.B.cx, ey = B.cy - this.fleeFrom.B.cy, ed = Math.hypot(ex, ey) + 1; if (ed < 420) { ctl.intent.x = ex / ed; ctl.intent.y = ey / ed; } }      // …and be elsewhere
     if (T.kind === 'cleave' && T.ref.alive && dT < T.ref.B.r + B.r + 70 && F.dartCD <= 0 && this.lanceT < this.t) { ctl.darts = [{ x: T.x - B.cx, y: T.y - B.cy, power: 1.5 }]; this.lanceT = this.t + 1.8; this.note('lance'); }
