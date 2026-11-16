@@ -41,6 +41,8 @@ export class Hub {
     this.next = Math.min(ROOMS.length - 1, ROOMS.findIndex(r => !save.room(r.id)) < 0 ? 0 : ROOMS.findIndex(r => !save.room(r.id)));
     this.dests = [{ id: 'odyssey', name: 'Odyssey', sub: cleared ? `${cleared >= ROOMS.length ? 'all chambers lit' : 'continue · ' + ROOMS[this.next].name} · ${save.stars()} ✦` : 'begin', open: true }];
     for (const d of app.extraModes || []) this.dests.push({ ...d, open: d.unlock ? d.unlock(cleared, save) : true });
+    // a brand-new save meets one door: the way in. The others arrive — all at once, as a gift — when the first chamber has been lit.
+    if (!cleared && !(app.params && app.params.has('all'))) this.dests = this.dests.filter(d => d.id === 'odyssey');
     app.travel((aspect) => {
       const { W, H } = frame(aspect); const geo = dish(W, H, { r: Math.min(W, H) * 0.3 });
       const ents = wordMotes('MYRIA', W / 2, H * 0.30, Math.min(W * 0.72, 760));
@@ -122,7 +124,10 @@ export class Hub {
     if (!this.awake && app.input.any && app.input.device === 'mouse' && app.input.mouse.inside && this.t > 0.6 && app.state === 'play') this.wake();
     if (app.state !== 'play') { app.hud.setLabels([]); return; }
     const labels = [];
-    for (const e of W.ents) { if (e.d.type !== 'pore') continue; const d = this.dests.find(q => q.id === e.d.dest); if (!d) continue; const [x, y] = R.worldToCss(e.x, e.y + e.r + 16); labels.push({ x, y, html: `${d.name}<small>${d.open ? d.sub || '' : d.lock || 'locked'}</small>`, cls: d.open ? '' : 'locked' }); }
+    // every door wears its name; only the one you are nearest says more (six captions side by side ran into one another)
+    const F = W.player && W.player.focus; let near = null, nd = 1e9; if (F) for (const e of W.ents) if (e.d.type === 'pore') { const q = Math.hypot(e.x - F.B.cx, e.y - F.B.cy); if (q < nd) { nd = q; near = e; } }
+    const solo = this.dests.length === 1;
+    for (const e of W.ents) { if (e.d.type !== 'pore') continue; const d = this.dests.find(q => q.id === e.d.dest); if (!d) continue; const [x, y] = R.worldToCss(e.x, e.y + e.r + 16); const say = solo || e === near && nd < 230; labels.push({ x, y, html: `${d.name}<small>${d.open ? d.sub || '' : d.lock || 'locked'}</small>`, cls: (d.open ? '' : 'locked') + (say ? ' near' : '') }); }
     app.hud.setLabels(labels);
   }
 }

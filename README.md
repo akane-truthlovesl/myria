@@ -32,7 +32,11 @@ wall where something is watching makes you a veil it cannot see.
 
 ## What is in it
 
-- **The Atrium** — the title is written in motes. Wake the sleeping pearl and eat the word.
+- **The Atrium** — the title is written in motes. Wake the sleeping pearl and eat the word. A brand-new
+  save meets nothing else but one door (the way in) and a halo of dew round the sleeper, so that a first
+  unknowing nudge in any direction is answered with light inside a second; the other doors arrive, all
+  at once, when the first chamber has been lit. Each door wears its name; only the one you are beside
+  says more.
 - **Odyssey** — twenty-seven single-screen chambers in four strata (Dew · Glassworks · Chemistry ·
   Abyss), each teaching one idea through physics alone: squeezing, darting through a soap film,
   budding to hold two pads, threading a comb, blades, sling bands that throw you whole through doubled

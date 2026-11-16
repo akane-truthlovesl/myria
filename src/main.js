@@ -65,9 +65,9 @@ async function linkJoin(a) {
 app.extraModes = [
   { id: 'abyss', name: 'Abyss', col: [0.86, 0.6, 1.0], get sub() { const b = app.save.get('abyssBest', 0); return b ? `endless · best ${b}` : 'endless descent'; }, lock: 'light a chamber first', unlock: (n) => all || n >= 1, start: (a, o) => a.setMode(new Abyss(a, o)) },
   { id: 'daily', name: 'Daily', col: [0.5, 1.0, 0.7], get sub() { const ax = dailyAxioms(today()); return app.save.get('dailyDay', '') === today() ? `today · ${app.save.get('dailyBest', 0)} ✦` : ax.map(a => a.name).join(' + '); }, lock: 'light a chamber first', unlock: (n) => all || n >= 1, start: (a) => dailyPanel(a) },
-  { id: 'bloom', name: 'Bloom', col: [1.0, 0.82, 0.42], get sub() { const b = app.save.get('bloomBest', 0); return b ? `best ${b}` : 'a minute of rain'; }, unlock: () => true, start: (a, o) => a.setMode(new Bloom(a, o)) },
-  { id: 'pool', name: 'Pool', col: [0.8, 0.72, 1.0], sub: 'knead · pour · play', unlock: () => true, start: (a, o) => a.setMode(new Pool(a, o)) },
-  { id: 'duet', name: 'Duet', col: [1.0, 0.6, 0.75], get sub() { return app.link.live ? 'linked · two devices' : 'two players · one screen, or two'; }, unlock: () => true, start: (a) => duetPanel(a) },
+  { id: 'bloom', name: 'Bloom', col: [1.0, 0.82, 0.42], get sub() { const b = app.save.get('bloomBest', 0); return b ? `best ${b}` : 'a minute of rain'; }, unlock: (n) => all || n >= 1, start: (a, o) => a.setMode(new Bloom(a, o)) },
+  { id: 'pool', name: 'Pool', col: [0.8, 0.72, 1.0], sub: 'knead · pour · play', unlock: (n) => all || n >= 1, start: (a, o) => a.setMode(new Pool(a, o)) },
+  { id: 'duet', name: 'Duet', col: [1.0, 0.6, 0.75], get sub() { return app.link.live ? 'linked · two devices' : 'two players · one screen, or two'; }, unlock: (n) => all || n >= 1, start: (a) => duetPanel(a) },
 ];
 window.__app = app; window.__R = app.R; window.__rooms = ROOMS.length; window.__haunt = { packHaunt, unpackHaunt, hauntName }; window.__daily = { dailyAxioms, dailySprint, dailyPanel }; window.__duet = { duetPanel, linkHost, linkJoin };
 const m = params.get('mode');
