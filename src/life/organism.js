@@ -15,7 +15,7 @@ let ORG_ID = 1;
 export const CRUISE = 255;          // world units / s at full throttle (mass 130)
 const ACCEL = 7.0, BRAKE = 6.5, AMAX = 2600;
 const E = (k, d) => +(globalThis.process && globalThis.process.env && globalThis.process.env[k] || d);
-const DART0 = E('DART0', 0.80), DART1 = E('DART1', 0.42);
+const DART0 = E('DART0', 0.80), DART1 = E('DART1', 0.42), LIQ = E('LIQ', 1);
 const LEAD = E('LEAD', 3.3), TRAIL = E('TRAIL', 0.75), TONE_GO = E('TONE_GO', 0.8);       // pseudopod reach, tail lag, how much the pearl relaxes when it moves
 
 export class Organism {
@@ -100,9 +100,11 @@ export class Organism {
       else if (cling && away < -0.2) { adhMul = 1.9; }                   // lean in → local suction, the gel wets the wall
     } else if (touching && cling) adhMul = 1.5;
     const am = Math.hypot(ax, ay); if (am > AMAX) { ax *= AMAX / am; ay *= AMAX / am; }
-    if (this.rallyTo) { const T = this.rallyTo; const dx = T.cx - B.cx, dy = T.cy - B.cy, d = Math.hypot(dx, dy) + 1; const s = Math.min(1, d / 110); ax += dx / d * 1250 * s - B.vx * 2.6; ay += dy / d * 1250 * s - B.vy * 2.6; this.rallyTo = null; }
+    // coming home: fast across the room, but it eases off as the two skins near each other — a kiss, not a collision (liquids would only splash apart again)
+    if (this.rallyTo) { const T = this.rallyTo; const dx = T.cx - B.cx, dy = T.cy - B.cy, d = Math.hypot(dx, dy) + 1; const gap = d - B.r - T.r; const s = Math.max(0.14, Math.min(1, gap / 90 + 0.14)); ax += dx / d * 1250 * s - B.vx * 2.6; ay += dy / d * 1250 * s - B.vy * 2.6; this.rallyTo = null; }
     if (this.seek) { const S = this.seek; const dx = S.x - B.cx, dy = S.y - B.cy, d = Math.hypot(dx, dy) + 1; const s = Math.min(1, d / 70); ax += dx / d * (S.k || 900) * s - B.vx * 2.4; ay += dy / d * (S.k || 900) * s - B.vy * 2.4; }
     if (this.cradle) { ax += this.cradle.ax; ay += this.cradle.ay; damp = Math.max(damp, this.cradle.damp); this.cradle = null; }
+    if (LIQ !== 1 && M.spring[B.mat] === 0) lead *= LIQ;               // a springless liquid cannot be led by its nose without tearing: it is pushed more as one drop
     B.ax = ax; B.ay = ay; B.lead = lead; B.trail = TRAIL * Math.min(1, lead / LEAD);
     B.lx = im > 0.03 ? ix / im : this.facing.x; B.ly = im > 0.03 ? iy / im : this.facing.y;
     B.adhMul = this.peelT > 0 || this.dartT > 0 ? 0.05 : adhMul;

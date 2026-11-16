@@ -228,6 +228,7 @@ export class World {
       if (Hm && keep.count >= 6 && this.colonies.includes(Hm) && Hm.orgs.some(o => o.alive)) {
         keep.kind = 'fragment'; keep.home = null; const O = Hm.adopt(keep); O.phi = Hm.focus ? Hm.focus.phi : 0; if (Hm.kind && !O.brain && SPECIES[Hm.kind]) O.brain = new Brain(Hm.kind);
         if (Hm.focus && Hm.focus.alive && Hm.focus.B.count < 12 && keep.count > Hm.focus.B.count * 1.6) Hm.setFocus(O);          // the will stays with the larger share
+        else if (Hm.isPlayer && !O.brain) { O.stray = true; O.strayT = 0.4; }
       }
       return;
     }

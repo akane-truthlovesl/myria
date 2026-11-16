@@ -128,7 +128,7 @@ export class Bot {
     if (this.route) { const pts = this.route.pts; let k = Math.min(this.wp, pts.length - 1); while (k < pts.length - 1 && Math.hypot(pts[k][0] - B.cx, pts[k][1] - B.cy) < 26) k++; let far = k; for (let q = Math.min(pts.length - 1, k + 6); q > k; q--) { const dx = pts[q][0] - B.cx, dy = pts[q][1] - B.cy, d = Math.hypot(dx, dy) + 1; if (!W.phys.raycast(B.cx, B.cy, dx / d, dy / d, d - 6) && this.clear(B.cx, B.cy, pts[q][0], pts[q][1])) { far = q; break; } } this.wp = k; ax = pts[far][0]; ay = pts[far][1]; }
     let dx = ax - B.cx, dy = ay - B.cy; const d = Math.hypot(dx, dy) + 1e-3; const dT = Math.hypot(T.x - B.cx, T.y - B.cy);
     let thr = 1;
-    if (T.kind === 'pad' || T.kind === 'wait' || T.kind === 'pool' || T.kind === 'heal' || T.kind === 'vent') thr = dT < T.r ? 0 : Math.min(1, dT / 70 + 0.15);
+    if (T.kind === 'pad' || T.kind === 'wait' || T.kind === 'pool' || T.kind === 'heal' || T.kind === 'vent' || T.kind === 'pore') thr = dT < T.r ? 0 : Math.min(1, dT / 70 + 0.15);       // arrive like a player does: ease in, then rest
     ctl.intent.x = dx / d * thr; ctl.intent.y = dy / d * thr; ctl.aim = { x: ax, y: ay };
     if (T.kind === 'prey' && dT < 150 && dT > T.ref.B.r + B.r * 0.6 && F.dartCD <= 0 && B.count > 40 && this.lanceT < this.t) { ctl.darts = [{ x: T.x - B.cx, y: T.y - B.cy, power: 1 }]; this.lanceT = this.t + 1.6; this.note('pounce'); }
     if (T.kind === 'cleave' && T.ref.alive && dT < T.ref.B.r + B.r + 70 && F.dartCD <= 0 && this.lanceT < this.t) { ctl.darts = [{ x: T.x - B.cx, y: T.y - B.cy, power: 1.5 }]; this.lanceT = this.t + 1.8; this.note('lance'); }

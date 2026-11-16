@@ -2,9 +2,11 @@
 //  Colony — one will spread over any number of droplets.
 //  Focus, park, swap, rally, re-fuse: a single continuum of intent.
 // ─────────────────────────────────────────────────────────────────────────────
+import { MATS } from '../sim/materials.js';
 import { Organism } from './organism.js';
 import { SPACING, AREA_PER_P } from '../sim/physics.js';
 
+const STRAY = 14;       // pieces smaller than this come home on their own; larger ones are siblings to steer or call
 export class Colony {
   constructor(world, group, opts = {}) {
     this.W = world; this.group = group;
@@ -47,7 +49,7 @@ export class Colony {
   setFocus(O) {
     if (!O || !O.alive) return;
     if (this.focus) this.focus.focused = false;
-    this.focus = O; O.focused = true; this.focusFlash = 1;
+    this.focus = O; O.focused = true; O.stray = false; this.focusFlash = 1;
     this.W.onFocus && this.W.onFocus(this, O);
   }
   cycle(dir = 1) {
@@ -63,6 +65,7 @@ export class Colony {
     if (parent.ctrl && parent.ctrl.dormant) O.dormant = true;
     O.phi = parent.ctrl ? parent.ctrl.phi : 0;
     if (this.focus && this.focus.B === parent && child.count > parent.count * 1.6) this.setFocus(O);   // the will stays with the larger share
+    else if (this.isPlayer && !O.brain && (child.count < STRAY || MATS[child.mat].spring === 0)) { O.stray = true; O.strayT = 0.7; }       // …and beads of liquid metal always run back together
     return O;
   }
   onMerge(keep, gone) {
@@ -90,6 +93,8 @@ export class Colony {
           if (d < reach) { const k = (1 - d / reach) * 1.6; O.intent.x += dx / d * k; O.intent.y += dy / d * k; }
         }
         const im = Math.hypot(O.intent.x, O.intent.y); if (im > 1) { O.intent.x /= im; O.intent.y /= im; }
+        // a splash is not a sibling: a small piece nobody asked for hesitates a moment, then rolls home by itself
+        if (O.stray && this.focus) { O.strayT -= dt; if (O.strayT <= 0) { O.rallyTo = this.focus.B; O.B.fuseT = Math.min(O.B.fuseT, 0.05); } }
         if (rally && this.focus) { O.rallyTo = this.focus.B; O.B.fuseT = Math.min(O.B.fuseT, 0.05); }
       }
       O.update(dt);
