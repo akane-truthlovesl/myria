@@ -4,6 +4,7 @@
 //  nothing), Swift (under par). The pore wakes at 60 % — the rest is appetite.
 // ─────────────────────────────────────────────────────────────────────────────
 import { ROOMS, STRATA, stratumOf } from '../world/odyssey.js';
+import { packEcho, unpackEcho } from '../world/entities.js';
 
 const GRACE = 3;       // particles you may lose and still keep the Grace star
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX', 'XXI', 'XXII', 'XXIII', 'XXIV', 'XXV', 'XXVI', 'XXVII', 'XXVIII', 'XXIX', 'XXX'];
@@ -28,6 +29,7 @@ export const TRICKS = [
   ['Gravity Assist', 'go in among a well\'s nearest light, and leave having paid it nothing'], ['Comet', 'twenty-four lights without a pause'],
   ['Hole in One', 'leave two bands behind and do not land until you are home'],
   ['Trojan Swallow', 'be swallowed — by something that will never swallow again'],
+  ['Outrun', 'come home before your own echo does'],
   ['Phoenix', 'leave a chamber whole after being an ember in it'], ['Immaculate', 'all three stars in a single visit'],
 ];
 export class Odyssey {
@@ -42,10 +44,20 @@ export class Odyssey {
       (spec) => ({ mass: this.startMass = this.massFor(spec) }), {
         minDark: fromPore ? 1.9 : 0.5,
         onDark: () => app.applyBudget(),
-        onLoad: (W) => { for (const e of W.ents) if (e.d.type === 'pore' && !e.need) e.need = Math.ceil(W.stats.motesTotal * (this.room.quota ?? this.spec.quota ?? 0.6)); },
+        onLoad: (W) => { for (const e of W.ents) if (e.d.type === 'pore' && !e.need) e.need = Math.ceil(W.stats.motesTotal * (this.room.quota ?? this.spec.quota ?? 0.6)); this.wakeEcho(W); },
         onReveal: () => { app.hud.hideResult(); app.hud.showTitle(ROMAN[this.i] || '', room.name, this.titleSub()); app.hud.setCorner(true, () => app.pause()); app.sound.ready && app.sound.ambience('deep', 50 - (this.i % 4) * 2); },
       });
   }
+  // ── echo: on a chamber you have already cleared, your best run comes back as a pale bead to race; a friend's echo (a pasted code) races beside it ──
+  wakeEcho(W) {
+    this.rec = []; this.recT = 0; this.echo = null; this.rival = null; this.air = 0; this.groundT = 0;
+    const own = this.app.save.echo(this.room.id), fr = this.app.rivalEcho && this.app.rivalEcho.id === this.room.id ? this.app.rivalEcho : null;
+    const skin = W.host && W.host.skin ? W.host.skin() : null; const hue = skin && skin.emit ? skin.emit : [1, 0.72, 0.5];
+    if (own && own.p && this.app.save.room(this.room.id)) { const pts = unpackEcho(own.p); if (pts && pts.length > 4) this.echo = W.spawn({ type: 'echo', pts, time: own.t, col: [hue[0] * 0.5 + 0.5, hue[1] * 0.5 + 0.5, hue[2] * 0.5 + 0.5] }); }
+    if (fr) { const pts = unpackEcho(fr.p); if (pts && pts.length > 4) this.rival = W.spawn({ type: 'echo', pts, time: fr.t, col: [0.55, 0.95, 1], rival: true }); }
+  }
+  echoCode() { const e = this.app.save.echo(this.room.id); return e ? `MYRIA-ECHO.${this.room.id}.${e.t.toFixed(2)}.${e.p}` : ''; }
+  pauseItems() { return this.app.save.echo(this.room.id) ? [{ label: 'Copy my echo', fn: (b) => { this.app.copyText(this.echoCode()); b.textContent = 'Echo copied ✓'; } }] : []; }
   // carry: what you ended the last chamber with — never less than the chamber's own seed, never more than it can hold
   massFor(spec) { const base = spec.minMass || spec.spawn.n || 40; const carry = this.carryMass || base; return Math.round(Math.max(base, Math.min(spec.cap || base * 1.5, base + (carry - base) * 0.3))); }
   restart() { this.carryMass = this.startMass; this.load(false); }
@@ -77,6 +89,7 @@ export class Odyssey {
 
   post(dt, W) {
     if (this.finished) return; this.veilT(dt, W);
+    if (this.rec && this.rec.length < 1500 && (this.recT += dt) >= 0.1) { this.recT -= 0.1; const F0 = W.player.focus; if (F0) { const sp = W.spec, land = sp.W >= sp.H; this.rec.push(land ? [F0.B.cx / sp.W, F0.B.cy / sp.H] : [F0.B.cy / sp.H, F0.B.cx / sp.W]); } }
     // Gravity Assist: go in among a well's nearest light and come out again having paid it nothing
     const Ff = W.player.focus; if (Ff && Ff.alive) for (const e of W.ents) { if (e.d.type !== 'well') continue; const d = Math.hypot(Ff.B.cx - e.x, Ff.B.cy - e.y);
       if (!this.skim && d < Math.max(e.r * 4.5, e.reach * 0.36)) this.skim = { e, lost: W.stats.lost, mass: W.player.mass };
@@ -100,7 +113,11 @@ export class Odyssey {
     const app = this.app, W = app.world, s = W.stats; const stars = this.stars(W);
     if (this.air >= 2) this.trick('Hole in One');
     if (stars.every(Boolean)) this.trick('Immaculate'); if (this.wasEmber && W.player.mass >= this.startMass) this.trick('Phoenix');
+    const beatOwn = this.echo && !this.echo.home, beatRival = this.rival && !this.rival.home, lostRival = this.rival && this.rival.home;
+    if (beatOwn) this.trick('Outrun');
+    if (beatRival) app.hud.toast(`echo beaten by ${(this.rival.T - W.roomTime).toFixed(1)} s`, '◷'); else if (lostRival) app.hud.toast(`the echo was ${(W.roomTime - this.rival.T).toFixed(1)} s ahead`, '◷', 'cool');
     const rec = app.save.recordRoom(this.room.id, { stars, time: W.roomTime, light: s.motes });
+    const had = app.save.echo(this.room.id); if (this.rec && this.rec.length > 4 && this.rec.length < 1500 && (!had || W.roomTime < had.t - 0.01)) app.save.setEcho(this.room.id, { t: +W.roomTime.toFixed(2), p: packEcho(this.rec) });
     this.carryMass = W.player.mass;
     // celebration at the pore: the body pours in, the room exhales light
     const F = W.player.focus; if (F) { F.seek = { x: pore.x, y: pore.y, k: 1500 }; for (const O of W.player.orgs) O.rallyTo = F.B; }
@@ -122,7 +139,7 @@ export class Odyssey {
     app.travel((aspect) => { const s = room.build(aspect); s.name = room.name; s.no = this.i + 1; s.seed = s.seed || (this.i * 97 + 13); this.spec = s; return s; }, (spec) => ({ mass: this.startMass = this.massFor(spec) }), {
       from: { x: pore.x, y: pore.y }, minDark: 2.3,
       onDark: () => { app.applyBudget(); app.hud.showResult(result); },
-      onLoad: (W) => { for (const e of W.ents) if (e.d.type === 'pore' && !e.need) e.need = Math.ceil(W.stats.motesTotal * (this.room.quota ?? this.spec.quota ?? 0.6)); },
+      onLoad: (W) => { for (const e of W.ents) if (e.d.type === 'pore' && !e.need) e.need = Math.ceil(W.stats.motesTotal * (this.room.quota ?? this.spec.quota ?? 0.6)); this.wakeEcho(W); },
       onReveal: () => { app.hud.hideResult(); app.hud.showTitle(ROMAN[this.i] || '', room.name, this.titleSub()); app.hud.setCorner(true, () => app.pause()); },
     });
   }

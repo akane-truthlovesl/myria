@@ -14,6 +14,9 @@ export const save = {
     store(this.data);
     return { newBest: !prev || r.time < prev.best - 0.01, firstClear: !prev };
   },
+  // echo: the path of your best run through a chamber, as a ghost to race ({ t: seconds, p: packed path })
+  echo(id) { return (this.data.echo || {})[id] || null; },
+  setEcho(id, e) { (this.data.echo || (this.data.echo = {}))[id] = e; store(this.data); },
   stars() { let n = 0; for (const c of Object.values(this.data.rooms || {})) n += c.stars.filter(Boolean).length; return n; },
   trick(name) { const t = this.data.tricks || (this.data.tricks = {}); const first = !t[name]; t[name] = (t[name] || 0) + 1; store(this.data); return first; },
   reset() { this.data = {}; store(this.data); },

@@ -75,6 +75,7 @@ export class Abyss {
   tier(name) { this.app.hud.toast(name, '✺'); }
   ember(on) { this.app.hud.toast(on ? 'ember — nothing can drink you · light counts double' : 'whole again', '✺', on ? '' : 'cool'); }
   mote(m, O, chain) { this.light++; this.roomLight++; if (chain && chain % 8 === 0) this.app.hud.toast(`Chain ×${chain}`, '♪', 'cool'); }
+  unmask() { this.app.hud.toast('Unmasked', '✦'); const F = this.app.world.player.focus; F && F.crown.joy(); }
   cleave() { if (!this.cleft) { this.cleft = true; this.app.hud.toast('Cleave', '✦'); } }
   devour(C) { this.devoured++; this.app.hud.toast(`${C.species ? C.species.name : 'Rival'} devoured`, '✦'); this.app.world.player.focus && this.app.world.player.focus.crown.joy(); }
   post(dt, W) {

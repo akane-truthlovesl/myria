@@ -130,6 +130,8 @@ export class Sound {
   dart(p = 1) { this.noiseHit(1400, 0.7, 0.16 * p, 0.32, 0.35, 0.25); this.blip(240, 520, 0.08, 0.18, 'triangle', 0.2); }
   grind() { if (!this._rate('grind', 70)) return; this.noiseHit(2600 + Math.random() * 1500, 5, 0.5, 0.09, 0.12, 0.8); this.blip(130, 70, 0.1, 0.08, 'sawtooth', 0.1); }
   fizz() { if (!this._rate('fizz', 90)) return; this.noiseHit(5200 + Math.random() * 1800, 1.2, 0.2, 0.3, 0.35, 1.6, 'highpass'); this.blip(700, 1500, 0.07, 0.1, 'sine', 0.3); }
+  tick() { if (!this._rate('tick', 80)) return; this.blip(980, 760, 0.10, 0.07, 'sine', 0.35); }
+  clack(v = 0.6) { if (!this._rate('clack', 90)) return; this.noiseHit(3200, 6, 0.3 * v + 0.1, 0.09, 0.3, 0.3); this.bell(this.note(2, 2), 0.2 * v + 0.08, 0.5, 2.4, 0.4); this.blip(210, 90, 0.3 * v, 0.1, 'triangle', 0.2); }
   ripe() { if (!this._rate('ripe', 200)) return; this.blip(520, 780, 0.12, 0.12, 'triangle', 0.4); }
   fuse(k = 0) { if (!this._rate('fuse', 70)) return; this.blip(300 + k * 900, 340 + k * 1100, 0.10 + 0.12 * k, 0.07, 'square', 0.2); }
   boom() { this.noiseHit(140, 0.8, 0.9, 0.7, 0.5, 0.2, 'lowpass'); this.noiseHit(2600, 2, 0.4, 0.35, 0.5, 0.6); this.blip(160, 38, 0.6, 0.5, 'sine', 0.4); [0, 2, 4].forEach((d, i) => setTimeout(() => this.bell(this.note(d + 4, 1), 0.22, 2.4, 0.9, 0.8), 120 + i * 90)); }

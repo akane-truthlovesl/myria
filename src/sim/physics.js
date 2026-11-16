@@ -12,6 +12,8 @@ export const H = 16;               // interaction radius (world units)
 export const SPACING = 7.0;        // nominal rest spacing (for spawning)
 export const PR = 4.0;             // particle wall radius
 export const AREA_PER_P = SPACING * SPACING * 0.95;
+const EV = (k, d) => +(globalThis.process && globalThis.process.env && globalThis.process.env[k] || d);
+const INF_F = EV('INF_F', 2200), INF_D = EV('INF_D', 0.70);      // a held breath: how hard the cavity pushes outward · how far the gel thins around it
 const ADH_RANGE = 6.0;
 const SPR = 6;                     // springs stored per particle
 const DT_REF = 1 / 120;
@@ -38,7 +40,7 @@ export class Body {
     this.start = 0; this.len = 0;    // slice into physics.bodyIdx
     this.ctrl = null; this.tag = null;
     this.age = 0; this.spin = 0; this.energy = 0;
-    this.tension = 0; this.stretch = 0; this.inflate = 0;      // 0..1: an air cavity held open inside the gel
+    this.tension = 0; this.stretch = 0; this.inflate = 0; this.breath = 0;      // 0..1: an air cavity held open inside the gel
     this.hot = 0;
     this.tint = null;
   }
@@ -276,10 +278,10 @@ export class Physics {
         const f = B.tonus * (d < lim ? d : lim) / d;
         ax += dx * f; ay += dy * f;
       }
-      // swell: a held breath pushes the gel off its own centre — a hollow dome, twice the silhouette, the same mass
+      // swell: a held breath pushes the gel off its own centre — a hollow dome, two-thirds more silhouette (measured: tools/axioms.mjs), the same mass
       if (B.inflate > 0.03 && B.count > 5) {
         const dx = px - B.cx, dy = py - B.cy; const d = Math.sqrt(dx * dx + dy * dy) + 0.5; const lim = B.r * (0.75 + 0.75 * B.inflate);
-        if (d < lim) { const f = 900 * B.inflate * (1 - d / lim) / d; ax += dx * f; ay += dy * f; }
+        if (d < lim) { const f = INF_F * B.inflate * (1 - d / lim) / d; ax += dx * f; ay += dy * f; }
       }
       // breathing: area-conserving surface modes (k ≥ 2) — alive, never static noise
       if (B.waveA > 0 && this.surf[i] > 0.15) {
@@ -386,11 +388,11 @@ export class Physics {
       const i = pi[p], j = pj[p];
       const ux = pux[p], uy = puy[p];
       const u = (vx[i] - vx[j]) * ux + (vy[i] - vy[j]) * uy;
-      if (u <= 0) continue;
       const mi = mat[i], mj = mat[j];
-      let sig = (SIG[mi] + SIG[mj]) * 0.5;
       const th = (THK[mi] + THK[mj]) * 0.5;
-      if (th > 0 && u > 90) sig *= 1 + th * Math.min(6, (u - 90) / 90);
+      if (u <= 0) continue;
+      let sig = (SIG[mi] + SIG[mj]) * 0.5;
+      if (th > 0 && u > 90) sig *= 1 + th * Math.min(6, (u - 90) / 90);       // shear-thickening: fast approach locks neighbours (and see Organism: a hard blow is taken by the whole body)
       sig *= bodies[body[i]].visc;
       const bet = (BET[mi] + BET[mj]) * 0.5;
       let I = (1 - q) * (sig * u + bet * u * u * 0.01) * f60;
@@ -475,7 +477,14 @@ export class Physics {
       const m = mat[i];
       const B = bodies[body[i]];
       const k = M.k[m] * sc * B.stiff;
-      const r0 = M.rho0[m] / (psz[i] * psz[i]) * (1 - 0.42 * B.inflate);
+      let r0 = M.rho0[m] / (psz[i] * psz[i]) * (1 - INF_D * B.inflate);
+      // breathing: each grain's own rest density swells and ebbs with a slow wave that travels round the body (angular modes 2 and 3 —
+      // what one flank gives, another takes: area is moved, never made). Amplitude and cadence are the organism's state.
+      if (B.breath > 0.002 && B.count > 5) {
+        const dx = x[i] - B.cx, dy = y[i] - B.cy, d2 = dx * dx + dy * dy, rr = B.r * 0.9;
+        if (d2 > 4) { const th = Math.atan2(dy, dx), t = this.time, rf = d2 < rr * rr ? Math.sqrt(d2) / rr : 1;
+          r0 *= 1 - B.breath * rf * (Math.cos(2 * th - B.waveW * t + B.wavePh) * 0.65 + Math.cos(3 * th + B.waveW * 0.77 * t + B.wavePh * 1.7) * 0.35); }
+      }
       let p = k * (rho[i] - r0);
       // limit cohesion pull so isolated strands never implode violently
       const pmin = -k * r0 * 0.7;

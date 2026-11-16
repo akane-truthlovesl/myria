@@ -54,7 +54,7 @@ export class Hub {
     });
   }
   exit() { this.app.hud.setLabels([]); }
-  pauseItems() { const app = this.app; const found = TRICKS.filter(t => (app.save.data.tricks || {})[t[0]]).length; return [{ label: 'Chambers', fn: () => this.chambers() }, { label: `Tricks · ${found} / ${TRICKS.length}`, fn: () => this.journal() }, { label: this.hueLabel(), fn: (b) => { this.nextHue(); b.innerHTML = this.hueLabel(); } }, ...(app.save.get('awake', 0) ? [{ label: 'Myriad', fn: () => { app.resume(); app.toEpilogue({}); } }] : [])]; }
+  pauseItems() { const app = this.app; const found = TRICKS.filter(t => (app.save.data.tricks || {})[t[0]]).length; return [{ label: 'Chambers', fn: () => this.chambers() }, { label: `Tricks · ${found} / ${TRICKS.length}`, fn: () => this.journal() }, { label: this.hueLabel(), fn: (b) => { this.nextHue(); b.innerHTML = this.hueLabel(); } }, { label: 'Race an echo', fn: () => this.raceEcho() }, ...(app.save.get('awake', 0) ? [{ label: 'Myriad', fn: () => { app.resume(); app.toEpilogue({}); } }] : [])]; }
   hueLabel() { const save = this.app.save; const cur = skinFor(save); const nx = SKINS.find(s => s.need > save.stars()); return `Hue · ${cur.name}${nx ? ` <small style="opacity:.55;letter-spacing:.1em;text-transform:none">&nbsp; next: ${nx.name} at ${nx.need} ✦</small>` : ''}`; }
   nextHue() {
     const app = this.app, save = app.save; const list = unlockedSkins(save); const cur = skinFor(save); const nx = list[(list.indexOf(cur) + 1) % list.length]; save.set('skin', SKINS.indexOf(nx));
@@ -66,6 +66,15 @@ export class Hub {
     const rows = TRICKS.map(([name, riddle]) => (got[name] ? `<div class="tk on"><b>✦ ${name}</b><span>${riddle}</span><i>×${got[name]}</i></div>` : `<div class="tk"><b>· · ·</b><span>${riddle}</span><i></i></div>`)).join('');
     app.hud.panel('Tricks', 'noticed when you find them', [{ label: 'Back', cls: 'pri', fn: () => app.resume() }], `<div class="tk-list">${rows}</div>`);
     app.hud.veil.querySelector('.panel').classList.add('wide');
+  }
+  // a friend's echo: a code on the clipboard (or typed in) becomes a pale blue bead to race through that chamber
+  async raceEcho() {
+    const app = this.app; let txt = '';
+    try { if (navigator.clipboard && window.isSecureContext) txt = await navigator.clipboard.readText(); } catch (_) { txt = ''; }
+    if (!/MYRIA-ECHO\./.test(txt)) { try { txt = window.prompt('Paste an echo') || ''; } catch (_) { txt = ''; } }
+    const m = /MYRIA-ECHO\.([a-z0-9-]+)\.([0-9.]+)\.([A-Za-z0-9_-]+)/.exec(txt); const i = m ? ROOMS.findIndex(r => r.id === m[1]) : -1;
+    if (i < 0) { app.hud.toast('no echo there', '◷', 'cool'); return; }
+    app.rivalEcho = { id: m[1], t: +m[2], p: m[3] }; app.sound.ui(); app.resume(); app.setMode(new Odyssey(app, i, { single: true }));
   }
   // the Odyssey as a map: four strata, each closed by its warden
   chambers() {

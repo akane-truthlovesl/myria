@@ -15,7 +15,7 @@ file: no server, no install, no network. Any window shape works, portrait includ
 | **Dart** (a burst of speed; costs a little mass you can fetch back) | click | Space | tap, or flick | A |
 | **Lance** (a coiled dart: it cleaves a bigger neighbour in two) | hold, then release | — | — | — |
 | **Bud** (throw off a sibling) | right-click | E | second-finger tap | X |
-| **Swell / pop** (hold a breath: twice the silhouette, the same mass; let go to shove) | hold right button | hold F | hold a second finger | Y |
+| **Swell / pop** (hold a breath: two-thirds more silhouette, the same mass; let go to shove) | hold right button | hold F | hold a second finger | Y |
 | **Rally** (call siblings home to fuse) | hold middle button | hold Q | pinch | B |
 | **Focus** another sibling | click it | Tab | tap it | bumpers |
 | Pause | ‖ | Esc / P | ‖ | Start |
@@ -50,12 +50,16 @@ wall where something is watching makes you a veil it cannot see.
   flickers, leans, and throws you — to its twin, unless you lean elsewhere; coat both long enough and
   the pair falls together and pays out).
   Three living stars per chamber: **Radiance** (all the light), **Grace** (lose almost nothing),
-  **Swift** (under par). The pore opens at 60 % — the rest is appetite. Twelve named tricks (Thread the
+  **Swift** (under par). The pore opens at 60 % — the rest is appetite. Thirteen named tricks (Thread the
   Needle, Surgical Shear, Ghost Wall, Paper Tiger, Cleave, Slingshot, Gravity Assist, Hole in One,
-  Trojan Swallow, Comet, Phoenix, Immaculate) are noticed when you find them; the Atrium keeps a journal in which the ones you have
+  Trojan Swallow, Outrun, Comet, Phoenix, Immaculate) are noticed when you find them; the Atrium keeps a journal in which the ones you have
   not found yet are riddles.
   The stars you gather dye you: six **hues** (Coral · Honey · Rose · Jade · Pearl · Nebula) unlock as
   they add up — each a full optical recipe, chosen from the pause menu in the Atrium.
+- **Echo** — clear a chamber and your best run stays in it: come back, and a pale bead of your own hue
+  retraces that run beside you, to race. The pause menu can **copy your echo** as a short code; anyone
+  who pastes it into *Race an echo* in their Atrium races your bead (in blue) through that chamber —
+  two players, no server, no clock in common.
 - **Myriad** — the last room has no door. Everything you met on the way is there, and nothing in it is
   hungry; what you do with all that light is the ending. (Afterwards the Atrium keeps the morning.)
 - **Flow** — light taken in quick succession becomes a chain. A chain makes the crown *bloom*: longer,
@@ -67,8 +71,12 @@ wall where something is watching makes you a veil it cannot see.
 - **Abyss** — an endless generated descent with grazers, lancers, thornbacks and oil for neighbours,
   each measured against your own size; from the fourth depth on one of them is an apex that only wit
   (a lance, a held breath) will answer. Vaults — rings of glass turning around a hoard — are worth the
-  wait at their doorway; deeper down there are turnstiles, and lodestones (an iron bath beside a pulsing
-  pole crowned with light). Bigger membranes siphon smaller ones (the swallowed pigment swirls inside you
+  wait at their doorway; deeper down there are turnstiles, sling bands, lodestones (an iron bath beside a
+  pulsing pole crowned with light), **geysers** (white holes: they draw breath, then throw whatever stands
+  on them — and a little light — outward) and **mimics** (something curled up wearing a ring of light:
+  its lights blink all together, there is a knot of thorns at its heart, and no feeler ever reaches for
+  it; wander in and it bites, dart through it and it bursts into the light it pretended to be). The daily
+  dive's rule mutation may now be *White Tide* (a geyser in every chamber) or *Masquerade*. Bigger membranes siphon smaller ones (the swallowed pigment swirls inside you
   before it becomes yours). Every second chamber you choose one of three ways to change; every fifth
   is a predator dish. Three embers; where a dive ends, an echo of your light waits for the next one.
 - **Daily** — the same dive for everyone today: one seed, one mutated axiom. (Dives and Blooms end with
@@ -100,12 +108,15 @@ GPU behind a remote desktop, so it is designed to cost only what moves.
   tension that never switches off — a two-particle droplet is still a pearl), plastic springs with
   yield and creep, per-material rheology, immiscible phases, blade severing, connected-component
   splitting and contextual re-fusion, signed-distance walls with slick tangential / tacky normal
-  contact, kinematic machines, force zones.
+  contact, kinematic machines, force zones. Bodies **breathe**: every grain's rest density swells and
+  ebbs with a slow wave travelling round the body (angular modes 2 and 3 — area is moved, never made),
+  serene at rest, taut when startled, held when veiled. Shear-thickening armour flows at a walk and
+  takes a blow as one piece. A launched body glides, skims currents, and can be bent but not braked.
 - **Will** (`src/life`) — local actuation with global viscoelastic coupling; a crown of verlet feelers
   that trail, reach, fetch and startle; colonies of siblings with focus and rally; small legible
   brains for the other species (they judge you by silhouette, so a held breath can bluff them).
 - **Playtesting** (`src/core/bot.js`, `tools/`) — a path-planning Bot uses the same verbs through the
-  same input record as a player. It finishes all twenty-three chambers in landscape and portrait, sets
+  same input record as a player. It finishes all twenty-six chambers in landscape and portrait, sets
   the par times, plays Bloom, and powers `?bot`.
 - **Light** (`src/render`) — each room's backdrop is painted once, per pixel, like a photographic
   plate: a pool of stage light, a caustic network on the water film, bevelled frosted-glass walls with
@@ -137,8 +148,10 @@ node tools/closeup.mjs strip.png dart             # close-up filmstrip of a verb
 node tools/hues.mjs hues.png                      # every hue side by side
 node tools/myriad.mjs sheet.png                   # contact sheet of the epilogue under a wandering pointer
 node tools/abyss.mjs out 1280 720 6 40            # soak-test six Abyss depths
+node tools/axioms.mjs                             # the eight foundational laws, measured (area, breath, fields, mass–energy, floor, pseudopod, continuum, fragments)
 node tools/scales.mjs sheet.png                   # every substance at 2 · 5 · 12 · 40 · 120 · 400 grains, still and moving, at true scale
 node tools/browser/ftue.mjs 1280 720 0            # a brand-new save: seconds to first movement / first light (mouse; `480 860 1` = touch)
+node tools/browser/echotest.mjs                   # clear, replay against the ghost, round-trip the share code
 node tools/browser/tilttest.mjs                   # the optional gyro, driven by synthetic device-orientation events
 ```
 

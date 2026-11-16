@@ -280,6 +280,106 @@ export class Valve extends Entity {
   }
 }
 
+// ── Echo: the path of an earlier run through this chamber, replayed as a pale bead of light to race. It touches nothing. ──
+export function packEcho(pts) { let s = ''; const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'; for (const [u, v] of pts) { const a = Math.max(0, Math.min(4095, Math.round(u * 4095))), b = Math.max(0, Math.min(4095, Math.round(v * 4095))); s += A[a >> 6] + A[a & 63] + A[b >> 6] + A[b & 63]; } return s; }
+export function unpackEcho(s) { const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'; const out = []; for (let i = 0; i + 3 < s.length; i += 4) { const a = A.indexOf(s[i]) * 64 + A.indexOf(s[i + 1]), b = A.indexOf(s[i + 2]) * 64 + A.indexOf(s[i + 3]); if (a < 0 || b < 0) return null; out.push([a / 4095, b / 4095]); } return out; }
+export class Echo extends Entity {
+  constructor(W, d) {
+    super(W, d); const sp = W.spec, land = sp.W >= sp.H; this.pts = (d.pts || []).map(([u, v]) => (land ? [u * sp.W, v * sp.H] : [v * sp.W, u * sp.H]));       // stored along/across, so it survives a turned window
+    this.step = d.step || 0.1; this.col = d.col || [0.8, 0.95, 1]; this.T = d.time || this.pts.length * this.step; this.r = d.r || 15; this.home = false; this.t = 0;
+    this.x = this.pts.length ? this.pts[0][0] : 0; this.y = this.pts.length ? this.pts[0][1] : 0; this.rival = !!d.rival;
+  }
+  at(t) { const n = this.pts.length; if (!n) return [0, 0]; const f = Math.max(0, Math.min(n - 1, t / this.step)), i = Math.floor(f), j = Math.min(n - 1, i + 1), k = f - i; return [this.pts[i][0] + (this.pts[j][0] - this.pts[i][0]) * k, this.pts[i][1] + (this.pts[j][1] - this.pts[i][1]) * k]; }
+  update(dt) {
+    const W = this.W; this.t += dt; const rt = W.roomTime || 0; const p = this.at(rt); this.x = p[0]; this.y = p[1];
+    if (!this.home && this.pts.length && rt >= this.T) { this.home = true; W.fx.ring(this.x, this.y, this.col, 70, 0.6, { a: 0.5 }); W.sound && W.sound.tick && W.sound.tick(); W.emit('echoHome', this); }
+  }
+  over(ov) {
+    if (this.home || !this.pts.length) return; const rt = this.W.roomTime || 0, c = this.col; const b = 1 + 0.08 * Math.sin(this.t * 5);
+    for (let k = 1; k <= 6; k++) { const q = this.at(rt - k * 0.09); ov.glow(q[0], q[1], this.r * (0.8 - k * 0.09), c, 0.14 * (1 - k / 7)); }          // where it has just been
+    ov.glow(this.x, this.y, this.r * 1.9 * b, c, 0.22); ov.ring(this.x, this.y, this.r * b, 1.6, c, 0.55); ov.glow(this.x, this.y, this.r * 0.5, [1, 1, 1], 0.5);
+    for (let k = 0; k < 5; k++) { const a = this.t * 0.7 + k * 1.2566, l = this.r * (1.5 + 0.25 * Math.sin(this.t * 3 + k)); ov.line(this.x + Math.cos(a) * this.r, this.y + Math.sin(a) * this.r, this.x + Math.cos(a) * l, this.y + Math.sin(a) * l, 1.2, c, 0.4); }
+  }
+}
+
+// ── Geyser: a white hole. On a slow beat it draws breath, then throws whatever stands on it outward — and a little light with it. ──
+export class Geyser extends Entity {
+  constructor(W, d) {
+    super(W, d); this.r = d.r ?? 24; this.reach = d.reach ?? 104; this.period = d.period ?? 5.2; this.kick = d.kick ?? 500; this.gifts = d.gifts ?? 12; this.col = d.col || [0.85, 0.95, 1];
+    this.t = d.phase ?? Math.random() * this.period; this.blast = 0; this.warn = false; this.curious = true;
+  }
+  get u() { return (this.t % this.period) / this.period; }
+  get w() { const lead = 1.1 / this.period; return this.u > 1 - lead ? (this.u - (1 - lead)) / lead : 0; }      // 0…1 across the drawn breath
+  update(dt) {
+    const W = this.W; const u0 = this.u; this.t += dt; this.blast = Math.max(0, this.blast - dt * 2.4); this.warn = this.w > 0;
+    if (this.warn && W.player) { const F = W.player.focus; if (F && Math.hypot(F.B.cx - this.x, F.B.cy - this.y) < this.reach + F.B.r) W.tug = Math.max(W.tug || 0, 0.5 * this.w); }
+    if (this.u < u0) this.erupt();
+  }
+  erupt() {
+    const W = this.W; this.blast = 1; let hit = false;
+    for (const C of W.colonies) for (const O of C.orgs) {
+      if (!O.alive || O.dormant) continue; const dx = O.B.cx - this.x, dy = O.B.cy - this.y, d = Math.hypot(dx, dy); if (d > this.reach + O.B.r * 0.5) continue;
+      const a = d < 6 ? Math.random() * TAU : Math.atan2(dy, dx), k = this.kick * (1 - 0.35 * Math.min(1, d / this.reach)); O.launch(Math.cos(a) * k, Math.sin(a) * k, 0.55); if (C === W.player) hit = true;
+    }
+    W.fx.ring(this.x, this.y, this.col, this.reach * 1.5, 0.55, { w: 3 }); W.fx.burst(this.x, this.y, 22, this.col, 320, { life: 0.7, size: 2.6, type: 1 });
+    // …and it gives: a few lights come up with the water (they fade if nobody comes for them)
+    const n = Math.min(this.gifts, 3); this.gifts -= n;
+    for (let k = 0; k < n; k++) { const a = Math.random() * TAU, sp = 150 + Math.random() * 110; W.spawn({ type: 'mote', x: this.x + Math.cos(a) * 10, y: this.y + Math.sin(a) * 10, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, free: true, value: 2, gift: true, ttl: 9, col: this.col }); }
+    if (W.sound) { W.sound.whoosh(); if (hit) W.sound.bounce(1); }
+    if (hit) { W.shake = Math.min(1, W.shake + 0.35); W.host.haptics && W.host.haptics.thump && W.host.haptics.thump(0.8); W.emit('geyser', this); }
+  }
+  bake(ink) { const c = this.col; ink.ring(this.x, this.y, this.r, 2.2, c[0] * 0.5, c[1] * 0.5, c[2] * 0.5, 0.8, 3); ink.ring(this.x, this.y, this.reach, 0.7, c[0] * 0.35, c[1] * 0.35, c[2] * 0.35, 0.5, 0); ink.light(this.x, this.y, this.r * 2.4, PROF.halo, c[0], c[1], c[2], 0.16); }
+  over(ov) {
+    const c = this.col, w = this.w;
+    // between beats a slow shimmer leaves the mouth; before a beat a ring closes in on it; then everything leaves at once
+    for (let k = 0; k < 3; k++) { const q = (this.t * 0.35 + k / 3) % 1; ov.ring(this.x, this.y, this.r + q * (this.reach - this.r), 1.2, c, 0.22 * (1 - q)); }
+    if (w > 0) { ov.ring(this.x, this.y, this.reach * (1 - 0.72 * w), 2.2, c, 0.25 + 0.6 * w); ov.glow(this.x, this.y, this.r * (1 + w), c, 0.35 + 0.5 * w); }
+    if (this.blast > 0) ov.glow(this.x, this.y, this.reach * (1.2 - 0.4 * this.blast), [1, 1, 1], 0.5 * this.blast);
+    ov.glow(this.x, this.y, this.r * 0.8, c, 0.5);
+  }
+}
+
+// ── Mimic: something curled up, wearing a ring of light. Its lights all blink together, there is a knot of thorns at its heart, and no
+//    feeler ever reaches for it. Wander in and it bites; strike it at speed — a dart, a flight — and it bursts into what it pretended to be. ──
+export class Mimic extends Entity {
+  constructor(W, d) { super(W, d); this.r = d.r ?? 26; this.n = d.n ?? 5; this.col = d.col || [1.0, 0.86, 0.6]; this.state = 0; this.cool = 0; this.snap = 0; this.t = Math.random() * 9; this.hazard = { x: this.x, y: this.y, r: this.r + 12 }; }
+  update(dt) {
+    const W = this.W; this.t += dt; this.snap = Math.max(0, this.snap - dt * 3);
+    if (this.state === 1) { this.cool -= dt; if (this.cool <= 0) { this.state = 0; this.hazard = { x: this.x, y: this.y, r: this.r + 12 }; } return; }
+    const pl = W.player; if (!pl) return;
+    for (const O of pl.orgs) {
+      if (!O.alive) continue; const B = O.B, dx = B.cx - this.x, dy = B.cy - this.y, d = Math.hypot(dx, dy) + 1e-3; if (d > this.r + B.r * 0.8 + 6) continue;
+      if (O.dartT > 0 || O.flightT > 0 || Math.hypot(B.vx, B.vy) > 380) this.burst(O); else this.spring(O, dx / d, dy / d);
+      return;
+    }
+  }
+  spring(O, nx, ny) {
+    const W = this.W, P = W.phys, B = O.B; this.state = 1; this.cool = 7; this.snap = 1; this.hazard = null;
+    const near = []; for (let k = 0; k < B.len; k++) { const i = P.bodyIdx[B.start + k]; if (P.body[i] === B.id) near.push([Math.hypot(P.x[i] - this.x, P.y[i] - this.y), i]); } near.sort((a, b) => a[0] - b[0]);
+    if (B.count > 10 && !W.ember) { const n = Math.min(7, Math.max(2, Math.round(B.count * 0.08))); for (let k = 0; k < n && k < near.length; k++) W.shed(near[k][1], this.x, this.y, [1, 0.4, 0.5]); }
+    O.launch(nx * 380, ny * 380, 0.3); O.hurtT = 0.5; O.crown.startle(1);
+    W.fx.ring(this.x, this.y, [1, 0.4, 0.5], this.r * 3, 0.4); for (let k = 0; k < 9; k++) { const a = k / 9 * TAU; W.fx.sparks(this.x, this.y, 2, Math.cos(a), Math.sin(a), [1, 0.45, 0.55], 260, { spread: 0.3, life: 0.35 }); }
+    W.sound && W.sound.cut && W.sound.cut(); W.shake = Math.min(1, W.shake + 0.4); W.host.haptics && W.host.haptics.snap && W.host.haptics.snap(); W.emit('mimic', this, O);
+  }
+  burst(O) {
+    const W = this.W; this.dead = true; this.hazard = null;
+    for (let k = 0; k < this.n; k++) { const a = k / this.n * TAU + this.t; W.spawn({ type: 'mote', x: this.x + Math.cos(a) * this.r * 0.6, y: this.y + Math.sin(a) * this.r * 0.6, vx: Math.cos(a) * 90, vy: Math.sin(a) * 90, free: true, value: 3, gift: true, col: [1, 0.9, 0.6] }); }
+    W.fx.ring(this.x, this.y, [1, 0.9, 0.6], this.r * 3.4, 0.5); W.fx.burst(this.x, this.y, 18, [1, 0.9, 0.6], 240, { life: 0.6, size: 2.6 });
+    W.sound && W.sound.pop && W.sound.pop(1); W.sound && W.sound.star && W.sound.star(1); W.hitStop = 0.08; W.emit('unmask', this, O);
+  }
+  under(ink) {
+    if (this.dead) return; const c = this.col;
+    if (this.state === 1) {      // sprung: a star of thorns, slowly curling back up
+      const k = Math.min(1, this.cool / 7); for (let q = 0; q < 9; q++) { const a = q / 9 * TAU + 0.3, L = this.r * (0.45 + 0.9 * k + 0.7 * this.snap); ink.beam(this.x, this.y, this.x + Math.cos(a) * L, this.y + Math.sin(a) * L, 1.6, 1, 0.3, 0.42, 0.75); }
+      ink.light(this.x, this.y, this.r * 0.7, PROF.glow, 1, 0.3, 0.42, 0.8); return;
+    }
+    const blink = 0.66 + 0.34 * Math.pow(Math.max(0, Math.sin(this.t * 2.7)), 6), sway = Math.sin(this.t * 0.4) * 0.2;
+    for (let q = 0; q < this.n; q++) { const a = q / this.n * TAU + sway, x = this.x + Math.cos(a) * this.r, y = this.y + Math.sin(a) * this.r, r = 6.8;
+      ink.light(x, y, r * 3.0, PROF.halo, c[0], c[1], c[2], 0.20 * blink); ink.light(x, y, r * 1.5, PROF.glow, c[0], c[1], c[2], 1.2 * blink); ink.light(x, y, r * 0.62, PROF.core, 1, 1, 0.95, blink); ink.glint(x, y, r * 3.0, c[0], c[1], c[2], 0.7 * blink); }
+    for (let q = 0; q < 5; q++) { const a = q / 5 * TAU - sway * 2, L = 7 + 1.5 * Math.sin(this.t * 1.3 + q); ink.beam(this.x, this.y, this.x + Math.cos(a) * L, this.y + Math.sin(a) * L, 1.1, 0.75, 0.22, 0.34, 0.55); }      // the knot of thorns at its heart
+  }
+}
+
 // ── Blade: a severing edge (spinning or sweeping). It parts gel cleanly; the pieces live. ──
 export class Blade extends Entity {
   constructor(W, d) {
@@ -594,7 +694,7 @@ export class Spinner extends Entity {
   over(ov) { ov.glow(this.x, this.y, 46, this.col, 0.35 + 0.15 * Math.sin(this.t * 2)); for (const S of this.arms) { const a = S.angle; const e = S._mid + S.hl; ov.glow(this.x + Math.cos(a) * e, this.y + Math.sin(a) * e, 12, this.col, 0.5); } }
 }
 
-export const ENT = { bumper: Bumper, valve: Valve, core: Core, rotor: Rotor, spinner: Spinner, mote: Mote, pore: Pore, pad: Pad, gate: Gate, film: Film, blade: Blade, grinder: Grinder, pool: Pool, current: Current, well: Well, crusher: Crusher, lantern: Lantern, watcher: Watcher, frost: Frost, vent: Vent, iceplug: IcePlug, magnet: Magnet };
+export const ENT = { bumper: Bumper, valve: Valve, echo: Echo, geyser: Geyser, mimic: Mimic, core: Core, rotor: Rotor, spinner: Spinner, mote: Mote, pore: Pore, pad: Pad, gate: Gate, film: Film, blade: Blade, grinder: Grinder, pool: Pool, current: Current, well: Well, crusher: Crusher, lantern: Lantern, watcher: Watcher, frost: Frost, vent: Vent, iceplug: IcePlug, magnet: Magnet };
 
 // helpers for room builders
 export function moteTrail(pts, n, value = 2, extra = {}) {

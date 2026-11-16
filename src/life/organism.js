@@ -16,7 +16,8 @@ let ORG_ID = 1;
 export const CRUISE = 255;          // world units / s at full throttle (mass 130)
 const ACCEL = 7.0, BRAKE = 6.5, AMAX = 2600;
 const E = (k, d) => +(globalThis.process && globalThis.process.env && globalThis.process.env[k] || d);
-const DART0 = E('DART0', 0.80), DART1 = E('DART1', 0.42), LIQ = E('LIQ', 1);
+const HARD_V = E('HARD_V', 330);      // px/s: faster than any walk — a dart, a throw, a fall
+const DART0 = E('DART0', 0.80), DART1 = E('DART1', 0.42), LIQ = E('LIQ', 1), WAVE = E('WAVE', 1);
 const LEAD = E('LEAD', 3.3), TRAIL = E('TRAIL', 0.75), TONE_GO = E('TONE_GO', 0.8);       // pseudopod reach, tail lag, how much the pearl relaxes when it moves
 
 export class Organism {
@@ -42,7 +43,7 @@ export class Organism {
     this.breathT = Math.random() * 10; this.idleT = 0; this.idleNext = 2;
     this.forageT = 0; this.dormant = false; this.dead = false;
     this.hurtT = 0; this.joyT = 0; this.gulp = 0;
-    this.seek = null; this.rallyTo = null; this.cradle = null; this.flightT = 0; this.flightT0 = 0; this.flew = 0;
+    this.seek = null; this.rallyTo = null; this.cradle = null; this.flightT = 0; this.flightT0 = 0; this.flew = 0; this.hardT = 0; this.wasTouch = false;
     this.swell = false; this.puff = 0; this.canSwell = this.crownKind === 'sun';     // a held breath: bluff volume, then pop
     this.heat = 0;                                                                   // −1 frozen … 0 … +1 ember-warm
     body.waveA = 20; body.waveW = 1.5;
@@ -62,7 +63,7 @@ export class Organism {
     this.hurtT = Math.max(0, this.hurtT - dt); this.joyT = Math.max(0, this.joyT - dt);
     this.gulp = Math.max(0, this.gulp - dt * 2.5);
     if (B.energy) B.energy *= Math.exp(-dt * 0.9);
-    if (this.dormant) { B.ax = 0; B.ay = 0; B.lead = 0; B.tonus = 6; B.adhMul = 1; B.damp = 1.5; B.glide = 0; B.waveA = 5; B.waveW = 0.9; return; }
+    if (this.dormant) { B.ax = 0; B.ay = 0; B.lead = 0; B.tonus = 6; B.adhMul = 1; B.damp = 1.5; B.glide = 0; B.waveA = 5; B.waveW = 0.9; B.breath = 0.05; return; }
     if (this.brain) this.brain.think(this, dt);
     // ── swell: hold a breath (silhouette doubles, mass does not), release it as a shove ──
     const want = this.swell && this.canSwell && this.dartT <= 0 ? 1 : 0; const was = this.puff;
@@ -93,6 +94,21 @@ export class Organism {
     // (once ripe it stays ripe, however it is shoved — until you call it home)
     if (B.mat === SPORE && !this.focused && !this.brain && !this.rallyTo && this.colony && this.colony.isPlayer && (this.ripe || Math.hypot(B.vx, B.vy) < 60)) { this.ripeT = (this.ripeT || 0) + dt; if (!this.ripe && this.ripeT > 0.8) { this.ripe = true; W.fx.ring(B.cx, B.cy, [0.75, 1, 0.5], B.r * 2.4, 0.6); W.sound && W.sound.ripe && W.sound.ripe(); } if (this.ripe && (this.pulseT = (this.pulseT || 0) - dt) <= 0) { this.pulseT = 1.1; W.fx.ring(B.cx, B.cy, [0.75, 1, 0.5], B.r * 1.9, 0.9, { a: 0.3, w: 1.4 }); } }
     else if (this.ripeT) { this.ripeT = 0; this.ripe = false; }
+    // ── shear-thickening armour: silk to a caress, one solid piece to a blow. Met fast, it does not pancake — the whole body
+    //    takes the hit together, rings, and comes away in the shape it arrived in. (Met slowly it flows like any gel.) ──
+    if (M.thick[B.mat] >= 1.5) {
+      if (touching && !this.wasTouch && this.hardT <= 0) {
+        const nl = Math.hypot(B.cnx, B.cny) || 1, nx = B.cnx / nl, ny = B.cny / nl; const vn = -(this.prevV.x * nx + this.prevV.y * ny);       // how hard it came in (the frame before contact)
+        if (vn > HARD_V) {
+          const P = W.phys, e = 0.32; for (let k = 0; k < B.len; k++) { const i = P.bodyIdx[B.start + k]; if (P.body[i] !== B.id) continue; const tv = (P.vx[i] - this.prevV.x) * 0.3, tw = (P.vy[i] - this.prevV.y) * 0.3; const vt = this.prevV.x * -ny + this.prevV.y * nx; P.vx[i] = -ny * vt * 0.9 + nx * vn * e + tv; P.vy[i] = nx * vt * 0.9 + ny * vn * e + tw; P.ox[i] = P.x[i] - P.vx[i] / 120; P.oy[i] = P.y[i] - P.vy[i] / 120; P.glow[i] = 1.5; }
+          this.hardT = 0.3; this.flightT = 0; this.excite = Math.min(1, this.excite + 0.5); this.crown.startle(0.6);
+          const cx = B.cx - nx * B.r, cy = B.cy - ny * B.r; W.fx.ring(cx, cy, [0.8, 0.7, 1], 60 + vn * 0.08, 0.35, { a: 0.7 }); W.fx.sparks(cx, cy, 8, nx, ny, [0.9, 0.85, 1], 260, { spread: 2.6, life: 0.35 });
+          if (this.colony === W.player) { W.sound && W.sound.clack && W.sound.clack(Math.min(1, vn / 700)); W.shake = Math.min(1, W.shake + 0.3); W.host.haptics && W.host.haptics.thump && W.host.haptics.thump(0.9); W.emit('harden', this, vn); }
+        }
+      }
+      if (this.hardT > 0) this.hardT -= dt;
+    }
+    this.wasTouch = touching;
     // ── locomotion: steer the body's velocity toward the wanted one ──
     const speed = this.speed * (1 - 0.78 * cold + 0.22 * warm) * (1 - 0.45 * this.puff);
     const g = W.gravityAt ? W.gravityAt(B.cx, B.cy) : ZERO;
@@ -136,10 +152,11 @@ export class Organism {
     const along = im > 0.05 ? (B.vx * ix + B.vy * iy) / im : 0;
     const blocked = im > 0.55 && touching && along < speed * 0.3 ? 1 : 0;
     this.soft += ((blocked || this.squeeze > 0.35 ? 1 : 0) - this.soft) * Math.min(1, dt * (blocked ? 3 : 1.5));
-    B.stiff = (1 - 0.42 * this.soft) * (1 + 1.3 * cold); if (this.soft > 0.5) B.tonus *= 0.6;
+    B.stiff = (1 - 0.42 * this.soft) * (1 + 1.3 * cold) * (this.hardT > 0 ? 3 : 1); if (this.soft > 0.5) B.tonus *= 0.6;
     B.visc = 1 + 4 * cold; B.tonus *= (1 - 0.8 * this.puff) * (1 + 0.8 * cold);
     // breathing: area-conserving surface waves whose size and pace tell the mood
     B.waveA = (15 + 38 * this.excite + (this.focused ? 6 : 0)) * (1 - 0.92 * this.veil);
+    B.breath = (0.16 + 0.26 * this.excite + (this.focused ? 0.03 : 0)) * (1 - 0.92 * this.veil) * (1 - 0.7 * Math.min(1, im)) * WAVE;      // serene at rest, taut when startled, held when veiled, quiet under way
     B.waveW = 1.35 + 3.4 * this.excite;
     // ── chameleon veil: hold still against a surface where watchers roam ──
     const still = im < 0.05 && touching && Math.hypot(B.vx, B.vy) < 45 && this.dartT <= 0;
