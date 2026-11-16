@@ -50,6 +50,12 @@ export class World {
     this.massCap = spec.cap || 420; this.dewReach = 200; this.moteBonus = 0; this.speedScale = 1; this.massCosts = true; this.dartSpeed = 600;
     this.lights = (spec.lights || []).slice(); this.wells = (spec.wells || []).slice();
     for (const d of spec.ents || []) this.spawn(d);
+    // no light is born inside stone: one that falls in a wall (or flush against it) is set down just outside; one buried too deep to find a way out is not born at all
+    { const nn = [0, 0]; let buried = false;
+      for (const m of this.pickups) { if (!m.isMote || m.free) continue; let sd = P.sampleSDF(m.x, m.y); if (sd >= 15) continue;
+        for (let k = 0; k < 8 && sd < 15; k++) { P.sdfNormal(m.x, m.y, nn); if (!(Math.abs(nn[0]) + Math.abs(nn[1]) > 0.5)) break; m.x += nn[0] * (17 - sd); m.y += nn[1] * (17 - sd); sd = P.sampleSDF(m.x, m.y); }
+        m.hx = m.x; m.hy = m.y; if (sd < 6) { m.buried = true; buried = true; } }
+      if (buried) { this.pickups = this.pickups.filter(m => !m.buried); this.ents = this.ents.filter(m => !m.buried); } }
     // the player's colony
     const sp = spec.spawn || { x: spec.W / 2, y: spec.H / 2 };
     this.player = this.addColony(0, sp.x, sp.y, carry.mass || sp.n || 40, { tint: carry.tint || (this.host.skin ? this.host.skin() : null), mat: carry.mat ?? MAT.LUMEN, crown: carry.crown || 'sun', morph: carry.morph || null });

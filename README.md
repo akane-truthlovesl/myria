@@ -193,6 +193,8 @@ node tools/abyss.mjs out 1280 720 6 40            # soak-test six Abyss depths
 npm run verify                                    # the whole battery below, with a pass/fail summary (`npm run verify:quick` for a few-minute subset)
 node tools/axioms.mjs                             # the eight foundational laws, measured (area, breath, fields, mass–energy, floor, pseudopod, continuum, fragments)
 node tools/scales.mjs sheet.png                   # every substance at 2 · 5 · 12 · 40 · 120 · 400 grains, still and moving, at true scale
+node tools/embedded.mjs 40 9                      # survey the Abyss generator: how many lights were born inside (or flush against) a wall
+node tools/trace.mjs 14 900 1060 6                # follow the Bot decision by decision until a run of that chamber stalls or drags
 node tools/browser/ftue.mjs 1280 720 0            # a brand-new save: seconds to first movement / first light (mouse; `480 860 1` = touch)
 node tools/browser/echotest.mjs                   # clear, replay against the ghost, round-trip the share code
 node tools/browser/modes.mjs                      # every mode opened and left running, plus the Atrium's menus
