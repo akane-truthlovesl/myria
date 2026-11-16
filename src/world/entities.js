@@ -234,7 +234,8 @@ export class Grinder extends Entity {
     this.S = makeShape({ type: 0, x: d.x, y: d.y, r: this.r + 3, surf: SURF.GRIT, grip: 0.5, porous: true }); W.phys.shapes.push(this.S);      // porous: a feeler may dare to reach between the teeth
     this.hazard = { x: d.x, y: d.y, r: this.r + 12, moving: !!this.orbit };
   }
-  update(dt) { this.t += dt; let x = this.x, y = this.y; if (this.orbit) { const o = this.orbit; const a = this.t * (o.w ?? 0.6) + (o.p ?? 0); x = o.x + Math.cos(a) * o.r; y = o.y + Math.sin(a) * (o.ry ?? o.r); } moveShape(this.S, x, y, this.S.angle + this.spin * dt, dt); this.hazard.x = x; this.hazard.y = y; }
+  // an orbit runs on its own clock, so gears that share a track keep their spacing
+  update(dt) { this.t += dt; this.ot = (this.ot || 0) + dt; let x = this.x, y = this.y; if (this.orbit) { const o = this.orbit; const a = this.ot * (o.w ?? 0.6) + (o.p ?? 0); x = o.x + Math.cos(a) * o.r; y = o.y + Math.sin(a) * (o.ry ?? o.r); } moveShape(this.S, x, y, this.S.angle + this.spin * dt, dt); this.hazard.x = x; this.hazard.y = y; }
   post(dt) {
     const W = this.W, P = W.phys; this.acc += dt; if (this.acc < 0.07) return; this.acc = 0; let shed = 0, who = null;
     P.forEachNear(this.S.x, this.S.y, this.r + 13, (i) => {
