@@ -7,6 +7,7 @@ import { frame, dish } from '../world/rooms.js';
 import { ROOMS } from '../world/odyssey.js';
 import { moteTrail } from '../world/entities.js';
 import { Odyssey } from './odyssey.js';
+import { SKINS, skinFor, unlockedSkins } from '../core/skins.js';
 
 // stroke font on a 4×6 grid
 const GLYPH = {
@@ -47,11 +48,17 @@ export class Hub {
       minDark: this.o.result ? 2.6 : 0.35,
       onDark: () => { app.applyBudget(); if (this.o.result) app.hud.showResult(this.o.result); },
       onLoad: (W) => { if (!this.awake) for (const O of W.player.orgs) O.dormant = true; this.lettersTotal = W.stats.motesTotal; },
-      onReveal: () => { app.hud.hideResult(); app.hud.setCorner(true, () => app.pause()); app.sound.ready && app.sound.ambience('deep', 50); },
+      onReveal: () => { app.hud.hideResult(); app.hud.setCorner(true, () => app.pause()); app.sound.ready && app.sound.ambience('deep', 50);
+        const n = unlockedSkins(save).length, seen = save.get('huesSeen', 1); if (n > seen) { save.set('huesSeen', n); app.hud.toast(`a new hue · ${SKINS[n - 1].name} <small>pause to wear it</small>`, '✺'); } },
     });
   }
   exit() { this.app.hud.setLabels([]); }
-  pauseItems() { return [{ label: 'Chambers', fn: () => this.chambers() }]; }
+  pauseItems() { return [{ label: 'Chambers', fn: () => this.chambers() }, { label: this.hueLabel(), fn: (b) => { this.nextHue(); b.innerHTML = this.hueLabel(); } }]; }
+  hueLabel() { const save = this.app.save; const cur = skinFor(save); const nx = SKINS.find(s => s.need > save.stars()); return `Hue · ${cur.name}${nx ? ` <small style="opacity:.55;letter-spacing:.1em;text-transform:none">&nbsp; next: ${nx.name} at ${nx.need} ✦</small>` : ''}`; }
+  nextHue() {
+    const app = this.app, save = app.save; const list = unlockedSkins(save); const cur = skinFor(save); const nx = list[(list.indexOf(cur) + 1) % list.length]; save.set('skin', SKINS.indexOf(nx));
+    const W = app.world, C = W.player; if (C) { C.tint = nx.tint; for (const O of C.orgs) if (O.alive) { O.B.tint = nx.tint; O.crown.joy(); W.fx.ring(O.B.cx, O.B.cy, (nx.tint || { emit: [1, 0.6, 0.4] }).emit, 140, 0.8); } } app.sound.morph();
+  }
   chambers() {
     const app = this.app, save = app.save;
     const items = ROOMS.map((r, i) => { const rec = save.room(r.id); const open = i === 0 || save.room(ROOMS[i - 1].id) || app.params.has('all'); return { label: `${i + 1} · ${r.name} ${rec ? rec.stars.map(s => (s ? '◆' : '◇')).join('') : ''}`, cls: open ? '' : 'locked', fn: () => { if (!open) return; app.resume(); app.setMode(new Odyssey(app, i, { single: false })); } }; });

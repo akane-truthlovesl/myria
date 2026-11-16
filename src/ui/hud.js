@@ -18,6 +18,7 @@ export class HUD {
     this.corner = el('div', 'h-corner'); root.appendChild(this.corner);
     this.veil = el('div', 'h-veil'); root.appendChild(this.veil);
     this.loader = el('div', 'h-loader', '<i></i>'); root.appendChild(this.loader);
+    this.flash = el('div', 'h-flash'); root.appendChild(this.flash); this._fl = 0;
     this._top = ''; this.labelEls = [];
   }
   // ── iris wipe: a hole of light centred on (x,y) css px, radius r css px (r<0 → fully dark) ──
@@ -32,6 +33,8 @@ export class HUD {
     this.title.classList.add('in'); clearTimeout(this._tt);
     if (dur > 0) this._tt = setTimeout(() => this.title.classList.remove('in'), dur * 1000);
   }
+  // a breath of light over everything (the compositor does it: no pixel of the game is redrawn)
+  setFlash(v) { const q = v > 0.02 ? Math.round(v * 20) / 20 : 0; if (q !== this._fl) { this._fl = q; this.flash.style.opacity = (q * 0.34).toFixed(3); } }
   hideTitle() { this.title.classList.remove('in'); }
   setLoader(on) { if (on !== this._ld) { this._ld = on; this.loader.classList.toggle('on', !!on); } }
   // ── top pill ──

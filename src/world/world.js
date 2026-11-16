@@ -24,7 +24,7 @@ export class World {
     this.ents = []; this.pickups = []; this.colonies = []; this.player = null;
     this.listener = null; this.time = 0; this.roomTime = 0;
     this.massCap = 420; this.speedScale = 1; this.dartSpeed = 600; this.massCosts = true;
-    this.spec = null; this.shake = 0; this.flash = 0;
+    this.spec = null; this.shake = 0; this.flash = 0; this.hitStop = 0;
     this.phys.onSplit = (p, c) => this._onSplit(p, c);
     this.phys.onMerge = (k, g, n) => this._onMerge(k, g, n);
   }
@@ -49,10 +49,10 @@ export class World {
     for (const d of spec.ents || []) this.spawn(d);
     // the player's colony
     const sp = spec.spawn || { x: spec.W / 2, y: spec.H / 2 };
-    this.player = this.addColony(0, sp.x, sp.y, carry.mass || sp.n || 40, { tint: carry.tint || null, mat: carry.mat ?? MAT.LUMEN, crown: carry.crown || 'sun', morph: carry.morph || null });
+    this.player = this.addColony(0, sp.x, sp.y, carry.mass || sp.n || 40, { tint: carry.tint || (this.host.skin ? this.host.skin() : null), mat: carry.mat ?? MAT.LUMEN, crown: carry.crown || 'sun', morph: carry.morph || null });
     for (const r of spec.rivals || []) this.addRival(r.kind, r.x, r.y, r.n);
     this.time = 0; this.roomTime = 0; this.done = false; this.eatT = 0; this.ember = false; this.tierMax = this.player ? this.player.mass : 0;
-    this.chain = 0; this.chainT = -9; this.flow = 0;
+    this.chain = 0; this.chainT = -9; this.flow = 0; this.hitStop = 0;
     this.stats = { motes: 0, motesTotal: this.pickups.filter(p => p.isMote).length, lost: 0, darts: 0, splits: 0, fuses: 0, tricks: [] };
     return this;
   }
@@ -154,6 +154,8 @@ export class World {
       if (b.ctrl) b.ctrl.morph = morph;
     }
     if (C) { C.mat = mat; C.morph = morph; }
+    // a catalyst bath shows as what it is (silver is silver whatever hue you wear); rinsed back to lumen, your own hue returns
+    if (C && C === this.player) { const t = mat === MAT.LUMEN && this.host.skin ? this.host.skin() : null; C.tint = t; for (const b of bodies) if (b.alive) b.tint = t; }
     this.fx.ring(B.cx, B.cy, MATS[mat].emit, B.r * 2.6, 0.7);
     this.sound && this.sound.morph();
     this.emit('morph', B, mat);
@@ -332,7 +334,7 @@ export class World {
       if (eater === this.player) { this.stats.eaten = (this.stats.eaten || 0) + 1; if (Math.random() < 0.25 && this.sound) this.sound.gulp(); }
       if (Bj.count <= 6 && eaten !== this.player) {               // the last of it: swallowed whole
         for (let q = 0; q < Bj.len; q++) { const p2 = P.bodyIdx[Bj.start + q]; if (P.alive[p2] && body[p2] === Bj.id) { P.transfer(p2, Bi.id); mat[p2] = Bi.mat; P.mix[p2] = 1; P.glow[p2] = 1.2; } }
-        this.fx.ring(Bj.cx, Bj.cy, (eaten.tint || MATS[Bj.mat]).emit, 90, 0.6); if (eater === this.player) { this.sound && this.sound.swallow(); this.emit('devour', eaten, Bi); }
+        this.fx.ring(Bj.cx, Bj.cy, (eaten.tint || MATS[Bj.mat]).emit, 90, 0.6); if (eater === this.player) { this.sound && this.sound.swallow(); this.hitStop = 0.07; this.emit('devour', eaten, Bi); }
       }
     }
     // swallowed pigment slowly becomes your own colour
@@ -361,6 +363,7 @@ export class World {
         O.lance = 0; this.shake = Math.min(1, this.shake + 0.5);
         for (let k = -5; k <= 5; k++) this.fx.sparks(T.cx + lx * k * T.r * 0.22, T.cy + ly * k * T.r * 0.22, 2, -ly, lx, [1, 0.95, 0.85], 240, { spread: 3.2, life: 0.45 });
         this.fx.ring(T.cx, T.cy, [1, 0.9, 0.8], T.r * 2.6, 0.5); this.sound && this.sound.cut(); this.host.haptics && this.host.haptics.snap();
+        this.hitStop = 0.11; this.flash = 0.6;
         this.emit('cleave', O, D);
       } }
     } }

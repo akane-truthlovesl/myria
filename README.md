@@ -27,20 +27,31 @@ wall where something is watching makes you a veil it cannot see.
 ## What is in it
 
 - **The Atrium** — the title is written in motes. Wake the sleeping pearl and eat the word.
-- **Odyssey** — twenty single-screen chambers in four strata (Dew · Glassworks · Chemistry · Abyss),
+- **Odyssey** — twenty-two single-screen chambers in four strata (Dew · Glassworks · Chemistry · Abyss),
   each teaching one idea through physics alone: squeezing, darting through a soap film, budding to
   hold two pads, threading a comb, blades, grinders and healing springs, pistons, sticky resin against
   a river, quicksilver among hunters, oil that will not mix, shear-thickening armour, ferrofluid
   leaping between pulsing poles, frost that stiffens you and vents that thaw a frozen door, watchers
   you hide from by holding still, a gyre of currents, a black hole, bluffing giants with a held
   breath, a hunt, and a heart that needs you in three places at once.
+  Two **wardens** close the first strata: **The Lock** (two rings of glass turning against each other
+  around a heart of light — every doorway is a moment, not a place) and **The Centrifuge** (a drum whose
+  three arms sweep you past lanterns and gears: you do not cross it, you ride it).
   Three living stars per chamber: **Radiance** (all the light), **Grace** (lose almost nothing),
   **Swift** (under par). The pore opens at 60 % — the rest is appetite. Named tricks (Thread the
   Needle, Surgical Shear, Ghost Wall, Paper Tiger, Cleave…) are noticed when you find them.
-- **Abyss** — an endless generated descent with grazers, lancers, thornbacks and oil for neighbours.
-  Bigger membranes siphon smaller ones (the swallowed pigment swirls inside you before it becomes
-  yours). Every second chamber you choose one of three ways to change; every fifth is a predator
-  dish. Three embers; where a dive ends, an echo of your light waits for the next one.
+- **Flow** — light taken in quick succession becomes a chain. A chain makes the crown *bloom*: longer,
+  brighter feelers that fetch from further, a faint pull on nearby motes, a little more speed, a rising
+  melody — and every eighth link pays a bonus of mass. Greed with rhythm is rewarded; nothing is punished.
+- **Bloom** — seventy-five seconds of rain. Light falls in drawn figures (lines, arcs, spirals, crosses);
+  every mote scores, an unbroken chain multiplies it up to ×8, and the dish wakes as the clock runs:
+  a blade, then a gear, then both faster. Four medals: Dew · Pearl · Bloom · Prism.
+- **Abyss** — an endless generated descent with grazers, lancers, thornbacks and oil for neighbours,
+  each measured against your own size; from the fourth depth on one of them is an apex that only wit
+  (a lance, a held breath) will answer. Vaults — rings of glass turning around a hoard — are worth the
+  wait at their doorway. Bigger membranes siphon smaller ones (the swallowed pigment swirls inside you
+  before it becomes yours). Every second chamber you choose one of three ways to change; every fifth
+  is a predator dish. Three embers; where a dive ends, an echo of your light waits for the next one.
 - **Daily** — the same dive for everyone today: one seed, one mutated axiom.
 - **Duet** — two players, one screen (pointer + W A S D / Space / F): **Together**, a co-op dive where
   touching shares mass between you, or **Versus**, ninety seconds of raining light.
@@ -48,7 +59,8 @@ wall where something is watching makes you a veil it cannot see.
   resin and foam, drop machines and neighbours, and watch one physics answer everything.
 
 If you are ever reduced to almost nothing you become an **ember**: nothing can drink you, you move
-faster, and every mote counts double until you are whole again.
+faster, every mote counts double until you are whole again — and if the room has no light left to
+give, the slide itself weeps a little near you. There are no dead ends.
 
 ## How it works
 
@@ -64,17 +76,23 @@ GPU behind a remote desktop, so it is designed to cost only what moves.
   that trail, reach, fetch and startle; colonies of siblings with focus and rally; small legible
   brains for the other species (they judge you by silhouette, so a held breath can bluff them).
 - **Playtesting** (`src/core/bot.js`, `tools/`) — a path-planning Bot uses the same verbs through the
-  same input record as a player. It finishes all twenty chambers in landscape and portrait, sets the
-  par times, and powers `?bot`.
+  same input record as a player. It finishes all twenty-two chambers in landscape and portrait, sets
+  the par times, plays Bloom, and powers `?bot`.
 - **Light** (`src/render`) — each room's backdrop is painted once, per pixel, like a photographic
-  plate (bevelled lit glass, etched grid, shadows, a reflectance map). Per frame only dirty tiles are
-  restored and re-uploaded. Gel is an implicit surface: particles splat a field → dome height →
-  normals → refraction with dispersion, Beer–Lambert absorption, a sphere-mapped environment for
-  reflections (no painted highlights), and a photon-splat lightmap that gives every body a true
-  shadow and a focused caustic. An internal pixel budget is measured at start-up and re-tuned
-  between chambers; long frames fall back to 30 fps pacing instead of slowing time.
+  plate: a pool of stage light, a caustic network on the water film, bevelled frosted-glass walls with
+  bubbles frozen inside, an etched grid, shadows, a reflectance map — and a garden of diatoms,
+  radiolaria, fronds and calibration reticles (`src/world/decor.js`) baked in as decals. Per frame only
+  dirty tiles are restored and re-uploaded. Gel is an implicit surface: particles (and the crown's
+  tapering arms) splat a field → a crease-free dome → normals → refraction with dispersion,
+  Beer–Lambert absorption, in-scatter shaped by a slope-indexed *studio* (a soft window, a kicker, a
+  sky rim, and the bright crescent where a dome focuses light on its far side — highlights are
+  reflections, never painted), and a photon-splat lightmap that gives every body a true shadow and a
+  focused caustic. Moving machines are stamped by the browser's own rasteriser. An internal pixel
+  budget is measured at start-up and re-tuned between chambers; long frames fall back to 30 fps pacing
+  instead of slowing time.
 - **Sound** (`src/core/audio.js`) — fully procedural WebAudio; every mote is a note and chains
-  become melodies.
+  become melodies. The body has a continuous voice: a silk whisper when it glides against things, a
+  hum that climbs as it is stretched or coiled, a low pulse when something near can hurt it.
 
 ## Development
 
@@ -82,11 +100,14 @@ GPU behind a remote desktop, so it is designed to cost only what moves.
 npm install          # esbuild only
 npm run build        # bundles src/ into the single index.html
 node tools/play.mjs out 1280 720 8 "2,5,8"       # headless playtest → PNG frames + CPU timings
-node tools/solve.mjs 0 19 1280 720 1               # the Bot plays the real Odyssey: every chamber must end DONE
-node tools/rooms.mjs out 1280 720 0 19 40         # render / bot-run every Odyssey chamber
+node tools/solve.mjs 0 21 1280 720 1               # the Bot plays the real Odyssey: every chamber must end DONE
+node tools/rooms.mjs out 1280 720 0 21 40         # render / bot-run every Odyssey chamber
+node tools/film.mjs sheet.png 4 800 450 2.5 3 6   # contact sheet of the Bot playing one chamber
+node tools/bloom.mjs sheet.png                    # the Bot plays a full Bloom run
+node tools/closeup.mjs strip.png dart             # close-up filmstrip of a verb (move · dart · bud · swell)
 node tools/abyss.mjs out 1280 720 6 40            # soak-test six Abyss depths
 ```
 
 `dev.html` loads the ES modules directly (it must be served over http). URL switches: `?room=N`,
-`?mode=abyss|daily|pool|duet|coop`, `?all` (unlock everything), `?bot` (autopilot), `?maxpx=N` (fix the
+`?mode=abyss|daily|bloom|pool|duet|coop`, `?all` (unlock everything), `?bot` (autopilot), `?maxpx=N` (fix the
 internal pixel budget). The first WebGL prototype is kept in `legacy/`.

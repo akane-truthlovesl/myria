@@ -11,6 +11,7 @@ import { haptics } from './core/haptics.js';
 import { save } from './core/save.js';
 import { smooth, ease } from './core/util.js';
 import { Bot } from './core/bot.js';
+import { skinFor } from './core/skins.js';
 
 const STEP = 1 / 60;
 
@@ -21,7 +22,7 @@ export class App {
     this.input = new Input(canvas);
     this.hud = new HUD(uiRoot);
     this.sound = sound; this.haptics = haptics; this.save = save;
-    this.world = new World({ sound, haptics, overlay: (ov, R) => this._stick(ov, R) });
+    this.world = new World({ sound, haptics, overlay: (ov, R) => this._stick(ov, R), skin: () => skinFor(save).tint });
     this.mode = null; this.paused = false; this.state = 'idle';
     this.acc = 0; this.t = 0; this.last = 0; this.frames = 0;
     this.pending = { darts: [], buds: [], cycle: 0, focusAt: null };
@@ -160,7 +161,8 @@ export class App {
     const live = (this.state === 'play' || this.state === 'in' || this.state === 'out') && !this.paused;
     const t0 = performance.now();
     if (live) {
-      this.acc += this.turbo ? STEP * this.turbo : dt;
+      const W = this.world; let ts = 1; if (W.hitStop > 0) { W.hitStop -= dt; ts = 0.12; }            // a held breath on impact (cleave, film, devour)
+      this.acc += this.turbo ? STEP * this.turbo : dt * ts;
       let n = 0; const maxN = this.turbo || 3;
       while (this.acc >= STEP && n < maxN) { this.world.step(STEP, this._ctl(n === 0)); this.acc -= STEP; n++; }
       if (n === maxN) this.acc = 0;
@@ -173,6 +175,7 @@ export class App {
     const t2 = performance.now();
     // impacts nudge the whole plate for a few frames (the only time the canvas itself moves)
     const sh = this.world.shake; if (sh > 0.04 && this.state === 'play' && !this.paused) { this.canvas.style.transform = `translate(${((Math.random() - 0.5) * sh * 9).toFixed(1)}px,${((Math.random() - 0.5) * sh * 9).toFixed(1)}px)`; this._shook = true; } else if (this._shook) { this.canvas.style.transform = ''; this._shook = false; }
+    this.hud.setFlash(this.world.flash);
     if (this.mode && this.mode.frame) this.mode.frame(dt);
     const p = this.perf; p.sim += (t1 - t0 - p.sim) * 0.1; if (draw) p.ren += (t2 - t1 - p.ren) * 0.1;
     if (this.state === 'play' && !this.paused && raw < 0.25) this._adapt(raw);

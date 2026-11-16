@@ -189,7 +189,7 @@ export class Film extends Entity {
     const ca = Math.cos(this.ang), sa = Math.sin(this.ang);
     for (let k = -4; k <= 4; k++) W.fx.burst(this.x + ca * k * this.len / 9, this.y + sa * k * this.len / 9, 3, this.col, 150, { type: 1, size: 2.6, life: 0.6 });
     W.fx.ring(O.B.cx, O.B.cy, this.col, 90, 0.5); W.sound && W.sound.pop(1); W.sound && W.sound.bounce(0.8); W.shake = Math.min(1, W.shake + 0.25);
-    W.emit('film', this, O);
+    W.hitStop = 0.06; W.emit('film', this, O);
   }
   over(ov) {
     if (!this.S.active) return; const ca = Math.cos(this.ang), sa = Math.sin(this.ang), h = this.len / 2;
