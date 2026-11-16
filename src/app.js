@@ -113,12 +113,12 @@ export class App {
     items.push([{ label: this.sound.muted ? 'Sound off' : 'Sound on', fn: (b) => { const mu = !this.sound.muted; this.sound.setMuted(mu); save.set('muted', mu); b.textContent = mu ? 'Sound off' : 'Sound on'; } },
       { label: 'Fullscreen', fn: () => { const d = document.documentElement; if (document.fullscreenElement) document.exitFullscreen(); else d.requestFullscreen && d.requestFullscreen().catch(() => {}); } }]);
     // comfort: tilt to steer (where the device can feel it) · smooth motion (a softer picture, sixty frames) or a sharp one
-    const opts = [{ label: this.smooth ? 'Motion · smooth' : 'Motion · sharp', fn: (b) => { this.smooth = !this.smooth; save.set('smooth', this.smooth); this.perf.over = 0; if (!this.smooth) this.wantPx = this.basePx; b.textContent = this.smooth ? 'Motion · smooth' : 'Motion · sharp'; } }];
+    const opts = [{ label: this.smooth ? 'Smooth' : 'Sharp', fn: (b) => { this.smooth = !this.smooth; save.set('smooth', this.smooth); this.perf.over = 0; if (!this.smooth) this.wantPx = this.basePx; b.textContent = this.smooth ? 'Smooth' : 'Sharp'; } }];
     if (this.input.tiltAvailable) opts.unshift({ label: this.input.tilt.on ? 'Tilt on' : 'Tilt off', fn: (b) => { const want = !this.input.tilt.on; this.input.setTilt(want).then((ok) => { save.set('tilt', ok); b.textContent = ok ? 'Tilt on' : want ? 'Tilt unavailable' : 'Tilt off'; }); } });
     items.push(opts);
     items.push({ label: 'Keep a picture', fn: (b) => { this.snapshot(); b.textContent = 'Kept ✓'; } });
     if (!m || m.isHub !== true) items.push({ label: 'Leave to the atrium', fn: () => { this.resume(); this.toHub(); } });
-    hud.panel('Paused', m && m.pauseSub ? m.pauseSub() : '', items, CONTROLS_HTML);
+    hud.panel('Paused', m && m.pauseSub ? m.pauseSub() : '', items, (this.input.device === 'touch' ? CONTROLS_TOUCH_HTML : this.input.device === 'pad' ? CONTROLS_PAD_HTML : CONTROLS_HTML));
   }
   resume() { this.paused = false; this.hud.closePanel(); this.last = performance.now(); this.input.levelTilt(); }
 
@@ -135,7 +135,7 @@ export class App {
         if (own) P.focusAt = { x: wx, y: wy };
         else P.darts.push({ x: wx - F.B.cx, y: wy - F.B.cy, power: 0.9 + Math.min(1, (e.hold || 0) / 0.7) * 0.7 });
       } else if (e.type === 'dartDir') P.darts.push({ x: e.x, y: e.y, power: e.power });
-      else if (e.type === 'dartKey') { const a = this.ctl.aim; if (this.input.pointerSteers && a) P.darts.push({ x: a.x - F.B.cx, y: a.y - F.B.cy, power: 1 }); else P.darts.push({ x: F.facing.x, y: F.facing.y, power: 1 }); }
+      else if (e.type === 'dartKey') { const a = this.ctl.aim, pw = 0.9 + Math.min(1, (e.hold || 0) / 0.7) * 0.7; if (this.input.pointerSteers && a) P.darts.push({ x: a.x - F.B.cx, y: a.y - F.B.cy, power: pw }); else P.darts.push({ x: F.facing.x, y: F.facing.y, power: pw }); }
       else if (e.type === 'budAt') { const [wx, wy] = R.cssToWorld(e.x, e.y); P.buds.push({ x: wx, y: wy }); }
       else if (e.type === 'budKey') { const a = this.ctl.aim; if (this.input.pointerSteers && a) P.buds.push({ x: a.x, y: a.y }); else P.buds.push({ x: F.B.cx + F.facing.x * 200, y: F.B.cy + F.facing.y * 200 }); }
       else if (e.type === 'cycle') P.cycle = e.dir;
@@ -245,6 +245,13 @@ function calibrate() {
   for (let rep = 0; rep < 4; rep++) { const t0 = performance.now(); let s = 0; for (let k = 0; k < 6; k++) for (let i = 0; i < a.length; i++) { a[i] = a[i] * 0.99 + Math.sqrt(i + k); s += a[i]; } const ns = (performance.now() - t0) * 1e6 / (6 * a.length); if (ns < best && s > 0) best = ns; }
   return Math.max(0.5e6, Math.min(4.2e6, 0.9e6 * 16 / Math.max(2, best)));
 }
+// the same card for a thumb, and for a pad: every device is told its own verbs (and only on the pause card — play itself is wordless)
+const CONTROLS_TOUCH_HTML = `<div class="sub" style="line-height:2.1;margin:6px 0 2px">
+  drag anywhere — it follows &nbsp;·&nbsp; <b>tap</b> dart &nbsp;·&nbsp; <b>hard flick</b> lance<br>
+  second finger — <b>tap</b> bud &nbsp;·&nbsp; <b>hold</b> swell &nbsp;·&nbsp; <b>pinch</b> rally &nbsp;·&nbsp; tap a sibling to swap</div>`;
+const CONTROLS_PAD_HTML = `<div class="sub" style="line-height:2.1;margin:6px 0 2px">
+  left stick — it follows &nbsp; <span class="key">A</span> dart (hold: lance) &nbsp; <span class="key">X</span> bud<br>
+  <span class="key">Y</span> swell &nbsp; <span class="key">B</span> rally &nbsp; <span class="key">LB</span><span class="key">RB</span> swap</div>`;
 const CONTROLS_HTML = `<div class="sub" style="line-height:2.1;margin:6px 0 2px">
   <span class="mouse-ic m"></span> move the pointer — it follows &nbsp; <span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span><br>
   <span class="mouse-ic"></span> dart &nbsp;<span class="key">Space</span> &nbsp;&nbsp; <span class="mouse-ic r"></span> bud &nbsp;<span class="key">E</span> &nbsp;&nbsp; rally <span class="key">Q</span> &nbsp;&nbsp; swell <span class="key">F</span> &nbsp;&nbsp; swap <span class="key">Tab</span></div>`;

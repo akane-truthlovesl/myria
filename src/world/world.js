@@ -375,7 +375,7 @@ export class World {
       if (!O.alive) continue; const B = O.B;
       if (!(O.boomT > 0)) { if (B.spores >= 5) { O.boomT = O.boom0 = 1.0; O.crown.startle(1); this.emit('swallowed', O, C); } continue; }
       O.boomT -= dt; const k = 1 - O.boomT / O.boom0; O.excite = 1; O.hurtT = 0.3; O.intent.x *= 0.5; O.intent.y *= 0.5;      // it stops, puzzled, glowing from the inside
-      if ((O.boomP = (O.boomP || 0) - dt) <= 0) { O.boomP = 0.26 - 0.2 * k; this.fx.ring(B.cx, B.cy, [0.75, 1, 0.5], B.r * (1.5 - 0.6 * k), 0.3, { r0: B.r * 1.6, a: 0.5 }); this.sound && this.sound.fuse(k); const P = this.phys; for (let q = 0; q < B.len; q++) { const p = P.bodyIdx[B.start + q]; if (P.body[p] === B.id && Math.random() < 0.3) P.glow[p] = 1 + k; } }
+      if ((O.boomP = (O.boomP || 0) - dt) <= 0) { O.boomP = 0.26 - 0.2 * k; this.fx.ring(B.cx, B.cy, [0.75, 1, 0.5], B.r * (1.5 - 0.6 * k), 0.3, { r0: B.r * 1.6, a: 0.5 }); this.sound && this.sound.fuseTick(k); const P = this.phys; for (let q = 0; q < B.len; q++) { const p = P.bodyIdx[B.start + q]; if (P.body[p] === B.id && Math.random() < 0.3) P.glow[p] = 1 + k; } }
       if (O.boomT <= 0) this.detonate(O, C);
     } }
   }
@@ -399,7 +399,7 @@ export class World {
     }
     O.boomT = 0; O.cleftT = this.time + 1.5; O.hurtT = 1; P.forceComponents = true;
     this.fx.ring(cx, cy, [0.8, 1, 0.55], R * 4.2, 0.7, { w: 4 }); this.fx.ring(cx, cy, [1, 1, 0.9], R * 2.6, 0.45); this.fx.burst(cx, cy, 46, [0.8, 1, 0.5], 420, { life: 0.9, size: 3 });
-    this.shake = 1; this.flash = 0.8; this.hitStop = 0.16; this.sound && this.sound.boom && this.sound.boom(); this.host.haptics && this.host.haptics.snap && this.host.haptics.snap();
+    this.shake = 1; this.flash = 0.8; this.hitStop = 0.16; this.sound && this.sound.detonate(); this.host.haptics && this.host.haptics.snap && this.host.haptics.snap();
     // the blast shoves whatever stands near (nothing of yours is harmed by your own trap)
     for (const C of this.colonies) for (const Q of C.orgs) { if (!Q.alive || Q.B === T || NB.includes(Q.B)) continue; const dx = Q.B.cx - cx, dy = Q.B.cy - cy, d = Math.hypot(dx, dy) + 1; if (d < R * 3) Q.launch(dx / d * 330, dy / d * 330, 0.35); }
     this.emit('trojan', O, D);

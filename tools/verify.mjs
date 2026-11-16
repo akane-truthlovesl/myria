@@ -1,0 +1,33 @@
+// One command that re-runs every check this project relies on, and says plainly what passed:
+//   node tools/verify.mjs            the whole battery (about half an hour on a slow shared machine)
+//   node tools/verify.mjs quick      physics laws + six chambers + browser smoke (a few minutes)
+// Nothing here opens a network listener: the browser checks serve files by request interception.
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+import { mkdirSync } from 'node:fs';
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const quick = process.argv[2] === 'quick';
+const run = (args, cwd = ROOT) => { const r = spawnSync('node', args, { cwd, encoding: 'utf8', maxBuffer: 64 << 20 }); return (r.stdout || '') + (r.stderr || ''); };
+const rows = []; const t00 = Date.now();
+const check = (name, fn) => { const t0 = Date.now(); let ok = false, note = ''; try { [ok, note] = fn(); } catch (e) { note = String(e.message || e).slice(0, 160); } rows.push([ok, name, note, ((Date.now() - t0) / 1000).toFixed(0) + ' s']); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}  —  ${note}`); };
+const last = (out, n = 1) => out.trim().split('\n').slice(-n).join(' | ');
+
+check('build (single-file index.html, no warnings)', () => { const o = run(['tools/build.mjs']); const warn = (o.match(/\[WARNING\][^\n]*/g) || []); return [/index\.html\s+\d+ KB/.test(o) && !warn.length, warn.length ? warn.join(' · ') : last(o)]; });
+check('eight physics laws, measured', () => { const o = run(['tools/axioms.mjs']); const n = (o.match(/^PASS/gm) || []).length; return [/all laws hold/.test(o), `${n} measurements pass`]; });
+const solve = (a, b, w, h) => { const o = run(['tools/solve.mjs', String(a), String(b), String(w), String(h), '1']); const done = (o.match(/ DONE /g) || []).length; const m = /total .*?(\d+) unfinished/.exec(o); return [!!m && m[1] === '0' && done === b - a + 1, `${done}/${b - a + 1} chambers finished by the bot at ${w}×${h}`]; };
+if (quick) check('bot plays chambers 0, 7, 13, 23 (landscape)', () => { let ok = true, n = 0; for (const i of [0, 7, 13, 23]) { const [k] = solve(i, i, 1280, 720); ok = ok && k; n += k ? 1 : 0; } return [ok, `${n}/4 finished`]; });
+else { check('bot plays every chamber, landscape', () => solve(0, 25, 1280, 720)); check('bot plays every chamber, portrait', () => solve(0, 25, 900, 1060)); }
+const B = path.join(ROOT, 'tools', 'browser');
+check('browser: opens from file://', () => { const o = run(['filetest.mjs'], B); return [/"state":"play"/.test(o), last(o).slice(0, 110)]; });
+check('browser: first three seconds on a new save (mouse)', () => { const o = run(['ftue.mjs', '1280', '720', '0'], B); return [/FTUE OK/.test(o) && /no console errors/.test(o), last(o, 3).slice(0, 150)]; });
+check('browser: first three seconds on a new save (touch stick)', () => { const o = run(['ftue.mjs', '480', '860', '1'], B); return [/FTUE OK/.test(o) && /no console errors/.test(o), last(o, 3).slice(0, 150)]; });
+check('browser: touch gestures (stick, tap-dart, bud, swell, pinch-rally)', () => { const o = run(['touchtest.mjs'], B); return [/pinch → rally.*"orgs":1/.test(o) && /no console errors/.test(o), 'stick · dart · bud · swell · rally all answered']; });
+check('browser: optional gyro tilt', () => { const o = run(['tilttest.mjs'], B); return [/TILT OK/.test(o) && /no console errors/.test(o), last(o, 2)]; });
+check('browser: echo (ghost on replay, share code)', () => { const o = run(['echotest.mjs'], B); return [/ECHO OK/.test(o) && /no console errors/.test(o), last(o, 2)]; });
+if (!quick) check('browser: every chamber loads and runs (autopilot soak)', () => { const o = run(['soak.mjs', '2500'], B); const n = (o.match(/state=play/g) || []).length; return [n === 26 && /no console errors/.test(o), `${n}/26 chambers in play, ${/no console errors/.test(o) ? 'no console errors' : 'console errors!'}`]; });
+if (!quick) check('abyss: nine depths, careless pilot, no deaths', () => { mkdirSync(path.join(ROOT, '.verify'), { recursive: true }); const o = run(['tools/abyss.mjs', path.join(ROOT, '.verify', 'abyss'), '1280', '720', '9', '30', '31337', 'naive']); const d = (o.match(/deaths=(\d+)/g) || []).map(s => +s.slice(7)); return [d.length === 9 && d.every(x => x === 0), `${d.length} depths, deaths ${d.join(',')}`]; });
+
+const bad = rows.filter(r => !r[0]).length;
+console.log(`\n${rows.length - bad}/${rows.length} checks passed in ${((Date.now() - t00) / 60000).toFixed(1)} min${bad ? ' — ' + bad + ' FAILED' : ''}`);
+process.exit(bad ? 1 : 0);

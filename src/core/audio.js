@@ -133,8 +133,8 @@ export class Sound {
   tick() { if (!this._rate('tick', 80)) return; this.blip(980, 760, 0.10, 0.07, 'sine', 0.35); }
   clack(v = 0.6) { if (!this._rate('clack', 90)) return; this.noiseHit(3200, 6, 0.3 * v + 0.1, 0.09, 0.3, 0.3); this.bell(this.note(2, 2), 0.2 * v + 0.08, 0.5, 2.4, 0.4); this.blip(210, 90, 0.3 * v, 0.1, 'triangle', 0.2); }
   ripe() { if (!this._rate('ripe', 200)) return; this.blip(520, 780, 0.12, 0.12, 'triangle', 0.4); }
-  fuse(k = 0) { if (!this._rate('fuse', 70)) return; this.blip(300 + k * 900, 340 + k * 1100, 0.10 + 0.12 * k, 0.07, 'square', 0.2); }
-  boom() { this.noiseHit(140, 0.8, 0.9, 0.7, 0.5, 0.2, 'lowpass'); this.noiseHit(2600, 2, 0.4, 0.35, 0.5, 0.6); this.blip(160, 38, 0.6, 0.5, 'sine', 0.4); [0, 2, 4].forEach((d, i) => setTimeout(() => this.bell(this.note(d + 4, 1), 0.22, 2.4, 0.9, 0.8), 120 + i * 90)); }
+  fuseTick(k = 0) { if (!this._rate('fuseTick', 70)) return; this.blip(300 + k * 900, 340 + k * 1100, 0.10 + 0.12 * k, 0.07, 'square', 0.2); }
+  detonate() { this.noiseHit(140, 0.8, 0.9, 0.7, 0.5, 0.2, 'lowpass'); this.noiseHit(2600, 2, 0.4, 0.35, 0.5, 0.6); this.blip(160, 38, 0.6, 0.5, 'sine', 0.4); [0, 2, 4].forEach((d, i) => setTimeout(() => this.bell(this.note(d + 4, 1), 0.22, 2.4, 0.9, 0.8), 120 + i * 90)); }
   cut() { if (!this._rate('cut', 120)) return; this.noiseHit(5200, 7, 0.34, 0.25, 0.4, 0.4); this.bell(this.note(6, 2), 0.12, 0.8, 2, 0.5); }
   bounce(v = 0.5) { if (!this._rate('bounce', 80)) return; this.blip(160, 420, 0.2 * v + 0.05, 0.22, 'sine', 0.3); }
   bloom() { [0, 4, 7, 9, 11].forEach((d, i) => setTimeout(() => this.bell(this.note(d, 1 + (i > 2 ? 1 : 0)), 0.3, 3.2, 0.7, 0.85), i * 110)); }

@@ -380,6 +380,47 @@ export class Mimic extends Entity {
   }
 }
 
+// ── Sponge: a desiccant. Its pores pulse inward — thirsty: whatever leans on it is drunk a grain at a time, and it swells and takes the
+//    drinker's colour. Sated, it glistens and drinks no more. Strike it (a dart, a flight) and it is wrung out: everything it holds bursts free. ──
+export class Sponge extends Entity {
+  constructor(W, d) {
+    super(W, d); this.r0 = d.r ?? 30; this.cap = d.cap ?? 36; this.held = 0; this.hue = [0.9, 0.8, 0.6]; this.sip = 0; this.wring = 0; this.t = Math.random() * 9;
+    this.S = makeShape({ type: 0, x: d.x, y: d.y, r: this.r0, surf: SURF.STONE }); W.phys.shapes.push(this.S); this.hazard = { x: this.x, y: this.y, r: this.r0 + 6 };
+  }
+  get r() { return this.r0 * (1 + 0.32 * this.held / this.cap); }
+  update(dt) {
+    const W = this.W, P = W.phys; this.t += dt; this.sip -= dt; this.wring = Math.max(0, this.wring - dt * 3);
+    const r = this.r; if (Math.abs(this.S.r - r) > 0.3) { this.S.r = r; moveShape(this.S, this.x, this.y, 0, dt); }
+    const full = this.held >= this.cap; this.hazard = full ? null : (this.hazard || { x: this.x, y: this.y, r: 0 }); if (this.hazard) this.hazard.r = r + 6;
+    // struck hard: wrung out
+    if (this.held > 0) for (const C of W.colonies) for (const O of C.orgs) { if (!O.alive) continue; const B = O.B, d = Math.hypot(B.cx - this.x, B.cy - this.y); if (d < r + B.r + 6 && (O.dartT > 0.05 || O.flightT > 0 || O.hardT > 0) && Math.hypot(B.vx, B.vy) > 200) { this.squeeze(O); return; } }
+    if (full || this.sip > 0) return;
+    // drink: the nearest grain of whatever touches it
+    let best = -1, bd = 1e9; P.forEachNear(this.x, this.y, r + 9, (i) => { const B = P.bodies[P.body[i]]; if (!B || B.group < 0 || B.count <= 8) return; const d = Math.hypot(P.x[i] - this.x, P.y[i] - this.y); if (d < bd) { bd = d; best = i; } });
+    if (best < 0) return;
+    const B = P.bodies[P.body[best]], C = W.colonyOf(B); if (C === W.player && W.ember) return;
+    const col = (B.tint || MATS[B.mat]).emit; for (let k = 0; k < 3; k++) this.hue[k] += (col[k] - this.hue[k]) * 0.12;
+    W.fx.sparks(P.x[best], P.y[best], 2, this.x - P.x[best], this.y - P.y[best], col, 90, { spread: 0.6, life: 0.35 });
+    P.kill(best); this.held++; this.sip = 0.11; if (C) { C.lost++; if (C === W.player) { W.stats.lost++; if (B.ctrl) B.ctrl.hurtT = 0.3; if (W.sound && this.held % 3 === 0) W.sound.squish(0.25); W.host.haptics && W.host.haptics.tick && W.host.haptics.tick(); } }
+    if (this.held >= this.cap) { W.fx.ring(this.x, this.y, this.hue, this.r * 2.2, 0.6); W.sound && W.sound.heal && W.sound.heal(); }
+  }
+  squeeze(O) {
+    const W = this.W, P = W.phys, n = this.held; this.held = 0; this.wring = 1; this.sip = 2.6; const a0 = Math.atan2(O.B.cy - this.y, O.B.cx - this.x);       // (wrung, it takes a few breaths before it thirsts again)
+    for (let k = 0; k < n; k++) { const D = P.allocBody(-1, 'dew', MAT.DEW); if (!D) break; const a = a0 + (Math.random() - 0.5) * 2.6, rr = this.r0 + 8 + Math.random() * 10, sp = 120 + Math.random() * 150; const i = P.spawn(this.x + Math.cos(a) * rr, this.y + Math.sin(a) * rr, Math.cos(a) * sp, Math.sin(a) * sp, MAT.DEW, D.id); if (i >= 0) { P.life[i] = 14; P.glow[i] = 1.5; } }
+    W.fx.ring(this.x, this.y, this.hue, this.r0 * 3.4, 0.5, { w: 3 }); W.fx.burst(this.x, this.y, 16, this.hue, 220, { life: 0.6, size: 2.4, type: 1 });
+    W.sound && W.sound.splat && W.sound.splat(0.9); W.shake = Math.min(1, W.shake + 0.25); W.hitStop = 0.05; W.emit('wrung', this, O, n);
+  }
+  under(ink) {
+    const c = this.hue, r = this.r, k = this.held / this.cap, wet = 0.25 + 0.75 * k;
+    ink.light(this.x, this.y, r * 1.5, PROF.halo, c[0], c[1], c[2], 0.10 + 0.25 * k);
+    ink.ring(this.x, this.y, r - 2, 3.2, 0.42 + c[0] * 0.4 * wet, 0.40 + c[1] * 0.4 * wet, 0.36 + c[2] * 0.4 * wet, 0.9, 2);
+    // pores: thirsty ones pulse inward; a sated sponge's pores are full and still
+    for (let q = 0; q < 11; q++) { const a = q * 2.399, d = r * 0.82 * Math.sqrt((q + 0.5) / 11), pulse = k >= 1 ? 1 : 0.55 + 0.45 * Math.sin(this.t * 3.4 - d * 0.22); const pr = (2.2 + 1.2 * (q % 3)) * (0.7 + 0.5 * k) * (1 + 0.4 * this.wring);
+      ink.light(this.x + Math.cos(a) * d, this.y + Math.sin(a) * d, pr * 2.2, PROF.glow, c[0] * wet + 0.12, c[1] * wet + 0.12, c[2] * wet + 0.12, 0.55 * pulse); }
+  }
+  over(ov) { const k = this.held / this.cap; if (k >= 1) { const g = 0.35 + 0.25 * Math.sin(this.t * 2); ov.ring(this.x, this.y, this.r + 4, 1.4, this.hue, g); } else { const u = (this.t * 0.6) % 1; ov.ring(this.x, this.y, this.r + 16 * (1 - u), 1.1, [0.9, 0.85, 0.75], 0.28 * u); } }      // thirsty: a faint ring drawn inward, again and again
+}
+
 // ── Blade: a severing edge (spinning or sweeping). It parts gel cleanly; the pieces live. ──
 export class Blade extends Entity {
   constructor(W, d) {
@@ -694,7 +735,7 @@ export class Spinner extends Entity {
   over(ov) { ov.glow(this.x, this.y, 46, this.col, 0.35 + 0.15 * Math.sin(this.t * 2)); for (const S of this.arms) { const a = S.angle; const e = S._mid + S.hl; ov.glow(this.x + Math.cos(a) * e, this.y + Math.sin(a) * e, 12, this.col, 0.5); } }
 }
 
-export const ENT = { bumper: Bumper, valve: Valve, echo: Echo, geyser: Geyser, mimic: Mimic, core: Core, rotor: Rotor, spinner: Spinner, mote: Mote, pore: Pore, pad: Pad, gate: Gate, film: Film, blade: Blade, grinder: Grinder, pool: Pool, current: Current, well: Well, crusher: Crusher, lantern: Lantern, watcher: Watcher, frost: Frost, vent: Vent, iceplug: IcePlug, magnet: Magnet };
+export const ENT = { bumper: Bumper, valve: Valve, echo: Echo, geyser: Geyser, mimic: Mimic, sponge: Sponge, core: Core, rotor: Rotor, spinner: Spinner, mote: Mote, pore: Pore, pad: Pad, gate: Gate, film: Film, blade: Blade, grinder: Grinder, pool: Pool, current: Current, well: Well, crusher: Crusher, lantern: Lantern, watcher: Watcher, frost: Frost, vent: Vent, iceplug: IcePlug, magnet: Magnet };
 
 // helpers for room builders
 export function moteTrail(pts, n, value = 2, extra = {}) {

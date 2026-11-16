@@ -44,12 +44,14 @@ export function abyssRoom(aspect, depth, seed, axiom, mass = 60) {
   // machines, by depth
   const haz = Math.min(4, Math.floor((depth + 1) / 2)) - (arena ? 1 : 0);
   for (let k = 0; k < haz; k++) {
-    const kind = R.pick(depth < 3 ? ['grinder'] : depth < 5 ? ['grinder', 'blade', 'current', 'frost'] : ['grinder', 'blade', 'current', 'well', 'crusher', 'frost', 'spinner', 'sling', 'geyser']);
+    // (a predator dish is about its predators: nothing in it grinds, drinks or swallows — only things that move you)
+    const kind = R.pick(arena ? ['current', 'sling', 'geyser', 'spinner'] : depth < 3 ? ['grinder'] : depth < 5 ? ['grinder', 'blade', 'current', 'frost'] : ['grinder', 'blade', 'current', 'well', 'crusher', 'frost', 'spinner', 'sling', 'geyser', 'sponge']);
     if (kind === 'grinder') { const r = R.range(30, 46); const p = place(r + 60); if (p) { ents.push({ type: 'grinder', ...p, r, spin: R.sign() * R.range(2, 3.2), orbit: R.chance(0.4) ? { x: p.x, y: p.y, r: 40, w: R.range(0.5, 1) } : null }); ents.push(...moteRing(p.x, p.y, r + 30, 5, 3, { col: [0.6, 0.95, 1] })); } }
     else if (kind === 'blade') { const p = place(100); if (p) { ents.push({ type: 'blade', ...p, len: R.range(110, 160), spin: R.sign() * R.range(1.1, 1.8) }); ents.push(...moteRing(p.x, p.y, 30, 4, 3)); } }
     else if (kind === 'current') { const p = place(60); if (p) { const horiz = R.chance(0.5); ents.push({ type: 'current', ...p, w: horiz ? 300 : 130, h: horiz ? 130 : 300, vx: horiz ? R.sign() * 190 : 0, vy: horiz ? 0 : R.sign() * 190 }); } }
     else if (kind === 'well') { const p = place(120); if (p) { ents.push({ type: 'well', ...p, r: 17, reach: 220 }); ents.push(...moteRing(p.x, p.y, 74, 7, 3, { col: [0.8, 0.7, 1] })); } }
     else if (kind === 'sling') { const p = place(70); if (p) { const dx = W / 2 - p.x, dy = H / 2 - p.y, d = Math.hypot(dx, dy) || 1, far = Math.max(d, 230), to = { x: p.x + dx / d * far, y: p.y + dy / d * far }; ents.push({ type: 'bumper', ...p, len: 120, to }); ents.push(...moteTrail([[p.x + dx / d * 70, p.y + dy / d * 70], [p.x + dx / d * Math.min(far, 330), p.y + dy / d * Math.min(far, 330)]], 5, 2, { col: [0.8, 1, 0.5] })); } }
+    else if (kind === 'sponge') { const r = R.range(26, 36); const p = place(r + 40); if (p) { ents.push({ type: 'sponge', ...p, r, cap: R.int(28, 44) }); ents.push(...moteRing(p.x, p.y, r + 46, 5, 3, { col: [1, 0.9, 0.7] })); } }
     else if (kind === 'geyser') { const p = place(120); if (p) ents.push({ type: 'geyser', ...p, period: R.range(4.4, 6), phase: R.range(0, 4) }); }
     else if (kind === 'frost') { const p = place(110); if (p) { ents.push({ type: 'frost', ...p, r: 110 }, ...moteRing(p.x, p.y, 46, 6, 3, { col: [0.7, 0.92, 1] })); const v = place(60); if (v) ents.push({ type: 'vent', ...v }); } }
     else if (kind === 'spinner') { const r1 = R.range(78, 104); const p = place(r1 + 30); if (p) { ents.push({ type: 'spinner', ...p, n: R.int(2, 3), r0: 22, r1, w: 7, hub: 16, spin: R.sign() * R.range(0.5, 0.9) }); ents.push(...moteRing(p.x, p.y, r1 * 0.62, 5, 3, { a0: R.range(0, 6), col: [0.8, 0.75, 1] })); } }

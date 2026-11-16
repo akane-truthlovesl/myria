@@ -13,7 +13,7 @@ file: no server, no install, no network. Any window shape works, portrait includ
 |---|---|---|---|---|
 | **Flow** | move the pointer — the creature follows it; rest the pointer on it and it rests | WASD / arrows | drag anywhere (an anchor wakes under your thumb) | left stick |
 | **Dart** (a burst of speed; costs a little mass you can fetch back) | click | Space | tap, or flick | A |
-| **Lance** (a coiled dart: it cleaves a bigger neighbour in two) | hold, then release | — | — | — |
+| **Lance** (a coiled dart: it cleaves a bigger neighbour in two) | hold, then release | hold Space, release | a hard flick | hold A, release |
 | **Bud** (throw off a sibling) | right-click | E | second-finger tap | X |
 | **Swell / pop** (hold a breath: two-thirds more silhouette, the same mass; let go to shove) | hold right button | hold F | hold a second finger | Y |
 | **Rally** (call siblings home to fuse) | hold middle button | hold Q | pinch | B |
@@ -22,8 +22,8 @@ file: no server, no install, no network. Any window shape works, portrait includ
 
 The pause menu can also **keep a picture** — the frame on the glass, saved as a PNG — and holds two
 comfort switches: **Tilt** (phones and tablets: the pose you switch it on in is "level"; tip the
-device and the creature runs downhill — the thumb-stick still overrides it) and **Motion · sharp /
-smooth** (sharp keeps the picture crisp and paces to thirty frames when a machine cannot afford
+device and the creature runs downhill — the thumb-stick still overrides it) and **Sharp /
+Smooth** (sharp keeps the picture crisp and paces to thirty frames when a machine cannot afford
 sixty; smooth makes the picture softer instead, to hold sixty wherever the hardware can).
 
 Nothing else to learn: feelers fetch nearby light by themselves, pushing into a gap softens the gel
@@ -73,7 +73,9 @@ wall where something is watching makes you a veil it cannot see.
   (a lance, a held breath) will answer. Vaults — rings of glass turning around a hoard — are worth the
   wait at their doorway; deeper down there are turnstiles, sling bands, lodestones (an iron bath beside a
   pulsing pole crowned with light), **geysers** (white holes: they draw breath, then throw whatever stands
-  on them — and a little light — outward) and **mimics** (something curled up wearing a ring of light:
+  on them — and a little light — outward), **sponges** (desiccant: thirsty pores drink whatever leans on
+  them, a grain at a time, until they are sated — strike one with a dart and it is wrung out, everything
+  it ever drank bursting free for whoever is nearest) and **mimics** (something curled up wearing a ring of light:
   its lights blink all together, there is a knot of thorns at its heart, and no feeler ever reaches for
   it; wander in and it bites, dart through it and it bursts into the light it pretended to be). The daily
   dive's rule mutation may now be *White Tide* (a geyser in every chamber) or *Masquerade*. Bigger membranes siphon smaller ones (the swallowed pigment swirls inside you
@@ -84,8 +86,8 @@ wall where something is watching makes you a veil it cannot see.
 - **Duet** — two players, one screen (pointer + W A S D / Space / F): **Together**, a co-op dive where
   touching shares mass between you, or **Versus**, ninety seconds of raining light.
 - **Pool** — a sandbox with nothing to win: knead the gel with the pointer, pour oil, quicksilver,
-  resin, foam and ferrofluid, drop gears, blades, wells, poles, turning rings, sling bands, currents, vents
-  and frost, bathe to become iron, quicksilver, armour, foam or spore, invite neighbours, and watch one
+  resin, foam and ferrofluid, drop gears, blades, wells, poles, turning rings, sling bands, geysers,
+  sponges, mimics, currents, vents and frost, bathe to become iron, quicksilver, armour, foam or spore, invite neighbours, and watch one
   physics answer everything.
 
 Anything that parts you — a comb, a blade, a pole's throw — makes **siblings**, not debris. A real
@@ -148,6 +150,7 @@ node tools/closeup.mjs strip.png dart             # close-up filmstrip of a verb
 node tools/hues.mjs hues.png                      # every hue side by side
 node tools/myriad.mjs sheet.png                   # contact sheet of the epilogue under a wandering pointer
 node tools/abyss.mjs out 1280 720 6 40            # soak-test six Abyss depths
+npm run verify                                    # the whole battery below, with a pass/fail summary (`npm run verify:quick` for a few-minute subset)
 node tools/axioms.mjs                             # the eight foundational laws, measured (area, breath, fields, mass–energy, floor, pseudopod, continuum, fragments)
 node tools/scales.mjs sheet.png                   # every substance at 2 · 5 · 12 · 40 · 120 · 400 grains, still and moving, at true scale
 node tools/browser/ftue.mjs 1280 720 0            # a brand-new save: seconds to first movement / first light (mouse; `480 860 1` = touch)

@@ -21,6 +21,19 @@ const HINTS = {
   swell: '<span class="key">F</span> or hold <span class="mouse-ic r"></span> — swell: they judge by size · let go to pop',
 };
 
+// …and the same nudges for a thumb
+const HINTS_TOUCH = {
+  push: 'lean into the gap — the gel lets go and flows',
+  dart: '<b>tap</b> — dart',
+  bud: 'second finger: <b>tap</b> to bud a sibling &nbsp;·&nbsp; <b>pinch</b> to call it home',
+  rally: '<b>pinch</b> — gather yourself',
+  still: HINTS.still,
+  coil: 'a <b>hard flick</b> is a lance — it cleaves what is bigger than you',
+  swell: '<b>hold a second finger</b> — swell: they judge by size · let go to pop',
+  fly: HINTS.fly,
+  jet: '<b>tap, tap, tap</b> — as foam every dart is a jet, and a jet skims',
+  decoy: 'second-finger <b>tap</b>: leave a piece of yourself in its path — and be somewhere else',
+};
 // every named trick, with the riddle the journal shows until you have found it
 export const TRICKS = [
   ['Thread the Needle', 'pass a comb, lose nothing, be one again'], ['Surgical Shear', 'let a blade make two of you — and use both'],
@@ -99,7 +112,7 @@ export class Odyssey {
     // the unbreakable floor: if nothing of you is left, the chamber gives you back a seed of light
     if (!W.player.orgs.some(o => o.alive)) { const sp = W.spec.spawn; W.player.spawn(sp.x, sp.y, 24); W.stats.lost += GRACE + 1; W.fx.ring(sp.x, sp.y, [1, 0.8, 0.6], 120, 0.9); this.app.sound.bloom(); this.app.hud.toast('rekindled', '✺'); }
     // wordless hint after a stall
-    if (this.room.hint && !this.usedHint) { this.hintT += dt; this.app.hud.hint(this.hintT > 7 ? HINTS[this.room.hint] : ''); } else this.app.hud.hint('');
+    if (this.room.hint && !this.usedHint) { this.hintT += dt; this.app.hud.hint(this.hintT > 7 ? (this.app.input && this.app.input.device === 'touch' ? HINTS_TOUCH : HINTS)[this.room.hint] : ''); } else this.app.hud.hint('');
   }
   stars(W) { const s = W.stats; return [s.motes >= s.motesTotal, s.lost <= GRACE, W.roomTime <= this.room.par]; }
   frame() {

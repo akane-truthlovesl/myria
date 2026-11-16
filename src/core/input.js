@@ -29,6 +29,7 @@ export class Input {
     this.keyMove = { x: 0, y: 0 }; this.padMove = { x: 0, y: 0 }; this.padPrev = []; this.padRally = false;
     this.enabled = true; this.lastActivity = 0; this.any = false;
     this.charge = 0;         // seconds the dart button has been held (coil)
+    this.keyT0 = 0; this.padT0 = 0;
     this.tilt = { on: false, seen: false, zero: null, x: 0, y: 0, t: -1e9 };       // optional gyro: tip the device like a dish
     this._bind();
   }
@@ -45,7 +46,7 @@ export class Input {
     el.addEventListener('wheel', e => { e.preventDefault(); this.events.push({ type: 'cycle', dir: Math.sign(e.deltaY) || 1 }); }, opt);
     window.addEventListener('keydown', e => this._key(e, true));
     window.addEventListener('keyup', e => this._key(e, false));
-    window.addEventListener('blur', () => { this.rmb = 0; this.swellKey = false; this.keys.clear(); this.pointers.clear(); this.stick.active = false; this.rallyHeld = false; this.rallyPtr = false; this.mouse.down = false; this.mouse.inside = false; });
+    window.addEventListener('blur', () => { this.keyT0 = 0; this.padT0 = 0; this.rmb = 0; this.swellKey = false; this.keys.clear(); this.pointers.clear(); this.stick.active = false; this.rallyHeld = false; this.rallyPtr = false; this.mouse.down = false; this.mouse.inside = false; });
   }
   _act() { this.lastActivity = performance.now(); this.any = true; }
 
@@ -126,13 +127,14 @@ export class Input {
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Tab'].includes(k)) e.preventDefault();
     if (down && !this.keys.has(k)) {
       this.events.push({ type: 'key', code: k });
-      if (k === 'Space') this.events.push({ type: 'dartKey' });
+      if (k === 'Space') this.keyT0 = performance.now();          // a dart fires on release: a tap is a dart, a held key coils a lance (as the mouse button does)
       if (k === 'KeyE' || k === 'ShiftLeft' || k === 'ShiftRight') this.events.push({ type: 'budKey' });
       if (k === 'Tab') this.events.push({ type: 'cycle', dir: e.shiftKey ? -1 : 1 });
       if (k === 'Escape' || k === 'KeyP') this.events.push({ type: 'pause' });
       if (k === 'Enter') this.events.push({ type: 'confirm' });
       if (!this.keysOff && ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(k)) { this.device = 'keyboard'; this.mouse.follow = false; }
     }
+    if (!down && k === 'Space' && this.keyT0) { this.events.push({ type: 'dartKey', hold: (performance.now() - this.keyT0) / 1000 }); this.keyT0 = 0; }
     if (down) this.keys.add(k); else this.keys.delete(k);
     this.rallyHeld = this.keys.has('KeyQ') || this.keys.has('KeyR'); this.swellKey = this.keys.has('KeyF');
   }
@@ -147,7 +149,8 @@ export class Input {
     const m = Math.hypot(x, y);
     if (m > 0.16) { const s = Math.min(1, (m - 0.16) / 0.8) / m; this.padMove.x = x * s; this.padMove.y = y * s; this.device = 'pad'; this.mouse.follow = false; this._act(); }
     const b = g.buttons.map(bt => bt.pressed); const edge = (i) => b[i] && !this.padPrev[i];
-    if (edge(0)) { this.events.push({ type: 'dartKey' }); this.events.push({ type: 'confirm' }); }
+    if (edge(0)) { this.padT0 = performance.now(); this.events.push({ type: 'confirm' }); }
+    if (!b[0] && this.padPrev[0] && this.padT0) { this.events.push({ type: 'dartKey', hold: (performance.now() - this.padT0) / 1000 }); this.padT0 = 0; }
     if (edge(2)) this.events.push({ type: 'budKey' });
     if (edge(4)) this.events.push({ type: 'cycle', dir: -1 }); if (edge(5)) this.events.push({ type: 'cycle', dir: 1 });
     if (edge(9)) this.events.push({ type: 'pause' });
@@ -164,7 +167,7 @@ export class Input {
     const ramp = Math.min(1, dt * 22);                 // keys ramp fast: analogue feel without sluggishness
     this.keyMove.x += (kx - this.keyMove.x) * ramp; this.keyMove.y += (ky - this.keyMove.y) * ramp;
     if (!kx && Math.abs(this.keyMove.x) < 0.02) this.keyMove.x = 0; if (!ky && Math.abs(this.keyMove.y) < 0.02) this.keyMove.y = 0;
-    this.charge = this.mouse.down ? (performance.now() - this.mouse.t0) / 1000 : 0;
+    const nowC = performance.now(); this.charge = Math.max(this.mouse.down ? (nowC - this.mouse.t0) / 1000 : 0, this.keyT0 ? (nowC - this.keyT0) / 1000 : 0, this.padT0 ? (nowC - this.padT0) / 1000 : 0);
     this.rally = this.rallyHeld || this.rallyPtr || this.padRally;
     const now = performance.now();
     this.swell = this.swellKey || this.padSwell || (this.rmb && now - this.rmb > 260) || [...this.pointers.values()].some(p => p.role === 'second' && !p.pinched && now - p.t0 > 320);

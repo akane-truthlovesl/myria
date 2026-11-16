@@ -1,11 +1,13 @@
 {
   "name": "myria",
-  "version": "0.2.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "description": "MYRIA — a drop of living light. A soft-body game rendered entirely on the CPU.",
   "scripts": {
     "build": "node tools/build.mjs",
+    "verify": "node tools/verify.mjs",
+    "verify:quick": "node tools/verify.mjs quick",
     "play": "node tools/play.mjs /tmp/myria 1280 720 8 8"
   },
   "devDependencies": {

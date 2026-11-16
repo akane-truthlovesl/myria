@@ -13,7 +13,7 @@ const TOOLS = [
   { id: 'resin', g: '◉', name: 'resin', mat: MAT.RESIN }, { id: 'foam', g: '○', name: 'foam', mat: MAT.FOAM }, { id: 'iron', g: '✺', name: 'ferrofluid', mat: MAT.FERRO },
   { id: 'grazer', g: '☼', name: 'grazer' }, { id: 'hunter', g: '➶', name: 'lancer' }, { id: 'thorn', g: '✸', name: 'thornback' },
   { id: 'grinder', g: '⚙', name: 'grinder' }, { id: 'blade', g: '／', name: 'blade' }, { id: 'well', g: '◎', name: 'well' }, { id: 'pool', g: '♨', name: 'spring' }, { id: 'film', g: '⌇', name: 'film' },
-  { id: 'magnet', g: '⊛', name: 'pulsing pole · iron answers it' }, { id: 'rotor', g: '◔', name: 'turning ring' }, { id: 'band', g: '⌒', name: 'sling band · throws what touches it' }, { id: 'geyser', g: '❂', name: 'geyser · breathes in, throws out' }, { id: 'mimic', g: '✣', name: 'mimic · not every light is light' }, { id: 'current', g: '≋', name: 'current' }, { id: 'vent', g: '♁', name: 'warm vent' }, { id: 'frost', g: '❄', name: 'frost' },
+  { id: 'magnet', g: '⊛', name: 'pulsing pole · iron answers it' }, { id: 'rotor', g: '◔', name: 'turning ring' }, { id: 'band', g: '⌒', name: 'sling band · throws what touches it' }, { id: 'geyser', g: '❂', name: 'geyser · breathes in, throws out' }, { id: 'mimic', g: '✣', name: 'mimic · not every light is light' }, { id: 'sponge', g: '❉', name: 'sponge · drinks what leans on it; strike it to wring it out' }, { id: 'current', g: '≋', name: 'current' }, { id: 'vent', g: '♁', name: 'warm vent' }, { id: 'frost', g: '❄', name: 'frost' },
   { id: 'b-iron', g: '⬡', name: 'bath · become iron', bath: MAT.FERRO }, { id: 'b-silver', g: '⬢', name: 'bath · become quicksilver', bath: MAT.SILVER }, { id: 'b-armour', g: '⬣', name: 'bath · become armour', bath: MAT.BASTION }, { id: 'b-foam', g: '◎', name: 'bath · become foam (every dart a jet)', bath: MAT.FOAM, morph: { speed: 1.1, tonus: 0.85, dart: 1, jet: 1 } }, { id: 'b-spore', g: '❋', name: 'bath · become spore (what you leave ripens)', bath: MAT.SPORE }, { id: 'b-rinse', g: '◇', name: 'rinse · be yourself', rinse: true },
   { id: 'clear', g: '⌫', name: 'clear the pool' },
 ];
@@ -50,6 +50,7 @@ export class Pool {
     else if (t === 'magnet') add({ type: 'magnet', reach: 210, power: 620, period: 4.2 }); else if (t === 'rotor') add({ type: 'rotor', R: 96, gap: 0.5, spin: Math.random() < 0.5 ? 0.5 : -0.5 });
     else if (t === 'current') { const a = Math.random() * 6.28; add({ type: 'current', w: 260, h: 110, vx: Math.cos(a) > 0 ? 220 : -220, vy: 0 }); }
     else if (t === 'band') { const sp = W.spec, dx = sp.W / 2 - wx, dy = sp.H / 2 - wy, d = Math.hypot(dx, dy) || 1, far = Math.max(d, 200); add({ type: 'bumper', len: 130, to: { x: wx + dx / d * far, y: wy + dy / d * far } }); }      // it throws toward the middle of the dish
+    else if (t === 'sponge') add({ type: 'sponge' });
     else if (t === 'geyser') add({ type: 'geyser', gifts: 30 }); else if (t === 'mimic') add({ type: 'mimic' });
     else if (t === 'vent') add({ type: 'vent' }); else if (t === 'frost') add({ type: 'frost', r: 120, rate: 0.6 });
     else if (t.startsWith('b-')) { const q = TOOLS.find(z => z.id === t); add(q.rinse ? { type: 'pool', kind: 'rinse', r: 40 } : { type: 'pool', kind: 'morph', mat: q.bath, morph: q.morph || { speed: 1, tonus: 1, dart: 1 }, r: 44 }); }
