@@ -110,7 +110,10 @@ export class Pore extends Entity {
     const o = this.open, c = this.col, p = this.progress;
     const beat = 0.5 + 0.5 * Math.sin(this.t * (1.3 + 2 * o));
     // progress: an arc of light fills the rim as the room gives up its motes
-    if (p > 0.01 && o < 0.98) ov.ring(this.x, this.y, this.r, 2.4, c, 0.75 * (1 - o), -Math.PI / 2, -Math.PI / 2 + TAU * p);
+    const key = this.d.key, locked = p >= 1 && o < 0.5;                 // enough light, but something else still sleeps
+    if (p > 0.01 && o < 0.98) ov.ring(this.x, this.y, this.r, 2.4, c, (locked ? 0.3 : 0.75) * (1 - o), -Math.PI / 2, -Math.PI / 2 + TAU * p);
+    // what else it is waiting for: one pip for each lantern, pole or pad it is keyed to — lit as they wake
+    if (Array.isArray(key) && o < 0.98) key.forEach((id, k) => { if (typeof id !== 'string') return; const a = -Math.PI / 2 + (k - (key.length - 1) / 2) * 0.46, on = this.W.check(id); ov.glow(this.x + Math.cos(a) * (this.r + 16), this.y + Math.sin(a) * (this.r + 16), on ? 10 : 6.5, on ? COL.gold : c, (on ? 1 : 0.5 + 0.25 * beat) * (1 - o)); });
     if (o > 0.02) {
       ov.glow(this.x, this.y, this.r * 2.4, c, 0.34 * o * (0.7 + 0.3 * beat), 1);
       ov.ring(this.x, this.y, this.r * (0.96 + 0.03 * beat), 3.0, c, 0.9 * o);
