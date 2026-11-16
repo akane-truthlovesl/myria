@@ -137,7 +137,7 @@ export class World {
     const P = this.phys; const src = P.bodies[P.body[i]];
     const D = P.allocBody(-1, 'dew', P.mat[i]);
     if (!D) { P.kill(i); return; }
-    D.tint = src.tint; D.fuseT = 0.6;
+    D.tint = src.tint; D.fuseT = 0.6; D.home = null;
     P.transfer(i, D.id);
     const dx = P.x[i] - fx, dy = P.y[i] - fy, d = Math.hypot(dx, dy) + 1;
     P.vx[i] += dx / d * 240 + (Math.random() - 0.5) * 120; P.vy[i] += dy / d * 240 + (Math.random() - 0.5) * 120;
@@ -214,12 +214,23 @@ export class World {
   _onSplit(parent, child) {
     const C = this.colonyOf(parent);
     if (C && parent.kind !== 'dew' && parent.kind !== 'spent') {
-      if (child.count < 5) { child.group = -1; child.kind = 'dew'; return; }      // a crumb, not a sibling: it becomes homing dew
-      C.onSplit(parent, child);
+      if (child.count < 5) { child.group = -1; child.kind = 'dew'; child.home = C; return; }      // a crumb, not a sibling: it becomes homing dew — and remembers whose it was
+      child.home = null;
+      const NO = C.onSplit(parent, child);
+      if (C.kind && NO && !NO.brain && SPECIES[C.kind]) { NO.brain = new Brain(C.kind); if (parent.ctrl) NO.speedMul = parent.ctrl.speedMul; }        // a neighbour cut in two is two neighbours, each with its own mind
       if (C === this.player) { this.stats.splits++; const cut = this.phys.events.cuts > 0; this.sound && (cut ? this.sound.cut() : this.sound.snap(0.5)); this.emit('split', parent, child, cut); }
     }
   }
   _onMerge(keep, gone, n) {
+    // crumbs that find each other before they find you are not lost property: once they make a real drop it is a sibling again
+    if (keep.group === -1 && keep.kind === 'dew') {
+      const Hm = keep.home || gone.home; keep.home = Hm || null;
+      if (Hm && keep.count >= 6 && this.colonies.includes(Hm) && Hm.orgs.some(o => o.alive)) {
+        keep.kind = 'fragment'; keep.home = null; const O = Hm.adopt(keep); O.phi = Hm.focus ? Hm.focus.phi : 0; if (Hm.kind && !O.brain && SPECIES[Hm.kind]) O.brain = new Brain(Hm.kind);
+        if (Hm.focus && Hm.focus.alive && Hm.focus.B.count < 12 && keep.count > Hm.focus.B.count * 1.6) Hm.setFocus(O);          // the will stays with the larger share
+      }
+      return;
+    }
     const C = this.colonyOf(keep);
     if (C) {
       C.onMerge(keep, gone);
@@ -289,7 +300,8 @@ export class World {
         }
       } else this.pityT = 0;
     }
-    for (const C of this.colonies) C.update(dt, C === pl ? ctl.intent : null, C === pl ? ctl.aim : null, C === pl ? !!ctl.rally : false);
+    if (this.callHome > 0) this.callHome -= dt;
+    for (const C of this.colonies) C.update(dt, C === pl ? ctl.intent : null, C === pl ? ctl.aim : null, C === pl ? !!ctl.rally || this.callHome > 0 : false);
     this._dewHoming(dt);
     P.step(dt);
     this._chemistry(dt); this._lances(dt);

@@ -47,7 +47,7 @@ export class Mote extends Entity {
     const W = this.W; W.release(this);
     W.feed(O.B, (this.value + (O.colony === W.player ? W.moteBonus || 0 : 0)) * (O.colony === W.player && W.ember ? 2 : 1), this.x, this.y, this.col);
     if (this.d.pity) { if (O.colony === W.player) { W.sound && W.sound.heal(); } return; }                    // wept light feeds, but is not the room's light: it counts for nothing
-    if (O.colony === W.player || O.colony && O.colony.ally) { W.stats.motes++; const chain = W.chainUp(this, O); W.sound && W.sound.mote((this.x / W.spec.W) * 1.6 - 0.8, chain); W.host.haptics && W.host.haptics.tick(); W.emit('mote', this, O, chain); }
+    if (O.colony === W.player || O.colony && O.colony.ally) { if (!this.d.gift) W.stats.motes++; const chain = W.chainUp(this, O); W.sound && W.sound.mote((this.x / W.spec.W) * 1.6 - 0.8, chain); W.host.haptics && W.host.haptics.tick(); W.emit('mote', this, O, chain); }
     else W.emit('moteLost', this, O);
   }
   // a mote at rest is static light → painted once into the backdrop, lifted out again the moment a feeler takes it
@@ -76,7 +76,7 @@ export class Mote extends Entity {
 // ── Pore: the way onward. A sleeping iris in the glass that opens when the room has given enough light. ──
 export class Pore extends Entity {
   constructor(W, d) {
-    super(W, d); this.r = d.r ?? 42; this.open = 0; this.taken = false; this.need = d.need ?? 0; this.col = d.col || COL.cyan; this.curious = true;
+    super(W, d); this.r = d.r ?? 42; this.open = 0; this.taken = false; this.need = d.need ?? 0; this.col = d.col || COL.cyan; this.curious = true; this._pads = (W.spec.ents || []).some(e => e.type === 'pad');
     this.light = { x: this.x, y: this.y, r: this.r * 3.2, col: this.col, i: 0.35 };
   }
   get ready() { return this.W.listener && this.W.listener.poreReady ? this.W.listener.poreReady(this) : this.W.stats.motes >= this.need; }
@@ -94,6 +94,8 @@ export class Pore extends Entity {
     const d = Math.hypot(F.B.cx - this.x, F.B.cy - this.y);
     // gentle goal-cradling: near the open pore the body is drawn in and settles — no ice-parking at the finish
     const calm = Math.hypot(F.intent.x, F.intent.y) < 0.4;
+    // the way onward calls all of you: siblings left about the room come home as you settle toward it (never off a pad they are holding)
+    if (d < this.r * 3.2 && pl.orgs.length > 1 && !this._pads) this.W.callHome = 0.5;
     if (d < this.r * 2.4 && calm) { const k = (1 - d / (this.r * 2.4)) * 420; F.cradle = { ax: (this.x - F.B.cx) / (d + 1) * k, ay: (this.y - F.B.cy) / (d + 1) * k, damp: 1.5 }; }
     // entered on purpose: come to rest on it (you can cross an open pore while chasing the last light)
     if (d < this.r * 0.6 + F.B.r * 0.25 && (calm || Math.hypot(F.B.vx, F.B.vy) < 110)) { this.dwell = (this.dwell || 0) + dt; if (this.dwell > 0.28) { this.taken = true; this.W.emit('complete', this); } } else this.dwell = 0;
@@ -230,7 +232,7 @@ export class Grinder extends Entity {
   constructor(W, d) {
     super(W, d); this.r = d.r ?? 46; this.spin = d.spin ?? 2.4; this.acc = 0; this.orbit = d.orbit || null;
     this.S = makeShape({ type: 0, x: d.x, y: d.y, r: this.r + 3, surf: SURF.GRIT, grip: 0.5, porous: true }); W.phys.shapes.push(this.S);      // porous: a feeler may dare to reach between the teeth
-    this.hazard = { x: d.x, y: d.y, r: this.r + 12 };
+    this.hazard = { x: d.x, y: d.y, r: this.r + 12, moving: !!this.orbit };
   }
   update(dt) { this.t += dt; let x = this.x, y = this.y; if (this.orbit) { const o = this.orbit; const a = this.t * (o.w ?? 0.6) + (o.p ?? 0); x = o.x + Math.cos(a) * o.r; y = o.y + Math.sin(a) * (o.ry ?? o.r); } moveShape(this.S, x, y, this.S.angle + this.spin * dt, dt); this.hazard.x = x; this.hazard.y = y; }
   post(dt) {
@@ -395,6 +397,89 @@ export class Magnet extends Entity {
   over(ov) { const k = this.onK; if (k > 0.03) { for (let q = 0; q < 2; q++) { const u = 1 - ((this.t * 0.7 + q * 0.5) % 1); ov.ring(this.x, this.y, 20 + u * this.reach * 0.8, 1.3, this.col, 0.4 * k * u); } ov.glow(this.x, this.y, 34, this.col, 0.7 * k); } else ov.glow(this.x, this.y, 16, this.col, 0.15); }
 }
 
+// ── Core: one of two electromagnets circling a common centre. It draws iron in, flickers, and throws it —
+//    whole, and where the iron was already leaning (else to its twin). Iron that coats it long enough wakes it;
+//    when both are awake the pair falls together and the machine pays out. ──
+export class Core extends Entity {
+  constructor(W, d) {
+    super(W, d); this.cx = d.cx; this.cy = d.cy; this.orb0 = this.orb = d.orb ?? 130; this.w = d.w ?? 0.4; this.a = d.a ?? 0; this.r = d.r ?? 22;
+    this.reach = d.reach ?? 190; this.power = d.power ?? 620; this.period = d.period ?? 6; this.phase = d.phase ?? 0; this.throwV = d.throwV ?? 460;
+    this.need = d.need ?? 5; this.charge = 0; this.lit = false; this.pol = 0; this.fuse = 0; this.paid = false; this.t = 0; this.coat = 0; this.warn = 0; this.curious = true;
+    this.flare = 0; this.aim = [0, 0]; this.aimK = 0;
+    this.x = this.cx + Math.cos(this.a) * this.orb; this.y = this.cy + Math.sin(this.a) * this.orb;
+    this.S = makeShape({ type: 0, x: this.x, y: this.y, r: this.r, surf: SURF.METAL }); W.phys.shapes.push(this.S);
+    W.phys.zones.push(this.Z = { x0: 0, y0: 0, x1: 0, y1: 0, magnet: 0, ax: this.x, ay: this.y, weight: (px, py) => { const dd = Math.hypot(px - this.x, py - this.y); return dd > this.reach ? 0 : Math.min(1, (this.reach - dd) / 50); } });
+    this.light = { x: this.x, y: this.y, r: 120, col: [0.6, 0.72, 1], i: 0.3 }; this._zone();
+  }
+  get on() { return this.lit; }
+  get twin() { return this._tw || (this._tw = this.W.ents.find(e => e !== this && e.d.type === 'core')); }
+  // the field's focus leans out of the pole toward the coming throw, so the iron gathers on that side and leaves whole
+  _zone() { const Z = this.Z, R = this.reach, l = this.aimK * (this.r + 30); Z.x0 = this.x - R; Z.x1 = this.x + R; Z.y0 = this.y - R; Z.y1 = this.y + R; Z.ax = this.x + this.aim[0] * l; Z.ay = this.y + this.aim[1] * l; this.light.x = this.x; this.light.y = this.y; }
+  // the iron it holds, and where a throw would send it: where the body is already leaning, else to the twin
+  _held(fn) { const P = this.W.phys; for (const B of P.bodies) { if (!B.alive || B.count < 3 || B.mat !== MAT.FERRO) continue; if (Math.hypot(B.cx - this.x, B.cy - this.y) < this.r + B.r * 0.9 + 14) fn(B); } }
+  _dir(B, out) {
+    const W = this.W, tw = this.twin; let dx = 0, dy = 0;
+    const O = W.player && W.player.orgs.find(o => o.alive && o.B === B);
+    if (O && Math.hypot(O.intent.x, O.intent.y) > 0.3) { dx = O.intent.x; dy = O.intent.y; }
+    else if (tw) { dx = tw.x - this.x; dy = tw.y - this.y; } else { dx = this.cx - this.x; dy = this.cy - this.y; }
+    const d = Math.hypot(dx, dy) + 1e-6; out[0] = dx / d; out[1] = dy / d; return out;
+  }
+  update(dt) {
+    const W = this.W, P = W.phys; this.t += dt; const tw = this.twin; const both = this.lit && (!tw || tw.lit);
+    if (both) this.fuse = Math.min(1, this.fuse + dt / 2.6);
+    const f = this.fuse * this.fuse * (3 - 2 * this.fuse);
+    const hurry = (this.lit ? 1 : 0) + (tw && tw.lit ? 1 : 0) === 1 ? 1.4 : 1;                 // one awake: the machine quickens
+    this.haste = (this.haste || 1) + (hurry - (this.haste || 1)) * Math.min(1, dt * 1.5);
+    this.orb = this.orb0 + (this.r + 5 - this.orb0) * f; this.a += this.w * this.haste * (1 + 3.2 * f) * dt;
+    this.x = this.cx + Math.cos(this.a) * this.orb; this.y = this.cy + Math.sin(this.a) * this.orb; moveShape(this.S, this.x, this.y, this.a * 2, dt); this._zone();
+    const u = (this.t / this.period + this.phase) % 1; const draw = !both && u < 0.56;
+    this.warn = draw && u > 0.56 - 1.1 / this.period ? 1 : 0;                       // the last moments of every draw: it flickers, and shows where it will throw
+    this.pol += ((draw ? 1 : 0) - this.pol) * Math.min(1, dt * (draw ? 7 : 30)); this.Z.magnet = this.power * this.pol; this.flare = Math.max(0, this.flare - dt * 2.4);
+    let ak = 0; if (this.warn) this._held((B) => { if (B.group === 0 && B.count > ak) { ak = B.count; this._dir(B, this.aim); } }); this.aimK += ((ak ? 1 : 0) - this.aimK) * Math.min(1, dt * (ak ? 5 : 9));
+    // the throw: every particle of a held body gets the same push — it leaves whole
+    if (!draw && this._drew && !both) {
+      let any = false; const D = [0, 0];
+      this._held((B) => { this._dir(B, D); const v = this.throwV; for (let k = 0; k < B.len; k++) { const i = P.bodyIdx[B.start + k]; if (P.body[i] !== B.id) continue; P.vx[i] = P.vx[i] * 0.25 + D[0] * v; P.vy[i] = P.vy[i] * 0.25 + D[1] * v; } any = any || B.group === 0; });
+      this.flare = 1; if (any) { W.fx.ring(this.x, this.y, COL.gold, 150, 0.4); W.sound && W.sound.bounce(1); W.sound && W.sound.whoosh(); W.host.haptics && W.host.haptics.tick(); W.emit('thrown', this); }
+    }
+    this._drew = draw;
+    // the pair has fallen together: the machine pays out, once
+    if (this.fuse >= 1 && !this.paid) {
+      this.paid = true; if (tw) tw.paid = true; const n = this.d.gift ?? 16;
+      for (let k = 0; k < n; k++) { const a = k / n * TAU + 0.2, v = 240 + 130 * (k % 3); W.spawn({ type: 'mote', x: this.cx + Math.cos(a) * 30, y: this.cy + Math.sin(a) * 30, vx: Math.cos(a) * v, vy: Math.sin(a) * v, free: true, gift: true, ttl: 14, value: 2, col: k % 4 === 0 ? COL.gold : [0.75, 0.85, 1] }); }
+      W.fx.ring(this.cx, this.cy, COL.gold, 330, 1.2); W.fx.ring(this.cx, this.cy, COL.white, 190, 0.7); W.fx.burst(this.cx, this.cy, 40, COL.gold, 380, { size: 3.2, life: 1.2, drag: 1.6 });
+      W.flash = 0.7; W.hitStop = 0.12; W.sound && W.sound.bloom(); W.emit('cores', this);
+    }
+  }
+  post(dt) {
+    if (this.lit) return; const W = this.W, P = W.phys; let n = 0; const rr = this.r + 20, r2 = rr * rr;
+    P.forEachNear(this.x, this.y, rr, (i, dx, dy) => { if (dx * dx + dy * dy < r2 && P.mat[i] === MAT.FERRO && P.bodies[P.body[i]].group === 0) n++; });
+    this.coat = n; if (n >= 8) this.charge = Math.min(this.need, this.charge + dt); else this.charge = Math.max(0, this.charge - dt * 0.1);
+    if (this.charge >= this.need) { this.lit = true; W.sound && W.sound.bloom(); W.fx.ring(this.x, this.y, COL.gold, 170, 1.0); W.fx.burst(this.x, this.y, 22, COL.gold, 240, { size: 3.2, life: 1.0, drag: 1.8 }); W.hitStop = 0.06; W.emit('lantern', this); }
+  }
+  bake(ink) {        // the track it runs on is etched in the plate
+    if (this.d.track === false) return; const R = this.orb0;
+    ink.ring(this.cx, this.cy, R, 0.7, 0.4, 0.5, 0.8, 0.5, 0); ink.ring(this.cx, this.cy, R + this.r + 7, 0.4, 0.3, 0.38, 0.6, 0.4, 0); ink.ring(this.cx, this.cy, R - this.r - 7, 0.4, 0.3, 0.38, 0.6, 0.4, 0);
+    for (let k = 0; k < 36; k++) { const a = k / 36 * TAU, l = k % 3 ? 4 : 8; ink.beam(this.cx + Math.cos(a) * (R - l), this.cy + Math.sin(a) * (R - l), this.cx + Math.cos(a) * (R + l), this.cy + Math.sin(a) * (R + l), 1, 0.4, 0.5, 0.8, 0.10); }
+  }
+  under(ink, R) {
+    R.solid(spriteFor(this, R, this.S, {}), this.x, this.y, this.S.angle);
+    const c = this.lit ? COL.gold : [0.55, 0.72, 1]; ink.light(this.x, this.y, this.r * 0.5, PROF.glow, c[0], c[1], c[2], 0.5 + 0.5 * Math.max(this.pol, this.flare)); if (this.lit) ink.light(this.x, this.y, this.r * 0.22, PROF.core, 1, 1, 0.9, 1);
+  }
+  over(ov) {
+    const p = this.pol, cold = [0.55, 0.72, 1], hot = [1.0, 0.62, 0.3]; const done = this.lit;
+    if (p > 0.03) for (let q = 0; q < 3; q++) { const u = 1 - ((this.t * 0.75 + q / 3) % 1); ov.ring(this.x, this.y, this.r + 4 + u * (this.reach * 0.8 - this.r), 1.4, cold, 0.42 * p * u); }
+    if (this.flare > 0.02) { const u = 1 - this.flare; for (let q = 0; q < 2; q++) ov.ring(this.x, this.y, this.r + 6 + (u + q * 0.18) * this.reach * 0.75, 2.4, hot, 0.8 * this.flare); }
+    const fl = this.warn ? 0.5 + 0.5 * Math.sin(this.t * 34) : 0;
+    ov.glow(this.x, this.y, this.r * 2.3, this.flare > 0.1 || fl > 0.5 ? hot : done ? COL.gold : cold, done ? 0.75 : 0.25 + 0.45 * p + 0.3 * fl + 0.5 * this.flare);
+    // where the throw will go: a line of light leaning out of the pole
+    if (this.aimK > 0.03) { const ax = this.aim[0], ay = this.aim[1]; for (let k = 1; k <= 5; k++) { const d = this.r + 26 + k * 24; ov.glow(this.x + ax * d, this.y + ay * d, 7 - k * 0.7, hot, this.aimK * (0.75 - k * 0.11) * (0.6 + 0.4 * fl)); } }
+    if (done) { ov.ring(this.x, this.y, this.r + 7, 3, COL.gold, 0.9); ov.glow(this.x, this.y, this.r * 5, COL.gold, 0.14 + 0.2 * this.fuse, 1); }
+    else if (this.charge > 0.02) ov.ring(this.x, this.y, this.r + 7, 3, COL.gold, 0.9, -Math.PI / 2, -Math.PI / 2 + TAU * this.charge / this.need);
+    else ov.ring(this.x, this.y, this.r + 7, 1, cold, 0.25);
+  }
+}
+
 // ── Rotor: a ring of glass with a doorway, turning. The doorway is the only way through — and it will not wait. ──
 export class Rotor extends Entity {
   constructor(W, d) {
@@ -430,7 +515,7 @@ export class Spinner extends Entity {
   over(ov) { ov.glow(this.x, this.y, 46, this.col, 0.35 + 0.15 * Math.sin(this.t * 2)); for (const S of this.arms) { const a = S.angle; const e = S._mid + S.hl; ov.glow(this.x + Math.cos(a) * e, this.y + Math.sin(a) * e, 12, this.col, 0.5); } }
 }
 
-export const ENT = { rotor: Rotor, spinner: Spinner, mote: Mote, pore: Pore, pad: Pad, gate: Gate, film: Film, blade: Blade, grinder: Grinder, pool: Pool, current: Current, well: Well, crusher: Crusher, lantern: Lantern, watcher: Watcher, frost: Frost, vent: Vent, iceplug: IcePlug, magnet: Magnet };
+export const ENT = { core: Core, rotor: Rotor, spinner: Spinner, mote: Mote, pore: Pore, pad: Pad, gate: Gate, film: Film, blade: Blade, grinder: Grinder, pool: Pool, current: Current, well: Well, crusher: Crusher, lantern: Lantern, watcher: Watcher, frost: Frost, vent: Vent, iceplug: IcePlug, magnet: Magnet };
 
 // helpers for room builders
 export function moteTrail(pts, n, value = 2, extra = {}) {
@@ -443,4 +528,4 @@ export function moteTrail(pts, n, value = 2, extra = {}) {
   }
   return out;
 }
-export function moteRing(cx, cy, r, n, value = 2, extra = {}) { const out = []; for (let k = 0; k < n; k++) { const a = k / n * TAU + (extra.a0 || 0); out.push({ type: 'mote', x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r, value, ...extra }); } return out; }
+export function moteRing(cx, cy, r, n, value = 2, extra = {}) { const out = []; for (let k = 0; k < n; k++) { const a = (extra.arc ? k / Math.max(1, n - 1) * extra.arc : k / n * TAU) + (extra.a0 || 0); out.push({ type: 'mote', x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r, value, ...extra }); } return out; }

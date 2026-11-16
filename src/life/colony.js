@@ -76,6 +76,8 @@ export class Colony {
     this.focusFlash = Math.max(0, this.focusFlash - dt * 1.5);
     this.orgs = this.orgs.filter(o => o.alive && !o.dead);
     if (this.focus && !this.focus.alive) { const best = this.orgs.slice().sort((a, b) => b.B.count - a.B.count)[0]; this.focus = null; if (best) this.setFocus(best); }
+    // the will does not stay behind in a crumb: if what you are steering has dwindled to a speck while a real share of you lies elsewhere, you are the share
+    if (this.focus && !this.focus.brain && this.focus.B.count < 6 && this.orgs.length > 1) { let best = null; for (const o of this.orgs) if (o !== this.focus && o.B.count >= 12 && o.B.count > this.focus.B.count * 3 && (!best || o.B.count > best.B.count)) best = o; if (best) this.setFocus(best); }
     const W = this.W;
     for (const O of this.orgs) {
       if (O === this.focus && !O.brain) { O.intent.x = intent ? intent.x : 0; O.intent.y = intent ? intent.y : 0; O.aim = aim || null; }

@@ -1,5 +1,5 @@
 // Contact sheet of the Bot playing one real Odyssey chamber:
-//   node tools/film.mjs <out.png> <room> [w] [h] [every-secs] [cols] [maxShots] [scale-down]
+//   node tools/film.mjs <out.png> <room> [w] [h] [every-secs] [cols] [maxShots] [mass] [from-secs]
 import { fakeCanvas, writePNG } from './node-env.mjs';
 import { Renderer } from '../src/render/renderer.js';
 import { World } from '../src/world/world.js';
@@ -7,7 +7,7 @@ import { ROOMS } from '../src/world/odyssey.js';
 import { Odyssey } from '../src/modes/odyssey.js';
 import { Bot } from '../src/core/bot.js';
 import { save } from '../src/core/save.js';
-const [out, room = '0', w = '960', h = '540', every = '2', cols = '3', maxShots = '9', mass = '0'] = process.argv.slice(2);
+const [out, room = '0', w = '960', h = '540', every = '2', cols = '3', maxShots = '9', mass = '0', from = '0'] = process.argv.slice(2);
 const TW = +w, TH = +h; const R = new Renderer(fakeCanvas(TW, TH)); R.maxPixels = 4e6; R.resize(true);
 const noop = new Proxy(function () {}, { get: (t, k) => (k === 'ready' || k === 'muted' ? false : noop), apply: () => 0 });
 const world = new World({});
@@ -19,7 +19,7 @@ const W = world; const bot = new Bot(W, { greed: 1 }); const ctl = { intent: { x
 const frames = []; const step = Math.round(+every * 60);
 for (let f = 0; f < 60 * 240 && !mode.finished && frames.length < +maxShots; f++) {
   bot.step(1 / 60, ctl); W.step(1 / 60, ctl);
-  if (f % step === step - 1) { W.render(R); W.render(R); frames.push(R.fb.px.slice()); }
+  if (f >= +from * 60 && f % step === step - 1) { W.render(R); W.render(R); frames.push(R.fb.px.slice()); }
 }
 if (frames.length < +maxShots) { W.render(R); W.render(R); frames.push(R.fb.px.slice()); }
 const n = frames.length, C = Math.min(+cols, n), rows = Math.ceil(n / C); const sheet = new Uint32Array(C * TW * rows * TH);

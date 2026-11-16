@@ -24,7 +24,7 @@ export class Odyssey {
 
   load(fromPore) {
     const app = this.app, room = this.room = ROOMS[this.i];
-    this.finished = false; this.tricks = []; this.hintT = 0; this.usedHint = false; this.combT = 0;
+    this.finished = false; this.tricks = []; this.thrownTo = null; this.hintT = 0; this.usedHint = false; this.combT = 0;
     app.travel((aspect) => { const s = room.build(aspect); s.name = room.name; s.no = this.i + 1; s.seed = s.seed || (this.i * 97 + 13); this.spec = s; return s; },
       (spec) => ({ mass: this.startMass = this.massFor(spec) }), {
         minDark: fromPore ? 1.9 : 0.5,
@@ -53,11 +53,13 @@ export class Odyssey {
   trick(name) { if (this.tricks.includes(name)) return; this.tricks.push(name); const first = this.app.save.trick(name); this.app.hud.toast(name, '✦'); this.app.sound.trick(); void first; }
   veilT(dt, W) { const F = W.player.focus; if (F && F.stealth) { this.veiled = (this.veiled || 0) + dt; this.usedHint = this.room.hint === 'still' || this.usedHint; if (this.veiled > 1.5 && W.ents.some(e => e.watch && Math.hypot(e.x - F.B.cx, e.y - F.B.cy) < e.range)) this.trick('Ghost Wall'); } }
   pop(O) { if (this.room.hint === 'swell') this.usedHint = true; const W = this.app.world; if (W.colonies.some(C => C.kind === 'hunter' && C.orgs.some(o => o.alive && o.brain && o.brain.state === 'flee' && Math.hypot(o.B.cx - O.B.cx, o.B.cy - O.B.cy) < 260))) this.trick('Paper Tiger'); }
+  thrown(core) { this.thrownT = this.app.world.time; this.thrownTo = core.twin; }                    // a pole threw us: if its twin catches us out of the air, that is a Slingshot
   cleave() { this.trick('Cleave'); if (this.room.hint === 'coil') this.usedHint = true; }
   hurt(B, n, gone) { const W = this.app.world; if (W.stats.lost === GRACE + 1) this.app.hud.toast('grace lost', '◇', 'cool'); }
 
   post(dt, W) {
     if (this.finished) return; this.veilT(dt, W);
+    if (this.thrownTo) { const age = W.time - this.thrownT; if (age > 1.7) this.thrownTo = null; else if (age > 0.25 && this.thrownTo.coat >= 8) { this.thrownTo = null; this.trick('Slingshot'); } }
     // the unbreakable floor: if nothing of you is left, the chamber gives you back a seed of light
     if (!W.player.orgs.some(o => o.alive)) { const sp = W.spec.spawn; W.player.spawn(sp.x, sp.y, 24); W.stats.lost += GRACE + 1; W.fx.ring(sp.x, sp.y, [1, 0.8, 0.6], 120, 0.9); this.app.sound.bloom(); this.app.hud.toast('rekindled', '✺'); }
     // wordless hint after a stall
@@ -90,7 +92,7 @@ export class Odyssey {
   }
   loadNext(result, pore) {
     const app = this.app; const room = this.room = ROOMS[this.i];
-    this.finished = false; this.tricks = []; this.hintT = 0; this.usedHint = false; this.pendingShear = 0;
+    this.finished = false; this.tricks = []; this.thrownTo = null; this.hintT = 0; this.usedHint = false; this.pendingShear = 0;
     app.travel((aspect) => { const s = room.build(aspect); s.name = room.name; s.no = this.i + 1; s.seed = s.seed || (this.i * 97 + 13); this.spec = s; return s; }, (spec) => ({ mass: this.startMass = this.massFor(spec) }), {
       from: { x: pore.x, y: pore.y }, minDark: 2.3,
       onDark: () => { app.applyBudget(); app.hud.showResult(result); },

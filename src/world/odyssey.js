@@ -23,6 +23,7 @@ const PAL = {
   dew: { deep: [0.014, 0.050, 0.080], mid: [0.045, 0.170, 0.225], pool: [0.080, 0.250, 0.280], wall: [0.085, 0.215, 0.270], rim: [0.55, 0.92, 1.00] },
   glass: { deep: [0.030, 0.034, 0.105], mid: [0.105, 0.120, 0.320], pool: [0.150, 0.150, 0.360], wall: [0.135, 0.150, 0.350], rim: [0.72, 0.78, 1.00], accent: [1.0, 0.56, 0.78] },
   amber: { deep: [0.070, 0.040, 0.018], mid: [0.230, 0.135, 0.050], pool: [0.300, 0.200, 0.070], wall: [0.270, 0.175, 0.080], rim: [1.00, 0.86, 0.56], accent: [0.45, 0.95, 0.85] },
+  lode: { deep: [0.016, 0.022, 0.036], mid: [0.070, 0.090, 0.135], pool: [0.115, 0.135, 0.185], wall: [0.120, 0.150, 0.215], rim: [0.70, 0.84, 1.00], accent: [1.0, 0.72, 0.36] },
   abyss: { deep: [0.034, 0.012, 0.060], mid: [0.130, 0.045, 0.180], pool: [0.150, 0.050, 0.200], wall: [0.185, 0.085, 0.240], rim: [0.92, 0.66, 1.00], accent: [0.40, 0.95, 1.00] },
 };
 
@@ -242,6 +243,24 @@ export const ROOMS = [
       { type: 'pore', ...f.P(0.88, 0.5), r: 36 },
     ];
     return { W, H, geo, ents, pal: PAL.glass, spawn: { ...f.P(0.09, 0.4), n: 80 }, minMass: 80 };
+  } },
+  { id: 'twin-cores', name: 'Twin Cores', par: 50, boss: true, quota: 0.5, build(a) {
+    const f = L(a), { W, H } = f; const geo = dish(W, H); const c = f.P(0.54, 0.5);
+    // two poles circle one another; each draws iron in, flickers, and throws it — to its twin, unless you lean elsewhere.
+    // Around them, the other way, runs a ring of gears: the inside is a dance, the crossing is a moment.
+    const edge = f.Lv / 2 - 38, gr = Math.min(edge - 26, 214), orb = Math.min(gr - 104, 112), up = f.vec(0, -1), ua = Math.atan2(up[1], up[0]);
+    const q = (ang, r) => ({ x: c.x + Math.cos(ang) * r, y: c.y + Math.sin(ang) * r });
+    const ents = [
+      { type: 'pool', kind: 'morph', mat: MAT.FERRO, morph: { speed: 1, tonus: 1.5, dart: 1 }, ...f.P(0.15, 0.5), r: 46 },
+      { type: 'core', id: 'C1', cx: c.x, cy: c.y, orb, r: 25, need: 7, a: ua + Math.PI / 2 + Math.PI, w: 0.36, phase: 0.0 },
+      { type: 'core', id: 'C2', cx: c.x, cy: c.y, orb, r: 25, need: 7, a: ua + Math.PI / 2, w: 0.36, phase: 0.5, track: false },
+      { type: 'grinder', ...q(ua, gr), r: 24, spin: 3, orbit: { x: c.x, y: c.y, r: gr, w: -0.5, p: ua } }, { type: 'grinder', ...q(ua + Math.PI, gr), r: 24, spin: -3, orbit: { x: c.x, y: c.y, r: gr, w: -0.5, p: ua + Math.PI } },
+      ...moteRing(c.x, c.y, orb, 12, 2, { a0: 0.26, col: [0.72, 0.82, 1] }), ...moteRing(c.x, c.y, 26, 4, 3, { col: [1, 0.86, 0.5] }),
+      ...moteRing(c.x, c.y, gr, 8, 3, { a0: ua + 0.39, col: [1, 0.7, 0.5] }),
+      ...trail(f, [[0.06, 0.26], [0.12, 0.36]], 3), ...trail(f, [[0.06, 0.74], [0.12, 0.64]], 3),
+      { type: 'pool', kind: 'rinse', ...f.P(0.92, 0.22), r: 34 }, { type: 'pore', ...f.P(0.925, 0.68), r: 34, key: ['C1', 'C2'] },
+    ];
+    return { W, H, geo, ents, pal: PAL.lode, spawn: { ...f.P(0.06, 0.5), n: 100 }, minMass: 100, decor: 0.5 };
   } },
   // ── IV · ABYSS ─────────────────────────────────────────────────────────
   { id: 'veil', name: 'Veil', par: 40, hint: 'still', build(a) {

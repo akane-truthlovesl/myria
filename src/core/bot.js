@@ -61,6 +61,7 @@ class Nav {
   }
 }
 const OUT = new Float32Array(3);
+const hz2 = (W) => (W.hazards ? W.hazards() : []);
 
 export class Bot {
   // greed: 0 = leave as soon as the pore opens · 1 = take everything that is not dangerous · 2 = everything
@@ -75,7 +76,7 @@ export class Bot {
     // what you are comes first: a catalyst bath changes everything after it
     for (const e of W.ents) if (e.d.type === 'pool' && e.kind === 'morph' && B.mat !== e.mat && !this.morphed) add(e.x, e.y, 'pool', e, 0, e.r * 0.5);
     for (const e of W.ents) if (e.d.type === 'pool' && e.kind === 'heal' && e.given < e.max && pl.mass < (this.startMass || 60) * 0.7) add(e.x, e.y, 'heal', e, 1, e.r * 0.4);
-    for (const e of W.ents) if (e.d.type === 'lantern' && !e.lit) add(e.x, e.y, 'lantern', e, 2, 12);
+    for (const e of W.ents) if ((e.d.type === 'lantern' || e.d.type === 'core' && B.mat === 4) && !e.lit) add(e.x, e.y, 'lantern', e, 2, 12);
     if (F.heat < -0.25) for (const e of W.ents) if (e.d.type === 'vent') add(e.x, e.y, 'vent', e, 1.5, e.r * 0.4);
     for (const e of W.ents) if (e.d.type === 'iceplug' && e.hp > 0) { if (F.heat > 0.25) add(e.S.x, e.S.y, 'ice', e, 2.4, 4); else for (const v of W.ents) if (v.d.type === 'vent') add(v.x, v.y, 'vent', v, 1.4, v.r * 0.4); }
     if (need.length) for (const p of need) add(p.x, p.y, 'pad', p, 3, p.r * 0.3);
@@ -112,6 +113,8 @@ export class Bot {
     }
     if (pads.length && !need.length && pl.orgs.length > 1 && this.rallyT < -4) { this.rallyT = 3.5; this.note('rally'); }
     if (need.length >= 2 && pl.orgs.filter(o => o.alive).length >= pads.length) { this.strayT = (this.strayT || 0) + dt; if (this.strayT > 5) { this.strayT = 0; this.rallyT = 3; this.budT = 3.4; this.note('regroup'); } } else this.strayT = 0;
+    // siblings nothing is asking for: call them home (a comb, a cut, a throw scattered us) — and never leave through the pore without them
+    if (!pads.length && this.rallyT < -2.5) { let stray = 0; for (const o of pl.orgs) if (o.alive && o !== F) stray += o.B.count; if (stray >= 6 && (stray > B.count * 0.25 || this.target && this.target.kind === 'pore')) { this.rallyT = 2.6; this.note('rally'); } }
     if (this.rallyT > 0) ctl.rally = true;
     // decide / re-plan
     if (this.replan <= 0 || !this.target || this.target.ref && (this.target.ref.dead || this.target.kind === 'lantern' && this.target.ref.lit)) {
@@ -119,6 +122,7 @@ export class Bot {
     }
     const T = this.target; if (!T) return ctl;
     if ((T.kind === 'prey' || T.kind === 'cleave') && T.ref.alive) { T.x = T.ref.B.cx; T.y = T.ref.B.cy; }
+    if (T.kind === 'lantern' && T.ref.orb) { T.x = T.ref.x; T.y = T.ref.y; }
     // follow the route: aim at the furthest waypoint still in line of sight
     let ax = T.x, ay = T.y;
     if (this.route) { const pts = this.route.pts; let k = Math.min(this.wp, pts.length - 1); while (k < pts.length - 1 && Math.hypot(pts[k][0] - B.cx, pts[k][1] - B.cy) < 26) k++; let far = k; for (let q = Math.min(pts.length - 1, k + 6); q > k; q--) { const dx = pts[q][0] - B.cx, dy = pts[q][1] - B.cy, d = Math.hypot(dx, dy) + 1; if (!W.phys.raycast(B.cx, B.cy, dx / d, dy / d, d - 6) && this.clear(B.cx, B.cy, pts[q][0], pts[q][1])) { far = q; break; } } this.wp = k; ax = pts[far][0]; ay = pts[far][1]; }
@@ -132,6 +136,10 @@ export class Bot {
     for (const e of W.ents) if (e.d.type === 'film' && e.S.active && F.dartCD <= 0) { const fx = e.x - B.cx, fy = e.y - B.cy; const along = (fx * dx + fy * dy) / d; if (along > 0 && along < 120 && Math.abs(fx * dy - fy * dx) / d < e.len * 0.5) { ctl.darts = [{ x: dx, y: dy, power: 1.4 }]; this.note('dart→film'); } }
     // bigger neighbours: keep away (unless we are a different phase and cannot be siphoned)
     for (const C of W.colonies) { if (C === pl || C.ally || !C.kind || C.kind === 'oil') continue; for (const O of C.orgs) { if (!O.alive) continue; const big = O.B.count > B.count * 1.1 * (1 + 1.2 * (B.inflate || 0)) && MATS[O.B.mat].phase === MATS[B.mat].phase || C.kind === 'thorn' && B.mat !== 3; if (!big || T.kind === 'cleave' && T.ref === O) continue; const ex = B.cx - O.B.cx, ey = B.cy - O.B.cy, ed = Math.hypot(ex, ey) - O.B.r - B.r; if (ed < 130) { const s = (1 - Math.max(0, ed) / 130) * 2.4; ctl.intent.x += ex / (ed + O.B.r + B.r) * s; ctl.intent.y += ey / (ed + O.B.r + B.r) * s; if (ed < 46 && C.kind === 'hunter' && F.canSwell && this.puffT < -1.5) this.puffT = 1.2; if (ed < 60 && ed > 8 && C.kind === 'hunter' && F.dartCD <= 0 && B.count > 30 && this.lanceT < this.t) { ctl.darts = [{ x: -ex, y: -ey, power: 1.5 }]; this.lanceT = this.t + 2.5; this.note('lance'); continue; } if (ed < 26 && F.dartCD <= 0 && B.count > 20) { ctl.darts = [{ x: ex, y: ey, power: 1 }]; this.note('dart-away'); } } } }
+    // teeth that travel: step out of their way (still ones are the planner's business)
+    for (const h of hz2(W)) { if (!h.moving) continue; const ex = B.cx - h.x, ey = B.cy - h.y, ed = Math.hypot(ex, ey) - h.r - B.r; if (ed < 64) { const s = (1 - Math.max(0, ed) / 64) * 2.6; ctl.intent.x += ex / (ed + h.r + B.r + 1) * s; ctl.intent.y += ey / (ed + h.r + B.r + 1) * s; } }
+    // a pole about to throw us: lean where we want to land (its twin if that still sleeps, else the next thing we wanted)
+    if (B.mat === 4) for (const e of W.ents) if (e.d.type === 'core' && e.warn && Math.hypot(e.x - B.cx, e.y - B.cy) < e.r + B.r + 14) { const tw = e.twin; const g = tw && !tw.lit && (e.lit || e.charge > e.need * 0.5) ? tw : !e.lit ? null : T.ref !== e ? T : null; if (g) { const gx = g.x - e.x, gy = g.y - e.y, gd = Math.hypot(gx, gy) + 1e-3; ctl.intent.x = gx / gd; ctl.intent.y = gy / gd; this.note('aim-throw'); } else { ctl.intent.x = 0; ctl.intent.y = 0; } }
     if (this.puffT > 0) { ctl.swell = true; this.note('puff'); }
     const m = Math.hypot(ctl.intent.x, ctl.intent.y); if (m > 1) { ctl.intent.x /= m; ctl.intent.y /= m; }
     // stuck? push harder, then think again

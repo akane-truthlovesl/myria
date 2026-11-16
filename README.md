@@ -27,19 +27,24 @@ wall where something is watching makes you a veil it cannot see.
 ## What is in it
 
 - **The Atrium** — the title is written in motes. Wake the sleeping pearl and eat the word.
-- **Odyssey** — twenty-two single-screen chambers in four strata (Dew · Glassworks · Chemistry · Abyss),
+- **Odyssey** — twenty-three single-screen chambers in four strata (Dew · Glassworks · Chemistry · Abyss),
   each teaching one idea through physics alone: squeezing, darting through a soap film, budding to
   hold two pads, threading a comb, blades, grinders and healing springs, pistons, sticky resin against
   a river, quicksilver among hunters, oil that will not mix, shear-thickening armour, ferrofluid
   leaping between pulsing poles, frost that stiffens you and vents that thaw a frozen door, watchers
   you hide from by holding still, a gyre of currents, a black hole, bluffing giants with a held
   breath, a hunt, and a heart that needs you in three places at once.
-  Two **wardens** close the first strata: **The Lock** (two rings of glass turning against each other
-  around a heart of light — every doorway is a moment, not a place) and **The Centrifuge** (a drum whose
-  three arms sweep you past lanterns and gears: you do not cross it, you ride it).
+  Three **wardens** close the first strata: **The Lock** (two rings of glass turning against each other
+  around a heart of light — every doorway is a moment, not a place), **The Centrifuge** (a drum whose
+  three arms sweep you past lanterns and gears: you do not cross it, you ride it) and **Twin Cores**
+  (two electromagnets circling one another inside a ring of gears: as iron you are drawn in, the pole
+  flickers, leans, and throws you — to its twin, unless you lean elsewhere; coat both long enough and
+  the pair falls together and pays out).
   Three living stars per chamber: **Radiance** (all the light), **Grace** (lose almost nothing),
   **Swift** (under par). The pore opens at 60 % — the rest is appetite. Named tricks (Thread the
-  Needle, Surgical Shear, Ghost Wall, Paper Tiger, Cleave…) are noticed when you find them.
+  Needle, Surgical Shear, Ghost Wall, Paper Tiger, Cleave, Slingshot…) are noticed when you find them.
+  The stars you gather dye you: six **hues** (Coral · Honey · Rose · Jade · Pearl · Nebula) unlock as
+  they add up — each a full optical recipe, chosen from the pause menu in the Atrium.
 - **Flow** — light taken in quick succession becomes a chain. A chain makes the crown *bloom*: longer,
   brighter feelers that fetch from further, a faint pull on nearby motes, a little more speed, a rising
   melody — and every eighth link pays a bonus of mass. Greed with rhythm is rewarded; nothing is punished.
@@ -57,6 +62,11 @@ wall where something is watching makes you a veil it cannot see.
   touching shares mass between you, or **Versus**, ninety seconds of raining light.
 - **Pool** — a sandbox with nothing to win: knead the gel with the pointer, pour oil, quicksilver,
   resin and foam, drop machines and neighbours, and watch one physics answer everything.
+
+Anything that parts you — a comb, a blade, a pole's throw — makes **siblings**, not debris: every
+piece of five grains or more is you, steerable (click it / Tab), callable (rally), and the open pore
+calls all of you home as you settle onto it. Crumbs smaller than that drift back by themselves, and
+if you are ever left steering a speck while the bulk of you lies elsewhere, the will moves to the bulk.
 
 If you are ever reduced to almost nothing you become an **ember**: nothing can drink you, you move
 faster, every mote counts double until you are whole again — and if the room has no light left to
@@ -76,7 +86,7 @@ GPU behind a remote desktop, so it is designed to cost only what moves.
   that trail, reach, fetch and startle; colonies of siblings with focus and rally; small legible
   brains for the other species (they judge you by silhouette, so a held breath can bluff them).
 - **Playtesting** (`src/core/bot.js`, `tools/`) — a path-planning Bot uses the same verbs through the
-  same input record as a player. It finishes all twenty-two chambers in landscape and portrait, sets
+  same input record as a player. It finishes all twenty-three chambers in landscape and portrait, sets
   the par times, plays Bloom, and powers `?bot`.
 - **Light** (`src/render`) — each room's backdrop is painted once, per pixel, like a photographic
   plate: a pool of stage light, a caustic network on the water film, bevelled frosted-glass walls with
@@ -100,11 +110,12 @@ GPU behind a remote desktop, so it is designed to cost only what moves.
 npm install          # esbuild only
 npm run build        # bundles src/ into the single index.html
 node tools/play.mjs out 1280 720 8 "2,5,8"       # headless playtest → PNG frames + CPU timings
-node tools/solve.mjs 0 21 1280 720 1               # the Bot plays the real Odyssey: every chamber must end DONE
-node tools/rooms.mjs out 1280 720 0 21 40         # render / bot-run every Odyssey chamber
+node tools/solve.mjs 0 22 1280 720 1               # the Bot plays the real Odyssey: every chamber must end DONE
+node tools/rooms.mjs out 1280 720 0 22 40         # render / bot-run every Odyssey chamber
 node tools/film.mjs sheet.png 4 800 450 2.5 3 6   # contact sheet of the Bot playing one chamber
 node tools/bloom.mjs sheet.png                    # the Bot plays a full Bloom run
 node tools/closeup.mjs strip.png dart             # close-up filmstrip of a verb (move · dart · bud · swell)
+node tools/hues.mjs hues.png                      # every hue side by side
 node tools/abyss.mjs out 1280 720 6 40            # soak-test six Abyss depths
 ```
 

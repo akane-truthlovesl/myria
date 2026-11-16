@@ -20,7 +20,7 @@ export class Body {
   constructor(id) {
     this.id = id; this.reset();
   }
-  reset() {
+  reset() { this.home = null;
     this.alive = false;
     this.group = -1;        // colony id (-1 = neutral/dew)
     this.kind = 'loose';
@@ -153,9 +153,10 @@ export class Physics {
     if (bi === bj) return true;
     if (M.phase[mi] !== M.phase[mj]) return false;
     const A = this.bodies[bi], B = this.bodies[bj];
+    // neutral dew joins anything as soon as its own skin has healed — a body busy shedding crumbs (iron bristling at a pole) must still be able to drink them back
+    if ((A.group === -1) !== (B.group === -1)) return (A.group === -1 ? A : B).fuseT <= 0;
     if (A.fuseT > 0 || B.fuseT > 0) return false;
     if (A.group === B.group) return A.group !== -2; // -2: never-fuse singletons
-    if (A.group === -1 || B.group === -1) return true; // neutral dew joins anything
     return false;
   }
 
@@ -252,14 +253,14 @@ export class Physics {
         }
         if (Z.magnet && M.magnet[m] > 0) {
           const dx = Z.ax - px, dy = Z.ay - py; const r2 = dx * dx + dy * dy + 900; const r = Math.sqrt(r2);
-          let f = Z.magnet * M.magnet[m] * w * 2.4e6 / (r2 * r); if (f > 2300) f = 2300;
+          let f = Z.magnet * M.magnet[m] * w * 2.4e6 / (r2 * r); const cap = Z.mcap || 2300; if (f > cap) f = cap; else if (f < -cap) f = -cap;        // a negative pole shoves
           ax += dx / r * f; ay += dy / r * f;
           // Rosensweig spikes: the surface erupts into a crown of crisp cones
           if (this.surf[i] > 0.3) {
             const th = Math.atan2(py - B.cy, px - B.cx);
             const c = Math.cos(th * 9 + this.time * 0.6);
             const spike = c > 0 ? c * c * c * c * c * c : 0;
-            const field = Math.min(1, Z.magnet * w * 220000 / (r2 + 4e4));
+            const field = Math.min(1, Math.abs(Z.magnet) * w * 220000 / (r2 + 4e4));
             const a = 2600 * spike * field * this.surf[i];
             ax += this.nx[i] * a; ay += this.ny[i] * a;
           }
@@ -778,9 +779,12 @@ export class Physics {
       const nb = remap.get(key);
       if (nb !== undefined) body[i] = nb;
     }
+    // sizes first: listeners decide what a piece is (a sibling, or a crumb) by how much of the body it took
+    for (const [key, nb] of remap) { const parentId = Math.floor(key / 65536); bodies[nb].count = bodies[nb]._size; bodies[parentId].count = Math.max(1, bodies[parentId].count - bodies[nb]._size); }
     for (const [key, nb] of remap) {
       const parentId = Math.floor(key / 65536);
-      bodies[parentId].fuseT = Math.max(bodies[parentId].fuseT, 0.45);
+      if (bodies[nb]._size >= 5) bodies[parentId].fuseT = Math.max(bodies[parentId].fuseT, 0.45);        // a crumb is not a cut: it passivates nothing
+      else bodies[nb].fuseT = 0.3;
       if (this.onSplit) this.onSplit(bodies[parentId], bodies[nb]);
     }
     this.aggregate(0);
