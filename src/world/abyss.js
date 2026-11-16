@@ -4,7 +4,7 @@
 //  rule a chamber may use was first taught, wordlessly, in the Odyssey.
 // ─────────────────────────────────────────────────────────────────────────────
 import { SURF, MAT } from '../sim/materials.js';
-import { rng, TAU } from '../core/util.js';
+import { rng, TAU, hashStr } from '../core/util.js';
 import { frame, dish } from './rooms.js';
 import { moteRing, moteTrail } from './entities.js';
 import { PAL } from './odyssey.js';
@@ -19,7 +19,21 @@ export const AXIOMS = [
   { id: 'white', name: 'White Tide', sub: 'a geyser breathes in every chamber', apply: (s, R, W, H) => { s.ents.push({ type: 'geyser', x: W * R.range(0.35, 0.65), y: H * R.range(0.35, 0.65), period: R.range(4.2, 5.6) }); } },
   { id: 'masks', name: 'Masquerade', sub: 'not every light is light', apply: (s, R, W, H) => { for (let k = 0; k < 2; k++) s.ents.push({ type: 'mimic', x: W * R.range(0.2, 0.8), y: H * R.range(0.22, 0.78) }); } },
   { id: 'swift', name: 'Quick Tide', sub: 'you, and everything else, move faster', apply: (s) => { s.speedScale = 1.3; } },
+  { id: 'glide', name: 'Glass Water', sub: 'nothing slows you down — nothing', apply: (s) => { s.drag = 0.6; } },
+  { id: 'winter', name: 'Long Winter', sub: 'frost in every chamber, and one warm breath', apply: (s, R, W, H, place) => { const a = place && place(120), b = place && place(60); if (a) s.ents.push({ type: 'frost', ...a, r: 120, rate: 0.6 }); if (b) s.ents.push({ type: 'vent', ...b }); } },
+  { id: 'rapids', name: 'Rapids', sub: 'a current crosses every chamber', apply: (s, R, W, H) => { s.ents.push({ type: 'current', x: W * 0.5, y: H * R.range(0.32, 0.68), w: W * 0.62, h: 110, vx: R.sign() * 250, vy: 0, k: 5 }); } },
+  { id: 'bands', name: 'Slingshot', sub: 'taut bands wait along the walls', apply: (s, R, W, H) => { for (const u of [0.11, 0.89]) s.ents.push({ type: 'bumper', x: W * u, y: H * R.range(0.34, 0.66), len: 130, to: { x: W / 2, y: H / 2 }, kick: 560 }); } },
+  { id: 'famine', name: 'Famine', sub: 'half the light — the rest must be hunted', apply: (s) => { s.moteMul = 0.5; s.rivalMul = 1.6; } },
+  { id: 'giants', name: 'Giants', sub: 'fewer neighbours, far bigger', apply: (s) => { s.rivalMul = 0.6; s.rivalBig = 1.45; } },
+  { id: 'air', name: 'Champagne', sub: 'bubbles drift in every chamber — swallow one and they take you for a giant', apply: (s, R, W, H, place) => { for (let k = 0; k < 5; k++) { const p = place && place(34); if (p) s.ents.push({ type: 'bubble', ...p, r: R.range(15, 24), life: 900 }); } } },
 ];
+// The day's mutation of the world: one on a weekday, two at once on a weekend (never a pair that cancels out). Same for everyone, from the date alone.
+const CLASH = [['thick', 'swift'], ['thick', 'glide'], ['feast', 'famine'], ['feast', 'giants']];
+export function dailyAxioms(day) {
+  const h = hashStr('myria' + day), pool = AXIOMS.slice(1); const a = pool[h % pool.length]; const dow = new Date(day + 'T00:00:00Z').getUTCDay(); if (dow !== 0 && dow !== 6) return [a];
+  let k = (h >>> 9) % pool.length, b = pool[k]; for (let q = 0; q < pool.length && (b === a || CLASH.some(c => c.includes(a.id) && c.includes(b.id))); q++) b = pool[k = (k + 1) % pool.length];
+  return [a, b];
+}
 
 export function abyssRoom(aspect, depth, seed, axiom, mass = 60) {
   const { W, H } = frame(aspect); const R = rng(seed + depth * 7919);
@@ -63,7 +77,7 @@ export function abyssRoom(aspect, depth, seed, axiom, mass = 60) {
   if (!arena && depth >= 4 && R.chance(0.4)) { const p = place(70); if (p) ents.push({ type: 'mimic', ...p }); }
   // a lodestone: an iron bath, and a pulsing pole wearing a crown of bright light — for one chamber, be iron and ride it
   if (!arena && depth >= 4 && R.chance(0.3)) { const q = place(96, 60), p = q && place(52, 60); if (p && q) ents.push({ type: 'pool', kind: 'morph', mat: MAT.FERRO, morph: { speed: 1, tonus: 1.3, dart: 1 }, ...p, r: 40 }, { type: 'magnet', ...q, reach: 190, power: 600, period: 4.2 }, ...moteRing(q.x, q.y, 40, 6, 3, { col: [0.7, 0.8, 1] })); }
-  if (axiom && axiom.apply) axiom.apply(spec, R, W, H);
+  for (const ax of Array.isArray(axiom) ? axiom : axiom ? [axiom] : []) if (ax.apply) ax.apply(spec, R, W, H, place);
   // light
   if (!arena) {
     const nTr = Math.round(R.int(2, 3) * spec.moteMul);
@@ -74,7 +88,7 @@ export function abyssRoom(aspect, depth, seed, axiom, mass = 60) {
   const nG = Math.round((arena ? 3 : Math.min(3, 1 + Math.floor(depth / 3))) * spec.rivalMul), nH = arena ? 1 + Math.floor(depth / 10) : depth >= 3 ? Math.min(2, Math.floor(depth / 4) + (R.chance(0.5) ? 1 : 0)) : 0;
   // neighbours are measured against you: grazers are always a meal, lancers hover around your own size —
   // and from the fourth depth on one of them is an apex, bigger than you, that only wit (a lance, a held breath) will answer
-  const m = Math.max(40, Math.min(260, mass));
+  const m = Math.max(40, Math.min(260, mass)) * (spec.rivalBig || 1);
   for (let k = 0; k < nG; k++) { const p = place(50); if (p) rivals.push({ kind: 'grazer', ...p, n: Math.round(Math.max(18, Math.min(120, m * R.range(0.28, 0.6)))) }); }
   for (let k = 0; k < nH; k++) { const p = place(60); const apex = k === 0 && depth >= 4; if (p) rivals.push({ kind: 'hunter', ...p, n: Math.round(Math.max(40, Math.min(340, m * (apex ? R.range(1.25, 1.6) : R.range(0.6, 1.05))))) }); }
   if (depth >= 6 && R.chance(0.6)) { const p = place(60); if (p) rivals.push({ kind: 'thorn', ...p, n: R.int(40, 60) }); }

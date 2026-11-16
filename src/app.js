@@ -44,7 +44,11 @@ export class App {
   }
 
   // ── modes ─────────────────────────────────────────────────────────────
-  setMode(m) { if (this.mode && this.mode.exit) this.mode.exit(); this.hud.closePanel(); this.hud.hideResult(); this.hud.setTop(null); this.hud.setLabels([]); this.hud.hint(''); this.paused = false; this.mode = m; this.world.listener = m; m.enter(); }
+  setMode(m) { if (this.mode && this.mode.exit) this.mode.exit(); this.hud.closePanel(); this.hud.hideResult(); this.hud.setTop(null); this.hud.setLabels([]); this.hud.hint(''); this.paused = false; this.mode = m;
+    // The room on screen belongs to the mode that is leaving: until the new mode's own room is loaded (_load sets the listener) the world answers to nobody.
+    // (Handing it to the new mode at once made a fresh dive read its not-yet-built room — "Dive again" threw every frame and never arrived — and let a new
+    //  run be charged for the old run's death while the iris closed.)
+    this.world.listener = null; m.enter(); }
 
   // ── chamber transitions ───────────────────────────────────────────────
   // close an iris on (wx,wy), load the next room, develop it in the dark (the mode may show a card), open on the spawn
@@ -161,6 +165,8 @@ export class App {
     if (this.bot && F && F.alive && this.state === 'play') this._bot(c, F);
     c.rally = (inp.rally || c.botRally) && this.state === 'play';
     c.darts = first && P.darts.length ? P.darts : null; c.buds = first && P.buds.length ? P.buds : null; c.cycle = first ? P.cycle : 0; c.focusAt = first ? P.focusAt : null;
+    // hands on the gel (the Pool's kneading): fingers are hands, not a stick — the creature wills nothing while it is held
+    if (inp.hands && inp.device === 'touch' && inp.pointers.size) { c.intent.x = 0; c.intent.y = 0; c.swell = false; c.rally = false; c.darts = null; c.buds = null; }
     return c;
   }
 

@@ -4,7 +4,7 @@ import { fakeCanvas, writePNG } from './node-env.mjs';
 import { Renderer } from '../src/render/renderer.js';
 import { World } from '../src/world/world.js';
 import { ROOMS } from '../src/world/odyssey.js';
-import { Odyssey } from '../src/modes/odyssey.js';
+import { Odyssey, SPRINTS } from '../src/modes/odyssey.js';
 import { Bot } from '../src/core/bot.js';
 import { save } from '../src/core/save.js';
 const [first = '0', last = String(ROOMS.length - 1), w = '1280', h = '720', greed = '1', out = ''] = process.argv.slice(2);
@@ -16,7 +16,9 @@ const app = { world, hud: noop, sound: noop, haptics: noop, save, state: 'play',
 let mass = 0; const realTimeout = globalThis.setTimeout; globalThis.setTimeout = () => 0;      // the mode's own timers are driven by this loop instead
 let tot = { t: 0, stars: 0, fails: 0 };
 for (let i = +first; i <= Math.min(ROOMS.length - 1, +last); i++) {
-  const mode = new Odyssey(app, i, { mass }); app.mode = mode; mode.enter();
+  // SPRINT=<mutation id> plays every chamber as the Daily Sprint would: on its own, in mutated water
+  const sprintM = process.env.SPRINT ? SPRINTS.find(q => q.id === process.env.SPRINT) : null;
+  const mode = new Odyssey(app, i, sprintM ? { single: true, sprint: { day: 'test', i, m: sprintM } } : { mass }); app.mode = mode; mode.enter();
   const W = world; const bot = new Bot(W, { greed: +greed }); const ctl = { intent: { x: 0, y: 0 }, aim: null, rally: false };
   const limit = Math.max(90, ROOMS[i].par * 3) * 60; let f = 0, rekindled = 0, minMass = 1e9;
   for (; f < limit && !mode.finished; f++) {

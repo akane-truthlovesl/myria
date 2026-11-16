@@ -32,6 +32,8 @@ function wordMotes(word, cx, cy, width) {
   return out;
 }
 
+import { unpackHaunt, hauntName } from '../core/haunt.js';
+
 export class Hub {
   constructor(app, o = {}) { this.app = app; this.o = o; this.isHub = true; this.awake = !!o.result || !!o.awake; this.t = 0; }
   enter() {
@@ -42,6 +44,9 @@ export class Hub {
     app.travel((aspect) => {
       const { W, H } = frame(aspect); const geo = dish(W, H, { r: Math.min(W, H) * 0.3 });
       const ents = wordMotes('MYRIA', W / 2, H * 0.30, Math.min(W * 0.72, 760));
+      // a halo of dew round the sleeper, just past the reach of its feelers: whichever way a first, unknowing nudge goes, it is answered with light inside a second
+      //  (measured with tools/browser/stranger.mjs — a thumb wandering at random used to need a median of four seconds to stumble on the word above)
+      for (let k = 0; k < 8; k++) { const a = (k + 0.5) / 8 * 6.2832; ents.push({ type: 'mote', x: W / 2 + Math.cos(a) * 104, y: H * 0.55 + Math.sin(a) * 104, value: 1, col: [0.80, 0.95, 1.0] }); }
       const n = this.dests.length; this.pores = [];
       this.dests.forEach((d, k) => { const x = W * (n === 1 ? 0.5 : 0.16 + 0.68 * k / (n - 1)), y = H * (W < H * 1.2 && n > 3 ? (k % 2 ? 0.86 : 0.70) : 0.76); ents.push({ type: 'pore', x, y, r: 40, dest: d.id, col: d.col || (k === 0 ? [1.0, 0.72, 0.5] : [0.45, 0.95, 1.0]) }); });
       return { name: 'Atrium', seed: 3, W, H, geo, ents, spawn: { x: W / 2, y: H * 0.55, n: 14 }, pal: save.get('awake', 0) ? { ...DAWN, grid: 0.8 } : { grid: 0.8 } };       // once the slide is awake, the Atrium keeps the morning
@@ -54,7 +59,7 @@ export class Hub {
     });
   }
   exit() { this.app.hud.setLabels([]); }
-  pauseItems() { const app = this.app; const found = TRICKS.filter(t => (app.save.data.tricks || {})[t[0]]).length; return [{ label: 'Chambers', fn: () => this.chambers() }, { label: `Tricks · ${found} / ${TRICKS.length}`, fn: () => this.journal() }, { label: this.hueLabel(), fn: (b) => { this.nextHue(); b.innerHTML = this.hueLabel(); } }, { label: 'Race an echo', fn: () => this.raceEcho() }, ...(app.save.get('awake', 0) ? [{ label: 'Myriad', fn: () => { app.resume(); app.toEpilogue({}); } }] : [])]; }
+  pauseItems() { const app = this.app; const found = TRICKS.filter(t => (app.save.data.tricks || {})[t[0]]).length; return [{ label: 'Chambers', fn: () => this.chambers() }, { label: `Tricks · ${found} / ${TRICKS.length}`, fn: () => this.journal() }, { label: this.hueLabel(), fn: (b) => { this.nextHue(); b.innerHTML = this.hueLabel(); } }, { label: 'Race an echo', fn: () => this.raceEcho() }, { label: this.hauntLabel(), fn: () => this.inviteHaunt() }, ...(app.save.get('awake', 0) ? [{ label: 'Myriad', fn: () => { app.resume(); app.toEpilogue({}); } }] : [])]; }
   hueLabel() { const save = this.app.save; const cur = skinFor(save); const nx = SKINS.find(s => s.need > save.stars()); return `Hue · ${cur.name}${nx ? ` <small style="opacity:.55;letter-spacing:.1em;text-transform:none">&nbsp; next: ${nx.name} at ${nx.need} ✦</small>` : ''}`; }
   nextHue() {
     const app = this.app, save = app.save; const list = unlockedSkins(save); const cur = skinFor(save); const nx = list[(list.indexOf(cur) + 1) % list.length]; save.set('skin', SKINS.indexOf(nx));
@@ -68,6 +73,16 @@ export class Hub {
     app.hud.veil.querySelector('.panel').classList.add('wide');
   }
   // a friend's echo: a code on the clipboard (or typed in) becomes a pale blue bead to race through that chamber
+  // hauntings: what earlier dives left in the Abyss — yours, and any a stranger handed you (core/haunt.js)
+  hauntLabel() { const list = this.app.save.get('haunts', []); const g = list.filter(q => q.guest).length; return `Invite a haunting${list.length ? ` <small style="opacity:.55;letter-spacing:.1em;text-transform:none">&nbsp; ${list.length} waiting${g ? ' · ' + g + ' from strangers' : ''}</small>` : ''}`; }
+  async inviteHaunt() {
+    const app = this.app; let txt = '';
+    try { if (navigator.clipboard && window.isSecureContext) txt = await navigator.clipboard.readText(); } catch (_) { txt = ''; }
+    if (!/MYRIA-HAUNT\./.test(txt)) { try { txt = window.prompt('Paste a haunting') || ''; } catch (_) { txt = ''; } }
+    const h = unpackHaunt(txt); if (!h) { app.hud.toast('nothing lingers in that', '☍', 'cool'); return; }
+    const list = app.save.get('haunts', []).filter(q => q.id !== h.id); list.push(h); while (list.filter(q => q.guest).length > 6) list.splice(list.findIndex(q => q.guest), 1); app.save.set('haunts', list);
+    app.sound.ui(); app.resume(); app.hud.toast(`${hauntName(h.id)} waits for you at depth ${h.depth}`, '☍', 'cool');
+  }
   async raceEcho() {
     const app = this.app; let txt = '';
     try { if (navigator.clipboard && window.isSecureContext) txt = await navigator.clipboard.readText(); } catch (_) { txt = ''; }

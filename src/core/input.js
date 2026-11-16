@@ -205,7 +205,7 @@ export class Input {
       if (m < DEAD) return ZERO;
       const c = Math.min(1, (m - DEAD) / (1 - DEAD)); V.x = dx / m * c; V.y = dy / m * c; return V;
     }
-    const T = this.tilt; if (T.on && performance.now() - T.t < 600 && Math.abs(T.x) + Math.abs(T.y) > 0.01) return T;
+    const T = this.tilt; if (T.on && !this.tiltMute && performance.now() - T.t < 600 && Math.abs(T.x) + Math.abs(T.y) > 0.01) return T;      // (tiltMute: a mode is using the tilt for something else — the Pool pours with it)
     return null;
   }
   get pointerSteers() { return this.enabled && this.device === 'mouse' && this.mouse.follow && this.mouse.inside; }

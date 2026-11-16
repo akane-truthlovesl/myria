@@ -84,10 +84,10 @@ export class World {
   }
   addColony(group, x, y, n, opts = {}) { const C = new Colony(this, group, opts); C.spawn(x, y, n, opts.mat ?? MAT.LUMEN); this.colonies.push(C); return C; }
   // another organism of the slide (group ids ≥ 1), with a species brain
-  addRival(kind, x, y, n) {
+  addRival(kind, x, y, n, o = {}) {
     const sp = SPECIES[kind]; const g = this._nextGroup = (this._nextGroup || 0) + 1;
-    const C = new Colony(this, g, { tint: sp.tint, mat: sp.mat, crown: sp.crown, isPlayer: false, org: { speedMul: sp.speed } });
-    C.kind = kind; C.species = sp; const O = C.spawn(x, y, n, sp.mat); if (O) O.brain = new Brain(kind);
+    const C = new Colony(this, g, { tint: o.tint || sp.tint, mat: sp.mat, crown: sp.crown, isPlayer: false, org: { speedMul: sp.speed } });
+    C.kind = kind; C.species = sp; const O = C.spawn(x, y, n, sp.mat); if (O) O.brain = new Brain(sp.brain || kind);
     this.colonies.push(C); return C;
   }
   colonyOf(B) { if (!B) return null; for (const C of this.colonies) if (C.group === B.group) return C; return null; }
@@ -260,6 +260,12 @@ export class World {
     const GC = gone.ctrl && gone.ctrl.colony; if (GC && GC !== C) GC.onMerge(keep, gone);
   }
   // the breath let go: a ring of displaced water shoves everything that is not you
+  // a body full of swallowed air lets it go: the bubbles leave the way it was facing, and the rest is an ordinary pop
+  exhale(O, dx, dy) {
+    const B = O.B; const m = Math.hypot(dx, dy) || 1; dx /= m; dy /= m; const n = Math.max(1, Math.min(4, Math.round(O.air * 3)));
+    for (let k = 0; k < n; k++) { const a = Math.atan2(dy, dx) + (k - (n - 1) / 2) * 0.5, r = 12 + Math.random() * 10; this.spawn({ type: 'bubble', x: B.cx + Math.cos(a) * (B.r * 0.8 + r), y: B.cy + Math.sin(a) * (B.r * 0.8 + r), vx: Math.cos(a) * 170, vy: Math.sin(a) * 170, r, safe: 1.4 }); }
+    O.air = 0; O.dartCD = Math.max(O.dartCD, 0.3); this.sound && this.sound.pop(0.8); this.emit('exhale', O);
+  }
   pop(O, power) {
     const P = this.phys, B = O.B; const R = 150 + B.r * 2;
     for (let i = 0; i < P.hi; i++) { if (!P.alive[i]) continue; const b = P.body[i]; if (b === B.id || P.bodies[b].group === B.group) continue; const dx = P.x[i] - B.cx, dy = P.y[i] - B.cy, d = Math.sqrt(dx * dx + dy * dy) + 1; if (d > R) continue; const f = 520 * power * (1 - d / R); P.vx[i] += dx / d * f; P.vy[i] += dy / d * f; }

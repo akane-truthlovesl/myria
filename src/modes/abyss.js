@@ -4,7 +4,7 @@
 //  whole body and one rekindles you; lose the last and the dive is over.
 //  (The Daily Abyss is the same dive on the day's seed, bent by one axiom.)
 // ─────────────────────────────────────────────────────────────────────────────
-import { abyssRoom, AXIOMS } from '../world/abyss.js';
+import { abyssRoom, AXIOMS, dailyAxioms } from '../world/abyss.js';
 import { MAT } from '../sim/materials.js';
 import { rng, hashStr } from '../core/util.js';
 import { Colony } from '../life/colony.js';
@@ -24,14 +24,19 @@ export const TRAITS = [
   { id: 'thorn', name: 'Thorn Crown', sub: 'your touch sheds your neighbours', on: (m) => { m.T.mat = MAT.THORN; m.T.crown = 'thorns'; } },
 ];
 
+import { hauntName, packHaunt, ghostTint } from '../core/haunt.js';
+import { SKINS } from '../core/skins.js';
+
 export class Abyss {
   constructor(app, o = {}) {
     this.app = app; this.daily = !!o.daily; this.coop = !!o.coop; this.mass2 = 40;
     const day = this.day = new Date().toISOString().slice(0, 10);
     this.seed = this.daily ? hashStr('myria' + day) : (Math.random() * 1e9) | 0;
-    this.axiom = this.daily ? AXIOMS[1 + (this.seed % (AXIOMS.length - 1))] : AXIOMS[0];
+    // the day's dive is bent by the day's mutation of the world — two of them at once on a weekend (world/abyss.js dailyAxioms)
+    this.axioms = this.daily ? dailyAxioms(day) : [AXIOMS[0]]; this.axiom = this.axioms.length > 1 ? { id: this.axioms.map(a => a.id).join('+'), name: this.axioms.map(a => a.name).join(' + '), sub: this.axioms.map(a => a.sub).join(' · ') } : this.axioms[0];
     this.depth = 1; this.embers = 3; this.T = {}; this.traits = []; this.light = 0; this.devoured = 0; this.mass = Math.max(40, o.mass || 40);
     this.R = rng(this.seed ^ 0x5bd1e995); this.over = false; this.pausable = true;
+    this.runId = ((Math.random() * 0x7fffffff) | 0) + 1; this.marks = []; this.rested = 0;
   }
   enter() { if (this.coop) this.app.input.keysOff = true; this.load(null); }
   exit() { this.app.hud.hint(''); this.app.input.keysOff = false; }
@@ -45,7 +50,7 @@ export class Abyss {
 
   load(from) {
     const app = this.app; this.finished = false; this.roomLight = 0;
-    app.travel((aspect) => (this.spec = abyssRoom(aspect, this.depth, this.seed, this.axiom, Math.min(260, this.mass))), () => ({ mass: Math.min(260, this.mass), mat: this.T.mat ?? MAT.LUMEN, crown: this.T.crown || 'sun' }), {
+    app.travel((aspect) => (this.spec = abyssRoom(aspect, this.depth, this.seed, this.axioms, Math.min(260, this.mass))), () => ({ mass: Math.min(260, this.mass), mat: this.T.mat ?? MAT.LUMEN, crown: this.T.crown || 'sun' }), {
       from, minDark: from ? 0.6 : 0.4, hold: () => !this.choosing,
       onDark: () => { app.applyBudget(); if (from && this.depth % 2 === 1 && this.depth > 1) this.choose(); },
       onLoad: (W) => {
@@ -54,12 +59,28 @@ export class Abyss {
         W.player.orgOpts = { speedMul: this.T.speed || 1 };
         for (const e of W.ents) if (e.d.type === 'pore') e.need = this.spec.arena ? 0 : Math.ceil(W.stats.motesTotal * 0.55);
         if (this.coop) { const C = this.p2 = new Colony(W, 7, { tint: TINT2, crown: 'sun', isPlayer: true }); C.spawn(W.spec.spawn.x + 80, W.spec.spawn.y, Math.min(260, Math.max(40, this.mass2))); W.colonies.push(C); C.ally = W.player.ally = true; }
-        const echo = app.save.get('echo', null);      // an echo of an earlier dive: the light you lost here is still here
-        if (echo && echo.depth === this.depth && !this.daily) { const ex = echo.u * W.spec.W, ey = echo.v * W.spec.H; if (W.phys.sampleSDF(ex, ey) > 20) { for (let k = 0; k < 6; k++) W.spawn({ type: 'mote', x: ex + Math.cos(k) * 22, y: ey + Math.sin(k) * 22, value: 4, free: true, col: [0.86, 0.72, 1] }); this.echoAt = [ex, ey]; app.save.set('echo', null); } }
+        this.marks = []; this.lostSeen = 0; this.layHaunt(W);
       },
-      onReveal: () => { if (this.coop && this.depth === 1) app.hud.toast('touch to share mass · pointer + W A S D', '◌', 'cool'); if (this.echoAt) { app.hud.toast('an echo of you', '◌', 'cool'); this.echoAt = null; } app.hud.showTitle(this.daily ? this.axiom.name : '', this.spec.arena ? 'Predator Dish' : `Depth ${this.depth}`, this.spec.arena ? 'devour them all' : (this.depth === 1 && this.daily ? this.axiom.sub : ''), 2.4); app.hud.setCorner(true, () => app.pause()); },
+      onReveal: () => { if (this.coop && this.depth === 1) app.hud.toast('touch to share mass · pointer + W A S D', '◌', 'cool'); if (this.haunting) { app.hud.toast(this.haunting.guest ? `a stranger ended here · ${hauntName(this.haunting.id)}` : `you ended here once · ${hauntName(this.haunting.id)}`, '☍', 'cool'); } app.hud.showTitle(this.daily ? this.axiom.name : '', this.spec.arena ? 'Predator Dish' : `Depth ${this.depth}`, this.spec.arena ? 'devour them all' : (this.depth === 1 && this.daily ? this.axiom.sub : ''), 2.4); app.hud.setCorner(true, () => app.pause()); },
     });
   }
+  // ── hauntings (core/haunt.js) ──
+  // a dive that reaches a depth where an earlier one ended — yours, or a stranger's you were handed — finds what it left: a stain, false lights, and what gets up out of the stain
+  layHaunt(W) {
+    this.haunting = null; this.rev = null; if (this.daily || this.coop) return;                 // the day's dive is the same for everyone; nothing of anyone lies in it
+    const save = this.app.save, list = save.get('haunts', []); const h = list.filter(q => q.depth === this.depth && q.id !== this.runId).sort((a, b) => (b.guest ? 1 : 0) - (a.guest ? 1 : 0))[0]; if (!h) return;
+    const P = W.phys, sp = W.spec; const free = (x, y, m) => P.sampleSDF(x, y) > m && Math.hypot(x - sp.spawn.x, y - sp.spawn.y) > 190 && !W.ents.some(e => (e.d.type === 'pore' || e.hazard) && Math.hypot(e.x - x, e.y - y) < (e.r || 40) + m);
+    let x = h.u * sp.W, y = h.v * sp.H, ok = free(x, y, 46); for (let k = 1; k < 60 && !ok; k++) { const a = k * 2.4, r = 30 + k * 11; const qx = h.u * sp.W + Math.cos(a) * r, qy = h.v * sp.H + Math.sin(a) * r; if (free(qx, qy, 46)) { x = qx; y = qy; ok = true; } } if (!ok) return;      // (the room's distance field saturates near 70)
+    const tint = ghostTint((SKINS[h.hue] || SKINS[0]).tint); const n = Math.round(Math.max(30, Math.min(h.n * 0.85, this.mass * 1.25)));          // it is the body it was — but never hopelessly more than you are
+    this.residue = W.spawn({ type: 'residue', x, y, n, tint, col: tint.emit, haunt: h });
+    for (const d of h.dec || []) { const dx = d[0] * sp.W, dy = d[1] * sp.H; if (P.sampleSDF(dx, dy) > 34 && Math.hypot(dx - x, dy - y) > 110 && Math.hypot(dx - sp.spawn.x, dy - sp.spawn.y) > 130) W.spawn({ type: 'mimic', x: dx, y: dy, col: tint.emit }); }
+    this.haunting = h;
+  }
+  haunt(res, C) { this.rev = C; }
+  // where this dive bled: the last few places it lost a real piece of itself (they become the false lights of its haunting)
+  markLoss(W) { const lost = W.stats.lost; if (lost - (this.lostSeen || 0) >= 8) { const F = W.player.focus; if (F && F.alive) { this.marks.push([F.B.cx / W.spec.W, F.B.cy / W.spec.H]); if (this.marks.length > 3) this.marks.shift(); } this.lostSeen = lost; } }
+  myHaunt() { const W = this.app.world, c = (v) => Math.max(0.06, Math.min(0.94, v)); return { id: this.runId, depth: this.depth, u: c(this.lastPos ? this.lastPos[0] / W.spec.W : 0.5), v: c(this.lastPos ? this.lastPos[1] / W.spec.H : 0.5), n: Math.round(Math.max(40, Math.min(320, this.peak || this.mass))), hue: this.app.save.get('skin', 0) | 0, dec: this.marks.slice(-3) }; }
+
   // every second chamber: three ways to change
   choose() {
     const app = this.app; this.choosing = true;
@@ -70,18 +91,26 @@ export class Abyss {
 
   // ── world listener ────────────────────────────────────────────────────
   rivalsAlive(W) { return W.colonies.filter(C => C.kind && C.kind !== 'oil' && C.kind !== 'thorn' && C.orgs.some(o => o.alive && o.B.count >= 14)).length; }
-  poreReady(p) { const W = this.app.world; if (this.spec.arena) return this.rivalsAlive(W) === 0; return W.stats.motes >= p.need || W.pickups.filter(q => q.isMote && !q.dead).length === 0; }
-  poreProgress(p) { const W = this.app.world; if (this.spec.arena) return 0; return p.need ? Math.min(1, W.stats.motes / p.need) : 1; }
+  poreReady(p) { const W = this.app.world; if (!this.spec) return false; if (this.spec.arena) return this.rivalsAlive(W) === 0; return W.stats.motes >= p.need || W.pickups.filter(q => q.isMote && !q.dead).length === 0; }
+  poreProgress(p) { const W = this.app.world; if (!this.spec || this.spec.arena) return 0; return p.need ? Math.min(1, W.stats.motes / p.need) : 1; }
   tier(name) { this.app.hud.toast(name, '✺'); }
   ember(on) { this.app.hud.toast(on ? 'ember — nothing can drink you · light counts double' : 'whole again', '✺', on ? '' : 'cool'); }
   mote(m, O, chain) { this.light++; this.roomLight++; if (chain && chain % 8 === 0) this.app.hud.toast(`Chain ×${chain}`, '♪', 'cool'); }
   wrung(sp, O, n) { if (n >= 8) this.app.hud.toast('Wrung out', '✦'); }
   unmask() { this.app.hud.toast('Unmasked', '✦'); const F = this.app.world.player.focus; F && F.crown.joy(); }
   cleave() { if (!this.cleft) { this.cleft = true; this.app.hud.toast('Cleave', '✦'); } }
-  devour(C) { this.devoured++; this.app.hud.toast(`${C.species ? C.species.name : 'Rival'} devoured`, '✦'); this.app.world.player.focus && this.app.world.player.focus.crown.joy(); }
+  devour(C) {
+    const app = this.app, W = app.world, F = W.player.focus;
+    if (C.kind === 'revenant') {         // laid to rest: it gives back the light it died with, and it will not be waiting here again
+      const h = C.haunt; this.rested++; this.rev = null; if (h) { app.save.set('haunts', app.save.get('haunts', []).filter(q => q.id !== h.id)); app.save.set('rested', app.save.get('rested', 0) + 1); }
+      if (F) { for (let k = 0; k < 10; k++) { const a = k / 10 * 6.283; W.spawn({ type: 'mote', x: F.B.cx + Math.cos(a) * 70, y: F.B.cy + Math.sin(a) * 70, value: 4, free: true, gift: true, vx: Math.cos(a) * 60, vy: Math.sin(a) * 60, col: [0.92, 0.86, 1] }); } W.fx.ring(F.B.cx, F.B.cy, [0.92, 0.86, 1], 320, 1.1, { w: 3 }); F.crown.joy(); }
+      this.light += 12; app.sound.bloom && app.sound.bloom(); app.hud.toast(`laid to rest${h ? ' · ' + hauntName(h.id) : ''}`, '☍'); return;
+    }
+    this.devoured++; app.hud.toast(`${C.species ? C.species.name : 'Rival'} devoured`, '✦'); F && F.crown.joy();
+  }
   post(dt, W) {
     if (this.finished || this.over) return;
-    { const F = W.player.focus; if (F && F.alive) this.lastPos = [F.B.cx, F.B.cy]; }
+    { const F = W.player.focus; if (F && F.alive) { this.lastPos = [F.B.cx, F.B.cy]; this.peak = Math.max(this.peak || 0, W.player.mass); } this.markLoss(W); }
     if (this.coop && this.p2 && !this.p2.orgs.some(o => o.alive)) { this.embers--; if (this.embers <= 0) { this.end(); return; } const F = W.player.focus; const sp = F && F.alive ? { x: F.B.cx + 60, y: F.B.cy } : W.spec.spawn; this.p2.spawn(sp.x, sp.y, 26); this.app.sound.bloom(); this.app.hud.toast(`tide rekindled · ${this.embers} left`, '✺', 'cool'); }
     if (!W.player.orgs.some(o => o.alive)) {
       this.embers--;
@@ -104,7 +133,9 @@ export class Abyss {
   }
   end() {
     this.over = true; const app = this.app, save = app.save; const key = this.daily ? 'dailyBest' : 'abyssBest';
-    { const W = app.world; save.set('echo', { depth: this.depth, u: this.lastPos ? this.lastPos[0] / W.spec.W : 0.5, v: this.lastPos ? this.lastPos[1] / W.spec.H : 0.5 }); }
+    // what this dive leaves behind: one haunting per depth is kept (the latest), six in all — and it can be handed to anyone as a line of text
+    const mine = !this.daily && !this.coop ? this.myHaunt() : null; if (mine) { const list = save.get('haunts', []).filter(q => q.depth !== mine.depth || q.guest); list.push(mine); while (list.filter(q => !q.guest).length > 6) list.splice(list.findIndex(q => !q.guest), 1); save.set('haunts', list); }
+    if (this.daily && save.get('dailyDay', '') !== this.day) save.set('dailyBest', 0);       // the day's best is the day's, not all time's
     const key2 = this.coop ? 'coopBest' : key; const score = this.light + this.devoured * 10 + (this.depth - 1) * 15; const prev = save.get(key2, 0); if (score > prev) save.set(key2, score);
     if (this.daily) save.set('dailyDay', new Date().toISOString().slice(0, 10));
     app.sound.boom(); app.hud.setTop(null);
@@ -112,7 +143,8 @@ export class Abyss {
       { label: 'Dive again', cls: 'pri', fn: () => { app.hud.closePanel(); app.setMode(new Abyss(app, { daily: this.daily, coop: this.coop })); } },
       { label: 'Copy result', fn: (b) => { const names = this.traits.map(id => (TRAITS.find(t => t.id === id) || {}).name).filter(Boolean);
         app.copyText(`MYRIA · ${this.daily ? `Daily ${this.day} · ${this.axiom.name}` : this.coop ? 'Abyss, together' : 'Abyss'}\ndepth ${this.depth} · ${this.light} light · ${this.devoured} devoured · ✦ ${score}${names.length ? '\n' + names.join(' · ') : ''}`); b.textContent = 'Copied ✓'; } },
+      ...(mine ? [{ label: 'Copy my haunting', fn: (b) => { app.copyText(packHaunt(mine)); b.textContent = 'Copied ✓ — give it to someone'; } }] : []),
       { label: 'Atrium', fn: () => { app.hud.closePanel(); app.toHub({ awake: true }); } }],
-      `<div style="font-size:44px;font-weight:200;letter-spacing:.1em;margin:6px 0 2px">${score}</div><div class="sub">${score > prev ? 'a new deepest light' : 'best ' + prev}</div>`);
+      `<div style="font-size:44px;font-weight:200;letter-spacing:.1em;margin:6px 0 2px">${score}</div><div class="sub">${score > prev ? 'a new deepest light' : 'best ' + prev}</div>${mine ? `<div class="sub" style="margin-top:10px;opacity:.75">☍ ${hauntName(mine.id)} now waits at depth ${mine.depth}${this.rested ? ` · ${this.rested} laid to rest` : ''}</div>` : ''}`);
   }
 }

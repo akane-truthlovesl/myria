@@ -5,6 +5,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { ROOMS, STRATA, stratumOf } from '../world/odyssey.js';
 import { packEcho, unpackEcho } from '../world/entities.js';
+import { hashStr } from '../core/util.js';
 
 const GRACE = 3;       // particles you may lose and still keep the Grace star
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX', 'XXI', 'XXII', 'XXIII', 'XXIV', 'XXV', 'XXVI', 'XXVII', 'XXVIII', 'XXIX', 'XXX'];
@@ -49,8 +50,21 @@ export const TRICKS = [
   ['Outrun', 'come home before your own echo does'],
   ['Phoenix', 'leave a chamber whole after being an ember in it'], ['Immaculate', 'all three stars in a single visit'],
 ];
+// ── the Daily Sprint: one chamber a day, under one mutation of its water, against the clock (the same chamber and mutation for everyone, from the date alone) ──
+export const SPRINTS = [
+  { id: 'swift', name: 'Quick Tide', sub: 'you, and everything else, move faster', apply: (W) => { W.speedScale = 1.3; } },
+  { id: 'thick', name: 'Thick Water', sub: 'everything drags', apply: (W) => { W.phys.drag = 2.6; } },
+  { id: 'glide', name: 'Glass Water', sub: 'nothing slows you down — nothing', apply: (W) => { W.phys.drag = 0.6; } },
+  { id: 'glean', name: 'Gleaner', sub: 'the way out opens only when every light is yours', apply: (W) => { for (const e of W.ents) if (e.d.type === 'pore') e.need = W.stats.motesTotal; } },
+];
+// every (chamber, mutation) pair the bot has finished — the day's sprint is only ever drawn from these (tools/sprint.mjs rebuilds the list)
+export const SPRINT_OK = [["narrows","swift"],["leap","swift"],["two-hearts","swift"],["lock","swift"],["comb","swift"],["shear","swift"],["rebound","swift"],["grinder-row","swift"],["press","swift"],["centrifuge","swift"],["amber","swift"],["quicksilver","swift"],["fizz","swift"],["osmosis","swift"],["oil-water","swift"],["bastion","swift"],["iron-bloom","swift"],["thaw","swift"],["twin-cores","swift"],["veil","swift"],["tidepool","swift"],["event-horizon","swift"],["bluff","swift"],["trojan","swift"],["narrows","thick"],["leap","thick"],["two-hearts","thick"],["lock","thick"],["comb","thick"],["shear","thick"],["rebound","thick"],["grinder-row","thick"],["press","thick"],["centrifuge","thick"],["amber","thick"],["quicksilver","thick"],["fizz","thick"],["osmosis","thick"],["oil-water","thick"],["bastion","thick"],["iron-bloom","thick"],["thaw","thick"],["twin-cores","thick"],["veil","thick"],["tidepool","thick"],["event-horizon","thick"],["bluff","thick"],["trojan","thick"],["narrows","glide"],["leap","glide"],["two-hearts","glide"],["lock","glide"],["comb","glide"],["shear","glide"],["rebound","glide"],["grinder-row","glide"],["press","glide"],["centrifuge","glide"],["amber","glide"],["quicksilver","glide"],["fizz","glide"],["osmosis","glide"],["oil-water","glide"],["bastion","glide"],["iron-bloom","glide"],["thaw","glide"],["twin-cores","glide"],["veil","glide"],["tidepool","glide"],["event-horizon","glide"],["bluff","glide"],["trojan","glide"],["hunt","glide"],["narrows","glean"],["leap","glean"],["two-hearts","glean"],["lock","glean"],["shear","glean"],["press","glean"],["amber","glean"],["fizz","glean"],["oil-water","glean"],["bastion","glean"],["thaw","glean"],["veil","glean"],["event-horizon","glean"],["bluff","glean"],["trojan","glean"],["hunt","glean"]];
+export function dailySprint(day) {
+  let pairs = SPRINT_OK; if (!pairs) { pairs = []; for (const r of ROOMS) for (const m of SPRINTS) if (r.id !== 'first-light' && r.id !== 'heart') pairs.push([r.id, m.id]); }
+  const pick = pairs[hashStr('sprint' + day) % pairs.length]; return { day, i: Math.max(0, ROOMS.findIndex(r => r.id === pick[0])), m: SPRINTS.find(q => q.id === pick[1]) || SPRINTS[0] };
+}
 export class Odyssey {
-  constructor(app, index = 0, o = {}) { this.app = app; this.i = Math.max(0, Math.min(ROOMS.length - 1, index)); this.carryMass = o.mass || 0; this.single = !!o.single; this.tricks = []; }
+  constructor(app, index = 0, o = {}) { this.app = app; this.i = Math.max(0, Math.min(ROOMS.length - 1, index)); this.carryMass = o.mass || 0; this.single = !!o.single; this.sprint = o.sprint || null; this.tricks = []; }
   enter() { this.load(false); }
   exit() { this.app.hud.hint(''); }
 
@@ -61,7 +75,7 @@ export class Odyssey {
       (spec) => ({ mass: this.startMass = this.massFor(spec) }), {
         minDark: fromPore ? 1.9 : 0.5,
         onDark: () => app.applyBudget(),
-        onLoad: (W) => { for (const e of W.ents) if (e.d.type === 'pore' && !e.need) e.need = Math.ceil(W.stats.motesTotal * (this.room.quota ?? this.spec.quota ?? 0.6)); this.wakeEcho(W); },
+        onLoad: (W) => { for (const e of W.ents) if (e.d.type === 'pore' && !e.need) e.need = Math.ceil(W.stats.motesTotal * (this.room.quota ?? this.spec.quota ?? 0.6)); if (this.sprint) this.sprint.m.apply(W); else this.wakeEcho(W); },
         onReveal: () => { app.hud.hideResult(); app.hud.showTitle(ROMAN[this.i] || '', room.name, this.titleSub()); app.hud.setCorner(true, () => app.pause()); app.sound.ready && app.sound.ambience('deep', 50 - (this.i % 4) * 2); },
       });
   }
@@ -80,7 +94,7 @@ export class Odyssey {
   restart() { this.carryMass = this.startMass; this.load(false); }
   pauseSub() { return `${ROMAN[this.i]} · ${this.room.name}`; }
   // a stratum announces itself once, at its first chamber; a warden always does
-  titleSub() { const k = stratumOf(this.i); return this.room.boss ? `warden of ${STRATA[k].name}` : STRATA[k].from === this.i ? STRATA[k].name : ''; }
+  titleSub() { if (this.sprint) return `today's sprint · ${this.sprint.m.name} — ${this.sprint.m.sub}`; const k = stratumOf(this.i); return this.room.boss ? `warden of ${STRATA[k].name}` : STRATA[k].from === this.i ? STRATA[k].name : ''; }
 
   // ── world listener ────────────────────────────────────────────────────
   poreReady(p) { const W = this.app.world; return W.stats.motes >= p.need && (!p.d.key || W.check(p.d.key)); }
@@ -135,8 +149,9 @@ export class Odyssey {
     const beatOwn = this.echo && !this.echo.home, beatRival = this.rival && !this.rival.home, lostRival = this.rival && this.rival.home;
     if (beatOwn) this.trick('Outrun');
     if (beatRival) app.hud.toast(`echo beaten by ${(this.rival.T - W.roomTime).toFixed(1)} s`, '◷'); else if (lostRival) app.hud.toast(`the echo was ${(W.roomTime - this.rival.T).toFixed(1)} s ahead`, '◷', 'cool');
-    const rec = app.save.recordRoom(this.room.id, { stars, time: W.roomTime, light: s.motes });
-    const had = app.save.echo(this.room.id); if (this.rec && this.rec.length > 4 && this.rec.length < 1500 && (!had || W.roomTime < had.t - 0.01)) app.save.setEcho(this.room.id, { t: +W.roomTime.toFixed(2), p: packEcho(this.rec) });
+    // (a sprint is run in mutated water: its stars and its path are the day's, not the chamber's record)
+    const rec = this.sprint ? { newBest: false, firstClear: false } : app.save.recordRoom(this.room.id, { stars, time: W.roomTime, light: s.motes });
+    const had = app.save.echo(this.room.id); if (!this.sprint && this.rec && this.rec.length > 4 && this.rec.length < 1500 && (!had || W.roomTime < had.t - 0.01)) app.save.setEcho(this.room.id, { t: +W.roomTime.toFixed(2), p: packEcho(this.rec) });
     this.carryMass = W.player.mass;
     // celebration at the pore: the body pours in, the room exhales light
     const F = W.player.focus; if (F) { F.seek = { x: pore.x, y: pore.y, k: 1500 }; for (const O of W.player.orgs) O.rallyTo = F.B; }
@@ -145,6 +160,7 @@ export class Odyssey {
     app.hud.hint(''); app.hud.setTop(null); app.hud.setCorner(false);
     const last = this.i >= ROOMS.length - 1;
     const result = { name: `${ROMAN[this.i]} · ${this.room.name}`, stars, light: s.motes, total: s.motesTotal, time: W.roomTime, par: this.room.par, mass: W.player.mass, chain: s.bestChain || 0, tricks: this.tricks, next: last ? 'one more room' : rec.newBest && !rec.firstClear ? 'new best' : '', onStar: (k) => app.sound.star(k) };
+    if (this.sprint) { const save = app.save, t = +W.roomTime.toFixed(2), prev = save.get('sprintDay', '') === this.sprint.day ? save.get('sprintBest', 0) : 0; if (!prev || t < prev) save.set('sprintBest', t); save.set('sprintDay', this.sprint.day); result.next = prev && t >= prev ? `sprint · today's best ${prev.toFixed(1)} s` : `sprint · ${t.toFixed(1)} s is today's best`; }
     setTimeout(() => {
       if (app.mode !== this) return;
       if (last && !this.single) { app.toEpilogue({ result, mass: W.player.mass }); return; }           // the last room has no door
@@ -158,7 +174,7 @@ export class Odyssey {
     app.travel((aspect) => { const s = room.build(aspect); s.name = room.name; s.no = this.i + 1; s.seed = s.seed || (this.i * 97 + 13); this.spec = s; return s; }, (spec) => ({ mass: this.startMass = this.massFor(spec) }), {
       from: { x: pore.x, y: pore.y }, minDark: 2.3,
       onDark: () => { app.applyBudget(); app.hud.showResult(result); },
-      onLoad: (W) => { for (const e of W.ents) if (e.d.type === 'pore' && !e.need) e.need = Math.ceil(W.stats.motesTotal * (this.room.quota ?? this.spec.quota ?? 0.6)); this.wakeEcho(W); },
+      onLoad: (W) => { for (const e of W.ents) if (e.d.type === 'pore' && !e.need) e.need = Math.ceil(W.stats.motesTotal * (this.room.quota ?? this.spec.quota ?? 0.6)); if (this.sprint) this.sprint.m.apply(W); else this.wakeEcho(W); },
       onReveal: () => { app.hud.hideResult(); app.hud.showTitle(ROMAN[this.i] || '', room.name, this.titleSub()); app.hud.setCorner(true, () => app.pause()); },
     });
   }

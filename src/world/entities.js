@@ -783,7 +783,65 @@ export class Spinner extends Entity {
   over(ov) { ov.glow(this.x, this.y, 46, this.col, 0.35 + 0.15 * Math.sin(this.t * 2)); for (const S of this.arms) { const a = S.angle; const e = S._mid + S.hl; ov.glow(this.x + Math.cos(a) * e, this.y + Math.sin(a) * e, 12, this.col, 0.5); } }
 }
 
-export const ENT = { bumper: Bumper, valve: Valve, echo: Echo, geyser: Geyser, mimic: Mimic, sponge: Sponge, core: Core, rotor: Rotor, spinner: Spinner, mote: Mote, pore: Pore, pad: Pad, gate: Gate, film: Film, blade: Blade, grinder: Grinder, pool: Pool, current: Current, well: Well, crusher: Crusher, lantern: Lantern, watcher: Watcher, frost: Frost, vent: Vent, iceplug: IcePlug, magnet: Magnet };
+// ── Residue: the stain a dive left where it ended. It is tacky (whatever is in it is held back), and the moment a living body
+//    steps in it, what the stain remembers gets up: a pale revenant of the body that fell here (core/haunt.js). ──
+export class Residue extends Entity {
+  constructor(W, d) {
+    super(W, d); this.r = d.r ?? 62; this.n = d.n ?? 60; this.tint = d.tint || null; this.col = d.col || [0.9, 0.8, 0.85]; this.woke = false; this.fade = 1; this.t = Math.random() * 9; this.curious = true;
+    W.phys.zones.push(this.Z = { x0: this.x - this.r, y0: this.y - this.r, x1: this.x + this.r, y1: this.y + this.r, flow: true, flowK: 5, fvx: 0, fvy: 0, weight: (px, py) => { const q = Math.hypot(px - this.x, py - this.y); return q < this.r ? Math.min(1, (this.r - q) / 22) : 0; } });
+  }
+  update(dt) {
+    this.t += dt; const W = this.W; if (this.woke) { this.fade = Math.max(0, this.fade - dt * 0.5); this.Z.flowK = 5 * this.fade; return; }
+    const pl = W.player; if (!pl) return;
+    for (const O of pl.orgs) if (O.alive && Math.hypot(O.B.cx - this.x, O.B.cy - this.y) < this.r * 0.8 + O.B.r) { this.wake(); break; }
+  }
+  wake() {
+    if (this.woke) return; this.woke = true; const W = this.W, c = this.col;
+    // it is the body it was — but it rises as your equal, never as your doom: an ambush you can answer (outgrow it and swallow it, or cleave it)
+    const n = Math.round(Math.max(30, Math.min(this.n, (W.player ? W.player.mass : 60) * 1.05)));
+    const C = W.addRival('revenant', this.x, this.y, n, { tint: this.tint }); C.haunt = this.d.haunt || null; this.revenant = C; for (const O of C.orgs) { O.hurtT = 0.9; O.crown.startle(1); if (O.brain) O.brain.dartT = 1.6; }
+    W.fx.ring(this.x, this.y, c, this.r * 3.2, 0.9, { w: 3 }); W.fx.ring(this.x, this.y, [1, 1, 1], this.r * 1.8, 0.5); W.fx.burst(this.x, this.y, 26, c, 240, { life: 0.9, size: 2.6 });
+    W.shake = Math.min(1, W.shake + 0.4); W.sound && W.sound.haunt && W.sound.haunt(); W.host.haptics && W.host.haptics.thump && W.host.haptics.thump(0.6); W.emit('haunt', this, C);
+  }
+  bake(ink) { const c = this.col; ink.disc(this.x, this.y, this.r * 0.92, 0.02, 0.015, 0.03, 0.34); ink.ring(this.x, this.y, this.r, 1.4, c[0] * 0.4, c[1] * 0.4, c[2] * 0.4, 0.5, 5); ink.ring(this.x, this.y, this.r * 0.6, 0.8, c[0] * 0.3, c[1] * 0.3, c[2] * 0.3, 0.4, 4); }
+  over(ov) {
+    const c = this.col, f = this.fade; if (f <= 0) return;
+    // threads of the old body still turning slowly in the stain, and a pulse like a breath being held
+    for (let k = 0; k < 5; k++) { const a = this.t * (0.16 + 0.03 * k) * (k & 1 ? -1 : 1) + k * 1.3, r = this.r * (0.34 + 0.12 * k); ov.ring(this.x, this.y, r, 1.2, c, 0.34 * f, a, a + 1.1 + 0.2 * k); }
+    ov.glow(this.x, this.y, this.r * (0.5 + 0.08 * Math.sin(this.t * 1.1)), c, 0.16 * f);
+  }
+}
+
+// ── Bubble: a soap bubble of air. It drifts, wobbles, joins its neighbours, bursts on anything sharp — and whatever gel touches it swallows it
+//    and swells with the air (Organism.air), until it lets the breath go again. ──
+const BN = [0, 0];
+export class Bubble extends Entity {
+  constructor(W, d) { super(W, d); this.r = d.r ?? 20; this.vx = d.vx || 0; this.vy = d.vy || 0; this.t = Math.random() * 9; this.life = d.life ?? 46; this.seed = Math.random(); this.born = 0; this.safe = d.safe ?? 0; }
+  update(dt) {
+    this.t += dt; this.life -= dt; this.born = Math.min(1, this.born + dt * 4); this.safe -= dt; const W = this.W, P = W.phys;
+    // buoyant against whatever "down" the pool has, a little restless, and slowed by the water
+    const g = Math.hypot(P.gx, P.gy); this.vx += (-P.gx * 0.12 + Math.sin(this.t * 1.3 + this.seed * 40) * 9) * dt; this.vy += (-P.gy * 0.12 - (g > 20 ? 0 : 7) + Math.cos(this.t * 1.1 + this.seed * 17) * 6) * dt;
+    const dr = Math.exp(-dt * 0.9); this.vx *= dr; this.vy *= dr; this.x += this.vx * dt; this.y += this.vy * dt;
+    const d = P.sampleSDF(this.x, this.y); if (d < this.r) { const n = P.sdfNormal(this.x, this.y, BN); this.x += n[0] * (this.r - d); this.y += n[1] * (this.r - d); const vn = this.vx * n[0] + this.vy * n[1]; if (vn < 0) { this.vx -= 1.6 * vn * n[0]; this.vy -= 1.6 * vn * n[1]; } }
+    // anything hard or sharp that moves through it ends it
+    for (const S of P.shapes) { if (!S.active || S.oneWay) continue; if (this.x < S.bx0 - this.r || this.x > S.bx1 + this.r || this.y < S.by0 - this.r || this.y > S.by1 + this.r) continue; if (P.solidAt(this.x, this.y) < this.r * 0.55) { this.burst(); return; } break; }
+    // two bubbles that touch become one (areas add)
+    for (const e of W.ents) { if (e === this || e.dead || !(e instanceof Bubble)) continue; const dd = Math.hypot(e.x - this.x, e.y - this.y); if (dd < (this.r + e.r) * 0.8 && this.r >= e.r && this.r < 64) { const a = this.r * this.r, b = e.r * e.r; this.x = (this.x * a + e.x * b) / (a + b); this.y = (this.y * a + e.y * b) / (a + b); this.vx = (this.vx * a + e.vx * b) / (a + b); this.vy = (this.vy * a + e.vy * b) / (a + b); this.r = Math.min(64, Math.sqrt(a + b)); this.life = Math.max(this.life, e.life); e.dead = true; W.sound && W.sound.pop(0.3); this.born = 0.6; } }
+    // gel swallows air: the body that touches it swells
+    if (this.safe <= 0) for (const C of W.colonies) for (const O of C.orgs) { if (!O.alive) continue; const B = O.B; if (Math.hypot(B.cx - this.x, B.cy - this.y) < B.r * 0.85 + this.r * 0.35) { O.air = Math.min(1.5, (O.air || 0) + 0.25 + this.r / 44); O.gulp = 1; this.dead = true; W.fx.ring(this.x, this.y, [0.85, 0.95, 1], this.r * 1.6, 0.35, { a: 0.5 }); W.sound && W.sound.gulp && W.sound.gulp(); W.emit('air', this, O); return; } }
+    if (this.life <= 0) this.burst();
+  }
+  burst() { if (this.dead) return; this.dead = true; const W = this.W; W.fx.ring(this.x, this.y, [0.9, 0.97, 1], this.r * 1.5, 0.3, { a: 0.6 }); W.fx.burst(this.x, this.y, 7, [0.85, 0.95, 1], 120, { type: 1, size: 1.8, life: 0.4 }); W.sound && W.sound.pop(0.5 + this.r / 60); }
+  over(ov) {
+    const r = this.r * (0.5 + 0.5 * this.born) * (1 + 0.035 * Math.sin(this.t * 5 + this.seed * 9)), x = this.x, y = this.y, sp = this.t * 0.5 + this.seed * 6;
+    ov.ring(x, y, r, 1.3, [0.86, 0.95, 1], 0.55);
+    // iridescence: three thin arcs of colour sliding round the skin
+    ov.ring(x, y, r - 1.6, 1.6, [1, 0.62, 0.86], 0.5, sp, sp + 1.5); ov.ring(x, y, r - 1.6, 1.6, [0.5, 1, 0.9], 0.45, sp + 2.1, sp + 3.4); ov.ring(x, y, r - 1.6, 1.6, [1, 0.9, 0.5], 0.4, sp + 4.2, sp + 5.3);
+    ov.glow(x - r * 0.38, y - r * 0.42, r * 0.34, [1, 1, 1], 0.5); ov.glow(x + r * 0.3, y + r * 0.36, r * 0.2, [0.8, 0.9, 1], 0.25);
+  }
+}
+
+export const ENT = { residue: Residue, bubble: Bubble, bumper: Bumper, valve: Valve, echo: Echo, geyser: Geyser, mimic: Mimic, sponge: Sponge, core: Core, rotor: Rotor, spinner: Spinner, mote: Mote, pore: Pore, pad: Pad, gate: Gate, film: Film, blade: Blade, grinder: Grinder, pool: Pool, current: Current, well: Well, crusher: Crusher, lantern: Lantern, watcher: Watcher, frost: Frost, vent: Vent, iceplug: IcePlug, magnet: Magnet };
 
 // helpers for room builders
 export function moteTrail(pts, n, value = 2, extra = {}) {

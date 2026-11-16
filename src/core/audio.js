@@ -148,6 +148,7 @@ export class Sound {
   tickle() { this.bell(this.note(4 + Math.floor(Math.random() * 3), 2), 0.25, 0.9, 1.4, 0.5); }
   star(k = 0) { this.bell(this.note([0, 2, 4][k] ?? 4, 2), 0.4, 2.2, 1.1, 0.8); }
   whoosh() { this.noiseHit(700, 0.5, 0.22, 0.9, 0.5, 3.2); }
+  haunt() { if (!this._rate('haunt', 600)) return; this.blip(92, 196, 0.2, 0.9, 'sine', 0.3); this.blip(277, 139, 0.09, 1.2, 'triangle', 0.5); }      // something getting up: a low swell and a falling sigh
   gulp() { if (!this._rate('gulp', 60)) return; this.blip(300, 120, 0.12, 0.12, 'sine', 0.25); }
   trick() { [0, 4, 7, 12].forEach((d, i) => setTimeout(() => this.bell(this.note(d, 1) , 0.22, 1.5, 1, 0.6), i * 55)); }
   swallow() { this.blip(400, 90, 0.2, 0.35, 'sine', 0.4); }

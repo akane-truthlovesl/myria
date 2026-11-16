@@ -67,8 +67,10 @@ export class Organism {
     if (this.brain) this.brain.think(this, dt);
     // ── swell: hold a breath (silhouette doubles, mass does not), release it as a shove ──
     const want = this.swell && this.canSwell && this.dartT <= 0 ? 1 : 0; const was = this.puff;
-    this.puff += (want - this.puff) * Math.min(1, dt * (want ? 5 : 14));
-    if (!want && was > 0.55 && !this.popped) { this.popped = true; W.pop && W.pop(this, was); } if (want) this.popped = false;
+    // (air it has swallowed — bubbles — swells it just the same, without being held, and seeps away over a quarter of a minute)
+    const air = this.air > 0 ? Math.min(1, this.air) * 0.9 : 0; if (this.air > 0) this.air = Math.max(0, this.air - dt * 0.065);
+    const tgt = Math.max(want, air); this.puff += (tgt - this.puff) * Math.min(1, dt * (tgt >= this.puff ? 5 : air > 0 ? 2.5 : 14));
+    if (!want && !air && was > 0.55 && !this.popped) { this.popped = true; W.pop && W.pop(this, was); } if (want) this.popped = false;
     B.inflate = this.puff;
     // ── temperature: frost stiffens and slows, warmth quickens; both fade back to the water's own ──
     this.heat += (0 - this.heat) * Math.min(1, dt * 0.05); const cold = this.heat < 0 ? -this.heat : 0, warm = this.heat > 0 ? this.heat : 0;
@@ -157,7 +159,9 @@ export class Organism {
     let tonus = this.baseTonus * (1 - TONE_GO * im) * (1 - 0.7 * this.squeeze) * (1 + 0.4 * this.excite) * (this.morph ? this.morph.tonus : 1);
     if (this.dartT > 0) tonus *= 0.35;
     tonus *= 1 + 0.07 * Math.sin(this.breathT * 1.25) + 0.25 * this.gulp + 0.9 * (this.coil || 0);      // coiling for a lance: the pearl tightens
-    B.tonus = tonus; B.tonusReach = 1.15;
+    // held in someone's hands (the Pool): it stops gathering itself into a pearl and lets itself be drawn out, then slowly remembers its shape
+    if (this.knead > 0) this.knead = Math.max(0, this.knead - dt * 0.8);
+    B.tonus = tonus * (1 - 0.9 * Math.min(1, this.knead || 0)); B.tonusReach = 1.15;
     // phase-softening: pushing hard against something that will not yield → the gel lets go and flows through
     const along = im > 0.05 ? (B.vx * ix + B.vy * iy) / im : 0;
     const blocked = im > 0.55 && touching && along < speed * 0.3 ? 1 : 0;
@@ -249,6 +253,7 @@ export class Organism {
   // dart: the whole body contracts and lances forward; a little mass is spent as a jet you can fetch back
   dart(dx, dy, power = 1) {
     const W = this.W, P = W.phys, B = this.B;
+    if (this.air > 0.15 && !this.dormant && W.exhale) { W.exhale(this, dx, dy); return false; }      // full of air: a dart is a breath out
     if (this.dartCD > 0 || B.count < 6 || this.dormant || this.puff > 0.4) return false;
     if (this.heat < -0.5) { this.heat += 0.45; W.fx && W.fx.burst(B.cx, B.cy, 12, [0.75, 0.95, 1], 200, { life: 0.5, size: 2.2, type: 1 }); }       // a dart cracks the ice
     const m = Math.hypot(dx, dy) || 1; dx /= m; dy /= m;

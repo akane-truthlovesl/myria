@@ -8,7 +8,8 @@ import { MAT } from '../sim/materials.js';
 import { SPACING } from '../sim/physics.js';
 
 const TOOLS = [
-  { id: 'hand', g: '☟', name: 'knead · hold to pull the gel' },
+  { id: 'hand', g: '☟', name: 'knead · every finger holds the gel — pull, pinch, stretch' },
+  { id: 'bubble', g: '◯', name: 'bubble · the gel swallows air and swells · dart to breathe out' }, { id: 'weight', g: '⇣', name: 'weight · give the pool a down (with motion on, tip the device to pour)', toggle: true },
   { id: 'light', g: '✦', name: 'light' }, { id: 'dew', g: '◌', name: 'dew' }, { id: 'oil', g: '●', name: 'oil', mat: MAT.OIL }, { id: 'silver', g: '◍', name: 'quicksilver', mat: MAT.SILVER },
   { id: 'resin', g: '◉', name: 'resin', mat: MAT.RESIN }, { id: 'foam', g: '○', name: 'foam', mat: MAT.FOAM }, { id: 'iron', g: '✺', name: 'ferrofluid', mat: MAT.FERRO },
   { id: 'grazer', g: '☼', name: 'grazer' }, { id: 'hunter', g: '➶', name: 'lancer' }, { id: 'thorn', g: '✸', name: 'thornback' },
@@ -28,13 +29,14 @@ export class Pool {
       onReveal: () => { app.hud.showTitle('', 'The Kneading Pool', 'nothing to win'); app.hud.setCorner(true, () => app.pause()); this.tray(); },
     });
   }
-  exit() { if (this.el) this.el.remove(); }
+  exit() { if (this.el) this.el.remove(); this.app.input.tiltMute = false; this.app.input.hands = false; }
   tray() {
     if (this.el) this.el.remove();
     const el = this.el = document.createElement('div'); el.className = 'h-tray';
-    el.innerHTML = TOOLS.map(t => `<button data-id="${t.id}" title="${t.name}" class="${t.id === this.tool ? 'on' : ''}">${t.g}</button>`).join('') + '<div class="tip"></div>';
+    el.innerHTML = '<div class="row">' + TOOLS.map(t => `<button data-id="${t.id}" title="${t.name}" class="${t.id === this.tool ? 'on' : ''}">${t.g}</button>`).join('') + '</div><div class="tip"></div>';
+    { const row = el.querySelector('.row'); row.addEventListener('wheel', (e) => { row.scrollLeft += e.deltaY || e.deltaX; e.preventDefault(); }, { passive: false }); }
     this.app.hud.root.appendChild(el);
-    el.querySelectorAll('button').forEach(b => { b.onclick = (e) => { e.stopPropagation(); const id = b.dataset.id; if (id === 'clear') { this.app.setMode(new Pool(this.app, { mass: 90 })); return; } this.tool = id; el.querySelectorAll('button').forEach(q => q.classList.toggle('on', q === b)); el.querySelector('.tip').textContent = TOOLS.find(t => t.id === id).name; }; });
+    el.querySelectorAll('button').forEach(b => { b.onclick = (e) => { e.stopPropagation(); const id = b.dataset.id; if (id === 'clear') { this.app.setMode(new Pool(this.app, { mass: 90 })); return; } if (id === 'weight') { this.weight = !this.weight; this.app.input.tiltMute = this.weight; el.querySelector('.tip').textContent = this.weight ? TOOLS.find(t => t.id === id).name : 'weightless again'; } else { this.tool = id; el.querySelector('.tip').textContent = TOOLS.find(t => t.id === id).name; } el.querySelectorAll('button').forEach(q => q.classList.toggle('on', q.dataset.id === this.tool || q.dataset.id === 'weight' && !!this.weight)); }; });
     el.querySelector('.tip').textContent = TOOLS[0].name;
   }
   blob(W, x, y, n, mat) {
@@ -44,6 +46,7 @@ export class Pool {
   place(wx, wy) {
     const W = this.app.world, R = this.app.R, t = this.tool; const add = (d) => { const e = W.spawn({ ...d, x: wx, y: wy }); if (e && e.bake) { R.room.decals.push(e); R.ink.target(true); e.bake(R.ink, R); R.ink.target(false); R.fb.invalidate(); } return e; };
     if (W.phys.sampleSDF(wx, wy) < 12) return;
+    if (t === 'bubble') { for (let k = 0; k < 3; k++) W.spawn({ type: 'bubble', x: wx + (Math.random() - 0.5) * 30, y: wy + (Math.random() - 0.5) * 30, r: 13 + Math.random() * 15, vx: (Math.random() - 0.5) * 60, vy: -20 - Math.random() * 40, safe: 0.25 }); this.app.sound.pop(0.4); return; }
     if (t === 'light') for (let k = 0; k < 7; k++) { const a = k / 7 * 6.28; W.spawn({ type: 'mote', x: wx + Math.cos(a) * 26, y: wy + Math.sin(a) * 26, free: true }); }
     else if (t === 'dew') { const P = W.phys; for (let k = 0; k < 10; k++) { const D = P.allocBody(-1, 'dew', MAT.DEW); if (D) P.spawn(wx + (Math.random() - 0.5) * 50, wy + (Math.random() - 0.5) * 50, 0, 0, MAT.DEW, D.id); } }
     else if (['oil', 'silver', 'resin', 'foam', 'iron'].includes(t)) this.blob(W, wx, wy, 44, TOOLS.find(q => q.id === t).mat);
@@ -63,14 +66,37 @@ export class Pool {
     if (this.app.state !== 'play' || this.app.paused) return false;
     if ((e.type === 'click' || e.type === 'tap') && this.tool !== 'hand') { const [wx, wy] = this.app.R.cssToWorld(e.x, e.y); this.place(wx, wy); return true; }
     if (e.type === 'click' && this.tool === 'hand') return true;       // in the pool a held click kneads instead of darting (Space still darts)
+    if (this.tool === 'hand' && (e.type === 'tap' || e.type === 'budAt' || e.type === 'dartDir')) return true;      // …and fingers are hands here, not commands
     return false;
   }
-  // kneading: while the button is held, gel near the pointer is drawn to it — pull a strand, let it snap back
+  // Kneading: every finger on the glass (or the held mouse button) takes hold of the gel under it — the gel is drawn to the finger and carried with it,
+  // so two fingers pull a strand between them, pinch it thin, fold it over. While hands are on it the creature has no will of its own.
   update(dt, W) {
-    const inp = this.app.input; if (this.tool !== 'hand' || !inp.mouse.down && !(inp.stick.active && inp.pointers.size > 1)) return;
-    const a = this.app.ctl.aim; if (!a) return; const P = W.phys;
-    P.forEachNear(a.x, a.y, 90, (i, dx, dy) => { const d = Math.sqrt(dx * dx + dy * dy) + 4; const f = 2600 * (1 - d / 94) * dt; P.vx[i] -= dx / d * f; P.vy[i] -= dy / d * f; P.glow[i] = Math.max(P.glow[i], 0.5); });
-    W.fx.list.length < 60 && Math.random() < 0.3 && W.fx.add({ x: a.x, y: a.y, type: 2, size: 10, grow: 90, life: 0.35, col: [0.9, 0.85, 1], a: 0.35, w: 1.4, drag: 0 });
+    const app = this.app, inp = app.input, P = W.phys, R = app.R; inp.hands = this.tool === 'hand';
+    // weight: the pool gets a "down" — straight down, or wherever the device says down is
+    { let gx = 0, gy = 0; if (this.weight) { gy = 1; const T = inp.tilt; if (T.on && performance.now() - T.t < 900) { gx = T.x * 1.4; gy = T.y * 1.4; const m = Math.hypot(gx, gy); if (m > 1) { gx /= m; gy /= m; } } } const k = Math.min(1, dt * 4); P.gx += (gx * 520 - P.gx) * k; P.gy += (gy * 520 - P.gy) * k; if (Math.abs(P.gx) + Math.abs(P.gy) < 1) P.gx = P.gy = 0; }
+    if (this.tool !== 'hand') return;
+    const grabs = []; const now = performance.now(); let fingers = 0; const held = this.held || (this.held = new Map());
+    for (const p of inp.pointers.values()) {
+      if (!p.touch) continue; fingers++; const [wx, wy] = R.cssToWorld(p.x, p.y); const h = p.hist || [], a = h[h.length - 1], b = h[Math.max(0, h.length - 4)]; let vx = 0, vy = 0;
+      if (a && b && a[2] > b[2] && now - a[2] < 90) { const k = R.pxScale / R.view.z * 1000 / (a[2] - b[2]); vx = (a[0] - b[0]) * k; vy = (a[1] - b[1]) * k; const m = Math.hypot(vx, vy); if (m > 900) { vx *= 900 / m; vy *= 900 / m; } }
+      grabs.push([wx, wy, vx, vy, 't' + p.id]);
+    }
+    if (!fingers && inp.mouse.down) { const a = app.ctl.aim; if (a) { const q = this._pa; let vx = 0, vy = 0; if (q) { vx = (a.x - q[0]) / dt; vy = (a.y - q[1]) / dt; q[2] += (vx - q[2]) * 0.2; q[3] += (vy - q[3]) * 0.2; q[0] = a.x; q[1] = a.y; vx = q[2]; vy = q[3]; } else this._pa = [a.x, a.y, 0, 0]; grabs.push([a.x, a.y, vx, vy, 'm']); } } else this._pa = null;
+    for (const id of [...held.keys()]) if (!grabs.some(g => g[4] === id)) held.delete(id);
+    // let go of, whatever was pulled apart drifts back together by itself after a breath
+    if (!grabs.length) { this.idleT = (this.idleT || 0) + dt; if (this.idleT > 1.1 && W.player.orgs.length > 1) W.callHome = 0.2; return; }
+    this.idleT = 0; for (const O of W.player.orgs) O.knead = 1;
+    for (const g of grabs) {
+      // what was under the fingertip when it came down is stuck to it — a pinch of gel that goes wherever the finger goes…
+      let H = held.get(g[4]);
+      if (!H) { const near = []; P.forEachNear(g[0], g[1], 36, (i, dx, dy) => { near.push([dx * dx + dy * dy, i, dx, dy]); }); near.sort((a, b) => a[0] - b[0]); H = near.slice(0, 12).map(q => [q[1], q[2] * 0.6, q[3] * 0.6]); held.set(g[4], H); }      // (a pinch, not a fistful: what is not pinched is free to draw out into a strand)
+      for (const q of H) { const i = q[0]; if (!P.alive[i]) continue; let vx = (g[0] + q[1] - P.x[i]) * 22 + g[2] * 0.5, vy = (g[1] + q[2] - P.y[i]) * 22 + g[3] * 0.5; const m = Math.hypot(vx, vy); if (m > 1500) { vx *= 1500 / m; vy *= 1500 / m; } P.vx[i] = vx; P.vy[i] = vy; P.ox[i] = P.x[i] - vx / 120; P.oy[i] = P.y[i] - vy / 120; P.glow[i] = Math.max(P.glow[i], 0.9); }
+      // …and the gel around it is drawn in and dragged along, more and more loosely
+      P.forEachNear(g[0], g[1], 96, (i, dx, dy) => { const d = Math.sqrt(dx * dx + dy * dy) + 4, w = 1 - d / 100; if (w <= 0) return; const f = 1300 * w * dt; P.vx[i] -= dx / d * f; P.vy[i] -= dy / d * f; const k = Math.min(1, w * dt * 5); P.vx[i] += (g[2] - P.vx[i]) * k; P.vy[i] += (g[3] - P.vy[i]) * k; P.glow[i] = Math.max(P.glow[i], 0.5); });
+      W.fx.list.length < 60 && Math.random() < 0.3 && W.fx.add({ x: g[0], y: g[1], type: 2, size: 10, grow: 90, life: 0.35, col: [0.9, 0.85, 1], a: 0.35, w: 1.4, drag: 0 });
+    }
+    this.kneads = (this.kneads || 0) + grabs.length * dt;
   }
   post(dt, W) { if (!W.player.orgs.some(o => o.alive)) { const sp = W.spec.spawn; W.player.spawn(sp.x, sp.y, 60); W.fx.ring(sp.x, sp.y, [1, 0.8, 0.6], 120, 0.8); } }
 }

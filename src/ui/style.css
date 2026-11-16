@@ -79,10 +79,13 @@ canvas#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block;
 .mouse-ic.m::after { opacity: 0; }
 .fatal { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 30px; letter-spacing: .15em; line-height: 1.8; }
 /* sandbox tray */
-.h-tray { position: absolute; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; max-width: calc(94vw / var(--k, 1)); padding: 8px 10px 22px; border-radius: 18px; background: var(--glass); border: 1px solid var(--line); pointer-events: auto; }
+/* the Pool's tools: two rows that scroll sideways — never more than a low strip, however many tools there are (it used to wrap into a wall over a third of the pool) */
+.h-tray { position: absolute; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%); max-width: calc(94vw / var(--k, 1)); padding: 8px 10px 22px; border-radius: 18px; background: var(--glass); border: 1px solid var(--line); pointer-events: auto; }
+.h-tray .row { display: grid; grid-auto-flow: column; grid-template-rows: repeat(2, 36px); grid-auto-columns: 36px; gap: 6px; overflow-x: auto; overscroll-behavior: contain; touch-action: pan-x; scrollbar-width: none; }
+.h-tray .row::-webkit-scrollbar { display: none; }
 .h-tray button { width: 36px; height: 36px; border-radius: 50%; background: rgba(140,210,235,.07); border: 1px solid var(--line); font-size: 15px; line-height: 1; color: var(--ink); }
 .h-tray button.on { background: rgba(255,180,138,.22); border-color: rgba(255,180,138,.6); box-shadow: 0 0 14px rgba(255,170,110,.3); }
-.h-tray .tip { position: absolute; left: 0; right: 0; bottom: 5px; text-align: center; font-size: 10px; letter-spacing: .26em; text-transform: uppercase; color: var(--dim); }
+.h-tray .tip { position: absolute; left: 8px; right: 8px; bottom: 5px; text-align: center; font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .m-item.locked { opacity: .35; }
 /* the sigil that breathes while a chamber develops */
 .h-loader { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; opacity: 0; transition: opacity .5s; }

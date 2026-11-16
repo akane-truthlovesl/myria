@@ -11,6 +11,8 @@ export const SPECIES = {
   hunter: { mat: MAT.RIVAL, crown: 'whips', speed: 0.74, tint: { id: 'hunter', absorb: [0.30, 0.95, 0.20], emit: [0.86, 0.45, 1.0], glow: 0.6, halo: 0.28 }, name: 'Lancer' },
   thorn: { mat: MAT.THORN, crown: 'thorns', speed: 0.5, tint: null, name: 'Thornback' },
   oil: { mat: MAT.OIL, crown: 'none', speed: 0.3, tint: null, name: 'Oil' },
+  // what a dive left behind (core/haunt.js): it has the crown of the body it was, the pale twin of its hue, and a lancer's mind
+  revenant: { mat: MAT.RIVAL, crown: 'sun', speed: 0.7, brain: 'hunter', tint: { id: 'ghost', absorb: [0.08, 0.2, 0.3], emit: [0.9, 0.78, 0.76], glow: 0.95, halo: 0.85 }, name: 'Revenant' },
   puffer: { mat: MAT.RIVAL, crown: 'cilia', speed: 0.45, tint: { id: 'puffer', absorb: [0.2, 0.5, 0.9], emit: [1.0, 0.9, 0.4], glow: 0.55, halo: 0.28 }, name: 'Puffer' },
 };
 
