@@ -20,7 +20,11 @@ file: no server, no install, no network. Any window shape works, portrait includ
 | **Focus** another sibling | click it | Tab | tap it | bumpers |
 | Pause | ‖ | Esc / P | ‖ | Start |
 
-The pause menu can also **keep a picture** — the frame on the glass, saved as a PNG.
+The pause menu can also **keep a picture** — the frame on the glass, saved as a PNG — and holds two
+comfort switches: **Tilt** (phones and tablets: the pose you switch it on in is "level"; tip the
+device and the creature runs downhill — the thumb-stick still overrides it) and **Motion · sharp /
+smooth** (sharp keeps the picture crisp and paces to thirty frames when a machine cannot afford
+sixty; smooth makes the picture softer instead, to hold sixty wherever the hardware can).
 
 Nothing else to learn: feelers fetch nearby light by themselves, pushing into a gap softens the gel
 so it flows through, resting near a pad or an open pore settles you onto it, and resting against a
@@ -29,13 +33,16 @@ wall where something is watching makes you a veil it cannot see.
 ## What is in it
 
 - **The Atrium** — the title is written in motes. Wake the sleeping pearl and eat the word.
-- **Odyssey** — twenty-three single-screen chambers in four strata (Dew · Glassworks · Chemistry · Abyss),
+- **Odyssey** — twenty-six single-screen chambers in four strata (Dew · Glassworks · Chemistry · Abyss),
   each teaching one idea through physics alone: squeezing, darting through a soap film, budding to
-  hold two pads, threading a comb, blades, grinders and healing springs, pistons, sticky resin against
-  a river, quicksilver among hunters, oil that will not mix, shear-thickening armour, ferrofluid
+  hold two pads, threading a comb, blades, sling bands that throw you whole through doubled films no
+  dart can break, grinders and healing springs, pistons, sticky resin against a river, quicksilver
+  among hunters, an effervescent foam whose every dart is a free jet that skims a river too strong to
+  wade (wade it anyway: a one-way valve turns being swept off into a flume ride home), oil that will not mix, shear-thickening armour, ferrofluid
   leaping between pulsing poles, frost that stiffens you and vents that thaw a frozen door, watchers
   you hide from by holding still, a gyre of currents, a black hole, bluffing giants with a held
-  breath, a hunt, and a heart that needs you in three places at once.
+  breath, a spore bath that turns whatever you leave behind into a ripening decoy — and whatever
+  swallows it into a rain of dew — a hunt, and a heart that needs you in three places at once.
   Three **wardens** close the first strata: **The Lock** (two rings of glass turning against each other
   around a heart of light — every doorway is a moment, not a place), **The Centrifuge** (a drum whose
   three arms sweep you past lanterns and gears: you do not cross it, you ride it) and **Twin Cores**
@@ -43,9 +50,9 @@ wall where something is watching makes you a veil it cannot see.
   flickers, leans, and throws you — to its twin, unless you lean elsewhere; coat both long enough and
   the pair falls together and pays out).
   Three living stars per chamber: **Radiance** (all the light), **Grace** (lose almost nothing),
-  **Swift** (under par). The pore opens at 60 % — the rest is appetite. Ten named tricks (Thread the
-  Needle, Surgical Shear, Ghost Wall, Paper Tiger, Cleave, Slingshot, Gravity Assist, Comet, Phoenix,
-  Immaculate) are noticed when you find them; the Atrium keeps a journal in which the ones you have
+  **Swift** (under par). The pore opens at 60 % — the rest is appetite. Twelve named tricks (Thread the
+  Needle, Surgical Shear, Ghost Wall, Paper Tiger, Cleave, Slingshot, Gravity Assist, Hole in One,
+  Trojan Swallow, Comet, Phoenix, Immaculate) are noticed when you find them; the Atrium keeps a journal in which the ones you have
   not found yet are riddles.
   The stars you gather dye you: six **hues** (Coral · Honey · Rose · Jade · Pearl · Nebula) unlock as
   they add up — each a full optical recipe, chosen from the pause menu in the Atrium.
@@ -69,8 +76,9 @@ wall where something is watching makes you a veil it cannot see.
 - **Duet** — two players, one screen (pointer + W A S D / Space / F): **Together**, a co-op dive where
   touching shares mass between you, or **Versus**, ninety seconds of raining light.
 - **Pool** — a sandbox with nothing to win: knead the gel with the pointer, pour oil, quicksilver,
-  resin, foam and ferrofluid, drop gears, blades, wells, poles, turning rings, currents, vents and frost,
-  bathe to become iron, quicksilver or armour, invite neighbours, and watch one physics answer everything.
+  resin, foam and ferrofluid, drop gears, blades, wells, poles, turning rings, sling bands, currents, vents
+  and frost, bathe to become iron, quicksilver, armour, foam or spore, invite neighbours, and watch one
+  physics answer everything.
 
 Anything that parts you — a comb, a blade, a pole's throw — makes **siblings**, not debris. A real
 share of you (fourteen grains or more) is you: steerable (click it / Tab), callable (rally), and the
@@ -121,14 +129,17 @@ GPU behind a remote desktop, so it is designed to cost only what moves.
 npm install          # esbuild only
 npm run build        # bundles src/ into the single index.html
 node tools/play.mjs out 1280 720 8 "2,5,8"       # headless playtest → PNG frames + CPU timings
-node tools/solve.mjs 0 22 1280 720 1               # the Bot plays the real Odyssey: every chamber must end DONE
-node tools/rooms.mjs out 1280 720 0 22 40         # render / bot-run every Odyssey chamber
+node tools/solve.mjs 0 25 1280 720 1               # the Bot plays the real Odyssey: every chamber must end DONE
+node tools/rooms.mjs out 1280 720 0 25 40         # render / bot-run every Odyssey chamber
 node tools/film.mjs sheet.png 4 800 450 2.5 3 6   # contact sheet of the Bot playing one chamber
 node tools/bloom.mjs sheet.png                    # the Bot plays a full Bloom run
 node tools/closeup.mjs strip.png dart             # close-up filmstrip of a verb (move · dart · bud · swell)
 node tools/hues.mjs hues.png                      # every hue side by side
 node tools/myriad.mjs sheet.png                   # contact sheet of the epilogue under a wandering pointer
 node tools/abyss.mjs out 1280 720 6 40            # soak-test six Abyss depths
+node tools/scales.mjs sheet.png                   # every substance at 2 · 5 · 12 · 40 · 120 · 400 grains, still and moving, at true scale
+node tools/browser/ftue.mjs 1280 720 0            # a brand-new save: seconds to first movement / first light (mouse; `480 860 1` = touch)
+node tools/browser/tilttest.mjs                   # the optional gyro, driven by synthetic device-orientation events
 ```
 
 `dev.html` loads the ES modules directly (it must be served over http). URL switches: `?room=N`,

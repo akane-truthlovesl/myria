@@ -27,7 +27,7 @@ export class Brain {
       const d = Math.hypot(Q.B.cx - B.cx, Q.B.cy - B.cy) - Q.B.r - B.r;
       const seems = Q.B.count * (1 + 1.3 * (Q.B.inflate || 0));          // they judge by silhouette: a swollen body reads as a giant
       if (seems > B.count * 1.15 && d < td) { td = d; threat = Q; }
-      else if (seems * 1.15 < B.count && d < pd) { pd = d; prey = Q; }
+      else if (seems * 1.15 < B.count && d - (Q.ripe ? 150 : 0) < pd) { pd = d - (Q.ripe ? 150 : 0); prey = Q; }        // a ripe decoy smells like the easiest meal in the dish
     }
     const k = this.kind;
     if (threat && td < (k === 'hunter' ? 90 : 150) && k !== 'oil' && k !== 'thorn') {

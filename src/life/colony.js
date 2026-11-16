@@ -2,7 +2,7 @@
 //  Colony — one will spread over any number of droplets.
 //  Focus, park, swap, rally, re-fuse: a single continuum of intent.
 // ─────────────────────────────────────────────────────────────────────────────
-import { MATS } from '../sim/materials.js';
+import { MATS, MAT } from '../sim/materials.js';
 import { Organism } from './organism.js';
 import { SPACING, AREA_PER_P } from '../sim/physics.js';
 
@@ -65,7 +65,7 @@ export class Colony {
     if (parent.ctrl && parent.ctrl.dormant) O.dormant = true;
     O.phi = parent.ctrl ? parent.ctrl.phi : 0;
     if (this.focus && this.focus.B === parent && child.count > parent.count * 1.6) this.setFocus(O);   // the will stays with the larger share
-    else if (this.isPlayer && !O.brain && (child.count < STRAY || MATS[child.mat].spring === 0)) { O.stray = true; O.strayT = 0.7; }       // …and beads of liquid metal always run back together
+    else if (this.isPlayer && !O.brain && child.mat !== MAT.SPORE && (child.count < STRAY || MATS[child.mat].spring === 0)) { O.stray = true; O.strayT = 0.7; }       // …and beads of liquid metal always run back together
     return O;
   }
   onMerge(keep, gone) {

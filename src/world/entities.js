@@ -173,8 +173,8 @@ export class Gate extends Entity {
 // ── Film: a soap-film of surface tension. It turns a drifting body back — and bursts for one that means it. ──
 export class Film extends Entity {
   constructor(W, d) {
-    super(W, d); this.len = d.len ?? 160; this.ang = d.a ?? 0; this.speed = d.speed ?? 330; this.down = 0; this.wob = 0;
-    this.S = makeShape({ type: 1, x: d.x, y: d.y, hl: this.len / 2, r: 4, surf: SURF.BOUNCE, rest: 0.9, angle: this.ang });
+    super(W, d); this.len = d.len ?? 160; this.ang = d.a ?? 0; this.speed = d.speed ?? 330; this.down = 0; this.wob = 0; this.tough = !!d.tough;      // tough: no dart is enough — only a body in flight goes through
+    this.S = makeShape({ type: 1, x: d.x, y: d.y, hl: this.len / 2, r: this.tough ? 5 : 4, surf: SURF.BOUNCE, rest: 0.9, angle: this.ang, tough: this.tough });
     W.phys.shapes.push(this.S); this.nx = -Math.sin(this.ang); this.ny = Math.cos(this.ang); this.col = d.col || [0.6, 0.95, 1];
   }
   update(dt) {
@@ -184,9 +184,9 @@ export class Film extends Entity {
     for (const O of W.player.orgs) {
       if (!O.alive) continue; const B = O.B; const rx = B.cx - this.x, ry = B.cy - this.y;
       const along = rx * Math.cos(this.ang) + ry * Math.sin(this.ang), off = rx * this.nx + ry * this.ny;
-      if (Math.abs(along) > this.len / 2 + B.r * 0.5 || Math.abs(off) > B.r + 16) continue;
+      if (Math.abs(along) > this.len / 2 + B.r * 0.5 || Math.abs(off) > B.r + (this.tough ? 30 : 16)) continue;
       const vn = -(B.vx * this.nx + B.vy * this.ny) * Math.sign(off || 1);         // speed toward the film
-      if (vn > this.speed) { this.pop(O); break; } else if (vn > 60) this.wob = Math.max(this.wob, Math.min(1, vn / this.speed));
+      if (this.tough ? (O.flightT > 0 || O.flew > 0) && vn > 140 : vn > this.speed) { this.pop(O); if (this.tough) { O.flightT = Math.max(O.flightT, 0.3); O.flightKeep = 0; } break; } else if (vn > 60) this.wob = Math.max(this.wob, Math.min(1, vn / this.speed));
     }
   }
   pop(O) {
@@ -200,9 +200,83 @@ export class Film extends Entity {
     if (!this.S.active) return; const ca = Math.cos(this.ang), sa = Math.sin(this.ang), h = this.len / 2;
     const sh = 0.55 + 0.25 * Math.sin(this.t * 3) + 0.5 * this.wob;
     ov.line(this.x - ca * h, this.y - sa * h, this.x + ca * h, this.y + sa * h, 2.2 + 2 * this.wob, this.col, sh);
+    if (this.tough) {      // a doubled skin, laced: thicker than any dart
+      const o = 5, g = [1, 0.85, 0.6]; for (const sg of [-1, 1]) ov.line(this.x - ca * h + this.nx * o * sg, this.y - sa * h + this.ny * o * sg, this.x + ca * h + this.nx * o * sg, this.y + sa * h + this.ny * o * sg, 1.8, g, sh * 0.9);
+      const n = Math.max(3, Math.round(this.len / 13)); for (let k = 0; k <= n; k++) { const u = (k / n * 2 - 1) * h, z = (k & 1 ? 1 : -1) * o, u2 = u + h * 2 / n; if (k < n) ov.line(this.x + ca * u + this.nx * z, this.y + sa * u + this.ny * z, this.x + ca * u2 - this.nx * z, this.y + sa * u2 - this.ny * z, 1, g, sh * 0.5); }
+    }
     // iridescence sliding along the film
     const u = (this.t * 0.35) % 1; ov.glow(this.x + ca * (u * 2 - 1) * h, this.y + sa * (u * 2 - 1) * h, 14, [1, 0.8, 0.95], 0.35);
     ov.glow(this.x + ca * ((u + 0.5) % 1 * 2 - 1) * h, this.y + sa * ((u + 0.5) % 1 * 2 - 1) * h, 12, [0.7, 1, 0.9], 0.3);
+  }
+}
+
+// ── Bumper: a taut elastic band between two posts. It gives back far more than it gets: touch its bright face and you fly,
+//    whole, along the arrows etched beside it. ──
+export class Bumper extends Entity {
+  constructor(W, d) {
+    // to: the point its throw is focused on
+    super(W, d); this.len = d.len ?? 130; this.to = d.to || null; this.ang = this.to ? Math.atan2(this.to.y - d.y, this.to.x - d.x) - Math.PI / 2 : d.a ?? 0; this.kick = d.kick ?? 580; this.fly = d.fly ?? 0.9; this.wob = 0; this.col = d.col || [0.74, 1.0, 0.36]; this.t = 0;
+    this.S = makeShape({ type: 1, x: d.x, y: d.y, hl: this.len / 2, r: 6, surf: SURF.BOUNCE, rest: 0.9, angle: this.ang, tough: true }); W.phys.shapes.push(this.S);
+    this.nx = -Math.sin(this.ang); this.ny = Math.cos(this.ang); this.cd = new Map(); this.curious = true;
+  }
+  update(dt) {
+    this.t += dt; this.wob = Math.max(0, this.wob - dt * 2.2); const W = this.W, ca = Math.cos(this.ang), sa = Math.sin(this.ang);
+    for (const C of W.colonies) for (const O of C.orgs) {
+      if (!O.alive || O.dormant || (this.cd.get(O) || 0) > W.time) continue; const B = O.B; const rx = B.cx - this.x, ry = B.cy - this.y;
+      const along = rx * ca + ry * sa, off = rx * this.nx + ry * this.ny;
+      if (off < 0 || Math.abs(along) > this.len / 2 + 8 || off > B.r * 0.85 + 12) continue;            // only its bright face launches
+      const vn = -(B.vx * this.nx + B.vy * this.ny); if (vn < 10 && !(B.contact > 2 && Math.hypot(O.intent.x, O.intent.y) > 0.2 && O.intent.x * this.nx + O.intent.y * this.ny < -0.1)) continue;
+      // the band is a shallow dish: wherever you touch it, it throws you at its focus
+      const fx = this.to ? this.to.x : this.x + this.nx * 420, fy = this.to ? this.to.y : this.y + this.ny * 420; let dx = fx - B.cx, dy = fy - B.cy; const dl = Math.hypot(dx, dy) + 1e-3; dx /= dl; dy /= dl;
+      O.launch(dx * this.kick, dy * this.kick, this.fly); O.flightKeep = 0; this.cd.set(O, W.time + 0.5); this.wob = 1;
+      W.fx.ring(B.cx, B.cy, this.col, 110, 0.45); for (let k = -3; k <= 3; k++) W.fx.sparks(this.x + ca * k * this.len / 7, this.y + sa * k * this.len / 7, 1, dx, dy, this.col, 260, { spread: 0.6, life: 0.4 });
+      if (C === W.player) { W.sound && W.sound.bounce(1); W.sound && W.sound.whoosh(); W.host.haptics && W.host.haptics.thump && W.host.haptics.thump(0.8); W.hitStop = 0.035; W.emit('bumper', this, O); }
+    }
+  }
+  bake(ink) {         // posts, and the way it throws
+    const ca = Math.cos(this.ang), sa = Math.sin(this.ang), h = this.len / 2, c = this.col;
+    for (const sg of [-1, 1]) { ink.ring(this.x + ca * h * sg, this.y + sa * h * sg, 5, 3.4, c[0] * 0.5, c[1] * 0.5, c[2] * 0.5, 0.9, 2); ink.ring(this.x + ca * h * sg, this.y + sa * h * sg, 10, 0.6, c[0] * 0.4, c[1] * 0.4, c[2] * 0.4, 0.5, 0); }
+    for (let k = 1; k <= 3; k++) { const d = 30 + k * 24, w = 14 - k * 2.5, px = this.x + this.nx * d, py = this.y + this.ny * d; const a = 0.30 - k * 0.06;
+      ink.beam(px - ca * w - this.nx * w * 0.7, py - sa * w - this.ny * w * 0.7, px, py, 1.4, c[0], c[1], c[2], a); ink.beam(px + ca * w - this.nx * w * 0.7, py + sa * w - this.ny * w * 0.7, px, py, 1.4, c[0], c[1], c[2], a); }
+  }
+  // the band is a drawn sling: it sags away from its bright face at rest, and snaps through when it throws
+  _bow() { return 10 * (1 - this.wob) - 13 * Math.sin(this.t * 34) * this.wob; }
+  _arc(fn, lift = 0, k = 1) {
+    const ca = Math.cos(this.ang), sa = Math.sin(this.ang), h = this.len / 2 * k, bow = this._bow() * k; let px = 0, py = 0;
+    for (let q = 0; q <= 8; q++) { const u = q / 4 - 1, off = lift - bow * (1 - u * u); const x = this.x + ca * h * u + this.nx * off, y = this.y + sa * h * u + this.ny * off; if (q) fn(px, py, x, y); px = x; py = y; }
+  }
+  under(ink) { const c = this.col, k = 0.5 + 0.5 * this.wob; this._arc((ax, ay, bx, by) => ink.beam(ax, ay, bx, by, 3, c[0], c[1], c[2], k)); }
+  over(ov) {
+    const ca = Math.cos(this.ang), sa = Math.sin(this.ang), h = this.len / 2, c = this.col;
+    this._arc((ax, ay, bx, by) => ov.line(ax, ay, bx, by, 3.4 + 2 * this.wob, c, 0.95));
+    this._arc((ax, ay, bx, by) => ov.line(ax, ay, bx, by, 1.2, c, 0.35), -5);                       // its dull back
+    for (const sg of [-1, 1]) ov.glow(this.x + ca * h * sg, this.y + sa * h * sg, 12, c, 0.7);
+    // ripples leaving its bright face, again and again: this way
+    for (let r = 0; r < 2; r++) { const u = (this.t * 0.8 + r * 0.5) % 1; this._arc((ax, ay, bx, by) => ov.line(ax, ay, bx, by, 1.6, c, 0.5 * (1 - u) * (1 - u)), 12 + u * 64, 1 - 0.45 * u); }
+  }
+}
+
+// ── Valve: a one-way semi-permeable skin. Whatever moves with its cilia passes as if it were not there; nothing comes back. ──
+export class Valve extends Entity {
+  constructor(W, d) {
+    super(W, d); this.len = d.len ?? 120; this.ang = d.a ?? 0; this.col = d.col || [1.0, 0.62, 0.86]; this.t = 0; this.stir = 0;
+    this.nx = -Math.sin(this.ang); this.ny = Math.cos(this.ang);      // the way through
+    this.S = makeShape({ type: 1, x: d.x, y: d.y, hl: this.len / 2, r: 5, surf: SURF.MEMBRANE, angle: this.ang, oneWay: true, passX: this.nx, passY: this.ny }); W.phys.shapes.push(this.S);
+  }
+  update(dt) {
+    this.t += dt; this.stir = Math.max(0, this.stir - dt * 2.5); const pl = this.W.player; if (!pl) return;
+    for (const O of pl.orgs) { if (!O.alive) continue; const B = O.B, rx = B.cx - this.x, ry = B.cy - this.y; if (Math.abs(rx * Math.cos(this.ang) + ry * Math.sin(this.ang)) < this.len / 2 && Math.abs(rx * this.nx + ry * this.ny) < B.r + 8) { if (this.stir < 0.3 && this.W.sound) this.W.sound.squish(0.3); this.stir = 1; } }
+  }
+  bake(ink) { const ca = Math.cos(this.ang), sa = Math.sin(this.ang), h = this.len / 2, c = this.col; for (const sg of [-1, 1]) ink.ring(this.x + ca * h * sg, this.y + sa * h * sg, 4, 3, c[0] * 0.5, c[1] * 0.5, c[2] * 0.5, 0.9, 2); }
+  over(ov) {
+    const ca = Math.cos(this.ang), sa = Math.sin(this.ang), h = this.len / 2, c = this.col; const n = Math.max(4, Math.round(this.len / 11));
+    ov.line(this.x - ca * h, this.y - sa * h, this.x + ca * h, this.y + sa * h, 1.6, c, 0.55);
+    // cilia: a row of soft hairs all leaning the way through, with a wave running along them
+    for (let k = 0; k < n; k++) {
+      const u = ((k + 0.5) / n * 2 - 1) * h, bx = this.x + ca * u, by = this.y + sa * u; const w = Math.sin(this.t * 3.2 - k * 0.7), L = 11 + 2.5 * w + 6 * this.stir, lean = 0.28 * w;
+      ov.line(bx, by, bx + (this.nx + ca * lean) * L, by + (this.ny + sa * lean) * L, 1.5, c, 0.8);
+    }
+    for (const sg of [-1, 1]) ov.glow(this.x + ca * h * sg, this.y + sa * h * sg, 9, c, 0.5);
   }
 }
 
@@ -282,12 +356,12 @@ export class Current extends Entity {
     const hw = this.w / 2, hh = this.h / 2; const feather = d.feather ?? 26;
     W.phys.zones.push(this.Z = { x0: this.x - hw, y0: this.y - hh, x1: this.x + hw, y1: this.y + hh, flow: true, flowK: this.k, fvx: this.vx, fvy: this.vy,
       weight: (px, py) => Math.min(1, Math.min(px - (this.x - hw), this.x + hw - px, py - (this.y - hh), this.y + hh - py) / feather) });
-    this.str = []; const n = Math.max(6, Math.round(this.w * this.h / 5200)); for (let k = 0; k < n; k++) this.str.push({ u: Math.random(), v: Math.random(), s: 0.6 + 0.8 * Math.random() });
+    this.pow = Math.min(2.4, Math.hypot(this.vx, this.vy) / 220); this.str = []; const n = Math.max(6, Math.round(this.w * this.h / 5200 * Math.max(1, this.pow))); for (let k = 0; k < n; k++) this.str.push({ u: Math.random(), v: Math.random(), s: 0.6 + 0.8 * Math.random() });
   }
   bake(ink) { const c = this.col, sp = Math.hypot(this.vx, this.vy) || 1, ux = this.vx / sp, uy = this.vy / sp; const n = 5; for (let k = 0; k < n; k++) { const t = (k + 0.5) / n - 0.5; const ox = -uy * t * (Math.abs(ux) > 0.5 ? this.h : this.w) * 0.8, oy = ux * t * (Math.abs(ux) > 0.5 ? this.h : this.w) * 0.8; const L = (Math.abs(ux) > 0.5 ? this.w : this.h) * 0.46; ink.beam(this.x + ox - ux * L, this.y + oy - uy * L, this.x + ox + ux * L, this.y + oy + uy * L, 7, c[0], c[1], c[2], 0.045); } }
   over(ov) {
     const sp = Math.hypot(this.vx, this.vy) || 1, ux = this.vx / sp, uy = this.vy / sp; const horiz = Math.abs(ux) > 0.5; const L = horiz ? this.w : this.h, Wd = horiz ? this.h : this.w;
-    for (const s of this.str) { const u = (s.u + this.t * sp / L * 0.55 * s.s) % 1; const a = Math.sin(u * Math.PI); const px = this.x + ux * (u - 0.5) * L - uy * (s.v - 0.5) * Wd * 0.8, py = this.y + uy * (u - 0.5) * L + ux * (s.v - 0.5) * Wd * 0.8; ov.line(px - ux * 16 * s.s, py - uy * 16 * s.s, px + ux * 16 * s.s, py + uy * 16 * s.s, 1.3, this.col, 0.42 * a); }
+    for (const s of this.str) { const u = (s.u + this.t * sp / L * 0.55 * s.s) % 1; const a = Math.sin(u * Math.PI); const px = this.x + ux * (u - 0.5) * L - uy * (s.v - 0.5) * Wd * 0.8, py = this.y + uy * (u - 0.5) * L + ux * (s.v - 0.5) * Wd * 0.8; const q = 16 * s.s * Math.max(1, this.pow * 0.8); ov.line(px - ux * q, py - uy * q, px + ux * q, py + uy * q, this.pow > 1.6 ? 1.8 : 1.3, this.col, Math.min(0.8, 0.42 * Math.max(1, this.pow * 0.7)) * a); }
   }
 }
 
@@ -520,7 +594,7 @@ export class Spinner extends Entity {
   over(ov) { ov.glow(this.x, this.y, 46, this.col, 0.35 + 0.15 * Math.sin(this.t * 2)); for (const S of this.arms) { const a = S.angle; const e = S._mid + S.hl; ov.glow(this.x + Math.cos(a) * e, this.y + Math.sin(a) * e, 12, this.col, 0.5); } }
 }
 
-export const ENT = { core: Core, rotor: Rotor, spinner: Spinner, mote: Mote, pore: Pore, pad: Pad, gate: Gate, film: Film, blade: Blade, grinder: Grinder, pool: Pool, current: Current, well: Well, crusher: Crusher, lantern: Lantern, watcher: Watcher, frost: Frost, vent: Vent, iceplug: IcePlug, magnet: Magnet };
+export const ENT = { bumper: Bumper, valve: Valve, core: Core, rotor: Rotor, spinner: Spinner, mote: Mote, pore: Pore, pad: Pad, gate: Gate, film: Film, blade: Blade, grinder: Grinder, pool: Pool, current: Current, well: Well, crusher: Crusher, lantern: Lantern, watcher: Watcher, frost: Frost, vent: Vent, iceplug: IcePlug, magnet: Magnet };
 
 // helpers for room builders
 export function moteTrail(pts, n, value = 2, extra = {}) {

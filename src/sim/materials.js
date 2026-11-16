@@ -64,7 +64,7 @@ def(MAT.LUMEN, { ...base, name: 'lumen',
 def(MAT.SILVER, { ...base, name: 'silver',
   phase: PHASE.METAL, k: 0.07, kn: 0.36, sigma: 0.04, beta: 0.01, xsph: 0.05,
   spring: 0, adh: 0.02, fric: 0.0, cling: 0, grav: 1.25,
-  absorb: [1.6, 1.5, 1.35], emit: [0.75, 0.86, 1.0], glow: 0.10, f0: 0.86, halo: 0.2 });
+  absorb: [1.6, 1.5, 1.35], emit: [0.58, 0.68, 0.82], glow: 0.06, f0: 0.86, halo: 0.2 });
 
 def(MAT.RESIN, { ...base, name: 'resin',
   k: 0.05, sigma: 1.6, beta: 0.05, xsph: 0.2, sk: 0.42, yieldR: 0.28, plast: 1.0,
@@ -90,8 +90,8 @@ def(MAT.CRYO, { ...base, name: 'cryo',
   absorb: [0.7, 0.22, 0.06], emit: [0.6, 0.88, 1.0], glow: 0.4, clarity: 0.45, f0: 0.09 });
 
 def(MAT.FOAM, { ...base, name: 'foam',
-  phase: PHASE.FOAM, k: 0.04, kn: 0.22, rho0: 2.2, sigma: 0.3, spring: 1, sk: 0.2, adh: 0.12, grav: 0.35,
-  absorb: [0.14, 0.10, 0.06], emit: [0.95, 0.98, 1.0], glow: 0.5, clarity: 0.3 });
+  phase: PHASE.FOAM, k: 0.04, kn: 0.22, rho0: 2.2, sigma: 0.9, spring: 1, sk: 0.42, adh: 0.12, grav: 0.35,
+  absorb: [0.30, 0.10, 0.04], emit: [0.80, 0.96, 1.0], glow: 0.20, clarity: 0.72, f0: 0.075, halo: 0.3 });
 
 def(MAT.DEW, { ...base, name: 'dew',
   sk: 0.25, absorb: [0.42, 0.2, 0.05], emit: [0.78, 0.96, 1.0], glow: 0.9 });

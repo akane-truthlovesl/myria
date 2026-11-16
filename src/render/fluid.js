@@ -93,8 +93,11 @@ export function matcap(f0, key = [1.0, 0.98, 0.94], sky = [0.62, 0.86, 1.0], war
     const nl = Math.sqrt(nx * nx + ny * ny); const az = nl > 1e-4 ? (nx * -AWAY[0] + ny * -AWAY[1]) / nl : 0;
     const rim = Math.pow(1 - nz, 2.5) * (0.30 + 0.62 * Math.max(0, az) + 0.16 * Math.max(0, -az));
     // metals mirror a whole room: horizon band + dark floor
-    const upv = -ry; const horizon = Math.exp(-Math.pow((upv - 0.05) * 5, 2));
-    const room = (0.16 + 0.5 * sat(upv * 0.9 + 0.35) + 0.6 * horizon) * metal;
+    // (the horizon is where the mirror looks sideways — the shoulders of a bead — never its flat crown: a big pool of
+    //  quicksilver shows a calm dim ceiling ringed by a bright band, not a white disc; and the crown's gradient stays shallow
+    //  enough that the map's texels never show as contour rings)
+    const upv = -ry; const horizon = Math.exp(-Math.pow((rz - 0.16) * 3.6, 2));
+    const room = (0.20 + 0.26 * sat(upv * 0.9 + 0.35) + 0.62 * horizon * (0.75 + 0.25 * sat(upv + 0.5))) * metal;
     const o = (j * MC + i) * MCH;
     const gk = 0.30 + fres * 2.4;
     for (let c = 0; c < 3; c++) {

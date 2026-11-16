@@ -14,6 +14,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 const STICK_R = 62;          // css px radius of the floating touch stick
 const DEAD = 0.08;
+const TILT_FULL = 16, TILT_DEAD = 0.16;      // degrees of tip for full speed · fraction of it that still counts as level
 
 export class Input {
   constructor(el) {
@@ -28,6 +29,7 @@ export class Input {
     this.keyMove = { x: 0, y: 0 }; this.padMove = { x: 0, y: 0 }; this.padPrev = []; this.padRally = false;
     this.enabled = true; this.lastActivity = 0; this.any = false;
     this.charge = 0;         // seconds the dart button has been held (coil)
+    this.tilt = { on: false, seen: false, zero: null, x: 0, y: 0, t: -1e9 };       // optional gyro: tip the device like a dish
     this._bind();
   }
 
@@ -170,6 +172,25 @@ export class Input {
     return this.enabled ? ev : ev.filter(e => e.type === 'pause' || e.type === 'key' || e.type === 'press' || e.type === 'confirm');
   }
 
+  // ── optional tilt (gyro): the pose you switch it on in — or resume in — is "level"; tip the device and the creature runs downhill ──
+  get tiltAvailable() { return typeof window !== 'undefined' && 'DeviceOrientationEvent' in window && ((navigator.maxTouchPoints || 0) > 0 || this.tilt.seen); }
+  async setTilt(on) {
+    const T = this.tilt; if (!on) { T.on = false; T.x = T.y = 0; return false; }
+    try { const D = window.DeviceOrientationEvent; if (D && typeof D.requestPermission === 'function' && (await D.requestPermission()) !== 'granted') return false; } catch (e) { return false; }
+    if (!this._tiltBound) { this._tiltBound = true; window.addEventListener('deviceorientation', (e) => this._tilt(e)); }
+    T.on = true; T.zero = null; return true;
+  }
+  levelTilt() { this.tilt.zero = null; this.tilt.x = this.tilt.y = 0; }
+  _tilt(e) {
+    const T = this.tilt; if (e.beta == null || e.gamma == null) return; T.seen = true; if (!T.on) return;
+    const ang = ((typeof screen !== 'undefined' && screen.orientation && screen.orientation.angle) || window.orientation || 0);      // screen-relative axes
+    let x = e.gamma, y = e.beta; if (ang === 90) { x = e.beta; y = -e.gamma; } else if (ang === 270 || ang === -90) { x = -e.beta; y = e.gamma; } else if (ang === 180) { x = -e.gamma; y = -e.beta; }
+    if (!T.zero) T.zero = { x, y };
+    const dx = (x - T.zero.x) / TILT_FULL, dy = (y - T.zero.y) / TILT_FULL, m = Math.hypot(dx, dy);
+    if (m < TILT_DEAD) { T.x = T.y = 0; } else { const c = Math.min(1, (m - TILT_DEAD) / (1 - TILT_DEAD)); T.x = dx / m * c; T.y = dy / m * c; this._act(); }
+    T.t = performance.now();
+  }
+
   // analogue direction from stick / keys / pad (unit-ish), or null when the pointer should steer instead
   vector() {
     if (!this.enabled) return ZERO;
@@ -181,6 +202,7 @@ export class Input {
       if (m < DEAD) return ZERO;
       const c = Math.min(1, (m - DEAD) / (1 - DEAD)); V.x = dx / m * c; V.y = dy / m * c; return V;
     }
+    const T = this.tilt; if (T.on && performance.now() - T.t < 600 && Math.abs(T.x) + Math.abs(T.y) > 0.01) return T;
     return null;
   }
   get pointerSteers() { return this.enabled && this.device === 'mouse' && this.mouse.follow && this.mouse.inside; }

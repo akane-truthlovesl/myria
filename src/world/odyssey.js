@@ -123,6 +123,28 @@ export const ROOMS = [
     ];
     return { W, H, geo, ents, pal: PAL.glass, spawn: { ...f.P(0.10, 0.5), n: 90 }, minMass: 90 };
   } },
+  { id: 'rebound', name: 'Rebound', par: 30, hint: 'fly', build(a) {
+    // Doubled films shrug off any dart. The taut green bands give back far more than they get: touch one and you fly — and a flight goes through anything.
+    const f = L(a), { W, H } = f; const geo = dish(W, H); const th = 40, open = 132, u1 = 0.30, u2 = 0.72, v2 = 0.25; const half = (f.Lv - open) / 2;
+    geo.push(f.box(u1, 0, th, half * 2 - 6, 20), f.box(u1, 1, th, half * 2 - 6, 20));
+    geo.push(f.box(u2, 0, th, (v2 * f.Lv - open / 2) * 2 - 6, 20), f.box(u2, 1, th, (f.Lv - v2 * f.Lv - open / 2) * 2 - 6, 20));
+    const fa = f.land ? Math.PI / 2 : 0; const Q = (pu, pv) => (f.land ? { x: pu, y: pv } : { x: pv, y: pu });        // a point in pixels along/across
+    const mu = 0.51 * f.Lu, mv = 0.5 * f.Lv; const F1 = f.P(u1, 0.5), F2 = f.P(u2, v2), pore = f.P(0.865, v2);
+    const A = Q(50, mv), B = Q(mu + 62, mv + 178), C = Q(mu - 100, v2 * f.Lv);
+    const along = (p, q, n, v, e) => moteTrail([[p.x + (q.x - p.x) * 0.22, p.y + (q.y - p.y) * 0.22], [p.x + (q.x - p.x) * 0.84, p.y + (q.y - p.y) * 0.84]], n, v, e);
+    const g = { col: [0.80, 1, 0.50] }; const s1 = Q(mu - 104, mv + 150), s2 = Q(f.Lu * 0.86, f.Lv * 0.74);
+    const ents = [
+      { type: 'bumper', id: 'A', ...A, len: 150, to: F1 }, ...along(A, F1, 4, 2, g),
+      { type: 'film', ...F1, len: open + 10, a: fa, tough: true },
+      { type: 'bumper', id: 'B', ...B, len: 140, to: C, kick: 640 }, ...along(B, C, 6, 2, g),
+      { type: 'bumper', id: 'C', ...C, len: 124, to: F2, kick: 620 }, ...along(C, F2, 4, 2, g),
+      { type: 'film', ...F2, len: open + 10, a: fa, tough: true },
+      ...trail(f, [[0.10, 0.22], [0.22, 0.20]], 3), ...trail(f, [[0.10, 0.78], [0.22, 0.80]], 3),
+      ...moteRing(s1.x, s1.y, 26, 4, 3), ...moteRing(s2.x, s2.y, 30, 5, 3),
+      ...moteRing(pore.x, pore.y, 66, 6, 3), { type: 'pore', ...pore },
+    ];
+    return { W, H, geo, ents, pal: PAL.glass, spawn: { ...f.P(0.17, 0.5), n: 80 }, minMass: 80 };
+  } },
   { id: 'grinder-row', name: 'Grinder Row', par: 34, build(a) {
     const f = L(a), { W, H } = f; const geo = dish(W, H);
     const g1 = f.P(0.36, 0.34), g2 = f.P(0.58, 0.66), g3 = f.P(0.36, 0.72);
@@ -192,6 +214,27 @@ export const ROOMS = [
     ];
     const h1 = f.P(0.62, 0.26), h2 = f.P(0.62, 0.74);
     return { W, H, geo, ents, pal: PAL.amber, spawn: { ...f.P(0.10, 0.5), n: 70 }, minMass: 70, cap: 120, rivals: [{ kind: 'hunter', ...h1, n: 150 }, { kind: 'hunter', ...h2, n: 150 }] };
+  } },
+  { id: 'fizz', name: 'Fizz', par: 30, hint: 'jet', build(a) {
+    // A river far too strong to wade — it carries whatever enters it down the drain, along the flume and out through the valve, back where it began.
+    // The white bath makes you effervescent: every dart is a free jet of bubbles, and a jet skims over the water.
+    const f = L(a), { W, H } = f; const geo = dish(W, H, { r: Math.min(W, H) * 0.12 }); const fl = 0.74, th = 22;
+    geo.push(f.box(0.25, fl, 0.24 * f.Lu, th, 11), f.box(0.83, fl, 0.36 * f.Lu, th, 11));                 // the banks' floors; under them, the flume
+    const cur = (u, v, al, ac, du, dv, sp, k) => { const q = f.P(u, v), d = f.vec(du, dv); return { type: 'current', ...q, w: f.land ? al : ac, h: f.land ? ac : al, vx: d[0] * sp, vy: d[1] * sp, k }; };
+    const va = f.land ? Math.PI : Math.PI / 2;                              // the valve's way through: back up onto the near bank
+    const m = [0.92, 0.97, 1];
+    const ents = [
+      cur(0.51, 0.50, 0.28 * f.Lu, 0.96 * f.Lv, 0, 1, 700, 14),           // the river (it runs all the way down into the flume: no ledge to stand on)
+      cur(0.40, 0.865, 0.62 * f.Lu, 0.17 * f.Lv, -1, 0, 540, 12),         // the flume
+      cur(0.075, 0.80, 0.11 * f.Lu, 0.26 * f.Lv, 0, -1, 400, 9),          // …and up through the valve
+      { type: 'valve', ...f.P(0.08, fl), len: 0.105 * f.Lu, a: va },
+      { type: 'pool', kind: 'morph', mat: MAT.FOAM, morph: { speed: 1.1, tonus: 0.85, dart: 1.0, jet: 1 }, ...f.P(0.24, 0.50), r: 46 },
+      ...trail(f, [[0.10, 0.14], [0.30, 0.14]], 4), ...trail(f, [[0.40, 0.24], [0.62, 0.36]], 5, 3, { col: m }),
+      ...trail(f, [[0.60, 0.865], [0.16, 0.865]], 7, 2, { col: m }),        // the flume pays you for the ride
+      ...trail(f, [[0.74, 0.14], [0.92, 0.14]], 4), ...trail(f, [[0.76, 0.865], [0.92, 0.865]], 4, 3),
+      ...moteRing(f.P(0.84, 0.42).x, f.P(0.84, 0.42).y, 64, 6, 2), { type: 'pore', ...f.P(0.84, 0.42) },
+    ];
+    return { W, H, geo, ents, pal: PAL.amber, spawn: { ...f.P(0.12, 0.34), n: 80 }, minMass: 80 };
   } },
   { id: 'oil-water', name: 'Oil & Water', par: 32, build(a) {
     const f = L(a), { W, H } = f; const geo = dish(W, H); const th = 60, gap = 96; const half = (f.Lv - gap) / 2;
@@ -303,6 +346,21 @@ export const ROOMS = [
     const ents = [...trail(f, [[0.18, 0.20], [0.30, 0.14]], 4), ...trail(f, [[0.18, 0.80], [0.30, 0.86]], 4), ...trail(f, [[0.36, 0.5], [0.64, 0.5]], 9, 3), ...trail(f, [[0.40, 0.12], [0.60, 0.12]], 5), ...trail(f, [[0.40, 0.88], [0.60, 0.88]], 5), ...moteRing(f.P(0.86, 0.5).x, f.P(0.86, 0.5).y, 62, 5, 2),
       { type: 'pore', ...f.P(0.88, 0.5), r: 36 }];
     return { W, H, geo, ents, pal: PAL.abyss, spawn: { ...f.P(0.09, 0.5), n: 56 }, minMass: 56, cap: 56, rivals: [{ kind: 'hunter', ...f.P(0.5, 0.5), n: 104 }, { kind: 'hunter', ...f.P(0.70, 0.30), n: 100 }, { kind: 'hunter', ...f.P(0.70, 0.72), n: 100 }] };
+  } },
+  { id: 'trojan', name: 'Trojan', par: 70, quota: 0, hint: 'decoy', build(a) {
+    // Two gluttons far too big to fight, and a green bath: what you leave behind, still, ripens — and whatever swallows it has swallowed its last.
+    const f = L(a), { W, H } = f; const geo = dish(W, H); const g = [0.8, 1, 0.55];
+    geo.push({ op: 'add', t: 'circle', ...f.P(0.41, 0.27), r: 36, mat: SURF.GLASS }, { op: 'add', t: 'circle', ...f.P(0.41, 0.73), r: 36, mat: SURF.GLASS });
+    const den = f.P(0.64, 0.5), big = (Wd) => Wd.colonies.some(C => C.kind === 'hunter' && C.orgs.some(o => o.alive && o.B.count >= 60));
+    const ents = [
+      { type: 'pool', kind: 'morph', mat: MAT.SPORE, morph: { speed: 1.05, tonus: 1, dart: 1 }, ...f.P(0.22, 0.5), r: 48 },
+      { type: 'pool', kind: 'heal', ...f.P(0.11, 0.15), r: 42, max: 70 },
+      ...trail(f, [[0.10, 0.80], [0.26, 0.86]], 4), ...trail(f, [[0.26, 0.14], [0.34, 0.12]], 2),
+      ...trail(f, [[0.52, 0.12], [0.78, 0.13]], 6), ...trail(f, [[0.52, 0.88], [0.78, 0.87]], 6),
+      ...moteRing(den.x, den.y, 84, 8, 3, { col: g }),
+      { type: 'pore', ...f.P(0.90, 0.5), key: { fn: (Wd) => !big(Wd) }, col: g },
+    ];
+    return { W, H, geo, ents, pal: PAL.abyss, spawn: { ...f.P(0.09, 0.5), n: 60 }, minMass: 60, cap: 70, rivals: [{ kind: 'hunter', ...den, n: 180 }, { kind: 'hunter', ...f.P(0.84, 0.24), n: 110 }] };
   } },
   { id: 'hunt', name: 'The Hunt', par: 110, quota: 0, hint: 'coil', build(a) {
     const f = L(a), { W, H } = f; const geo = dish(W, H);

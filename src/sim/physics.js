@@ -20,7 +20,7 @@ export class Body {
   constructor(id) {
     this.id = id; this.reset();
   }
-  reset() { this.home = null;
+  reset() { this.home = null; this.spores = 0;
     this.alive = false;
     this.group = -1;        // colony id (-1 = neutral/dew)
     this.kind = 'loose';
@@ -33,7 +33,7 @@ export class Body {
     this.ax = 0; this.ay = 0; this.lx = 0; this.ly = 0; this.lead = 0; this.trail = 0;
     this.tonus = 0; this.tonusReach = 1.15;
     this.waveA = 0; this.waveW = 2.0; this.wavePh = Math.random() * 6.28;
-    this.gs = 1; this.adhMul = 1; this.fricMul = 1; this.damp = 0; this.stiff = 1; this.visc = 1;
+    this.gs = 1; this.adhMul = 1; this.fricMul = 1; this.damp = 0; this.stiff = 1; this.visc = 1; this.glide = 0;
     this.leadNorm = 1;
     this.start = 0; this.len = 0;    // slice into physics.bodyIdx
     this.ctrl = null; this.tag = null;
@@ -230,7 +230,7 @@ export class Physics {
       let gs = M.grav[m] * B.gs;
       let gx = gx0, gy = gy0;
       let ax = fx[i], ay = fy[i];
-      let drag = this.drag + M.drag[m];
+      let drag = this.drag * (1 - B.glide) + M.drag[m];             // a launched body slips through the medium
       const px = x[i], py = y[i];
       for (let z = 0; z < nz; z++) {
         const Z = zones[z];
@@ -239,7 +239,7 @@ export class Physics {
         if (w <= 0) continue;
         if (Z.gravity) { gx += (Z.gx - gx) * w; gy += (Z.gy - gy) * w; }
         if (Z.flow) {
-          const k = Z.flowK * w;
+          const k = Z.flowK * w * (1 - 1.3 * B.glide);                // a body in flight skims over a current instead of sitting in it
           let fvx = Z.fvx, fvy = Z.fvy;
           if (Z.flowAt) { const f = Z.flowAt(px, py); fvx = f[0]; fvy = f[1]; }
           ax += (fvx - vx[i]) * k; ay += (fvy - vy[i]) * k;

@@ -259,7 +259,7 @@ export class World {
   }
   onPeel(O) { this.sound && this.sound.snap(0.3); }
   onDart(O, dx, dy, cost) {
-    if (O.colony === this.player) { this.stats.darts++; this.sound && this.sound.dart(1); this.host.haptics && this.host.haptics.dart(); }
+    if (O.colony === this.player) { this.stats.darts++; if (this.sound) { if (O.morph && O.morph.jet) this.sound.fizz(); else this.sound.dart(1); } this.host.haptics && this.host.haptics.dart(); }
     this.fx.ring(O.B.cx - dx * O.B.r * 0.8, O.B.cy - dy * O.B.r * 0.8, [0.95, 0.85, 0.75], 36, 0.3, { a: 0.5 });
     this.fx.sparks(O.B.cx - dx * O.B.r, O.B.cy - dy * O.B.r, 6, -dx, -dy, [1, 0.9, 0.85], 200, { life: 0.4, size: 2 });
     this.emit('dart', O, dx, dy, cost);
@@ -307,7 +307,7 @@ export class World {
     for (const C of this.colonies) C.update(dt, C === pl ? ctl.intent : null, C === pl ? ctl.aim : null, C === pl ? !!ctl.rally || this.callHome > 0 : false);
     this._dewHoming(dt);
     P.step(dt);
-    this._chemistry(dt); this._lances(dt);
+    this._chemistry(dt); this._lances(dt); this._spores(dt);
     for (const C of this.colonies) C.post(dt);
     for (const e of this.ents) if (!e.dead) e.post(dt);
     if (this.ents.some(e => e.dead)) { this.ents = this.ents.filter(e => !e.dead); this.pickups = this.pickups.filter(e => !e.dead); }
@@ -343,16 +343,19 @@ export class World {
       // particle j crosses the membrane into the larger body
       const eater = this.colonyOf(Bi), eaten = this.colonyOf(Bj);
       // a full body cannot hold more: past the room's cap what it drinks burns off as light (the hunt still counts — the dish just stays legible)
+      // a ripe decoy is not food: every grain of it lodges in the belly that drinks it, and counts down
+      const lodge = eaten === this.player && eater !== this.player && mat[j] === MAT.SPORE && Bj.ctrl && Bj.ctrl.ripe;
       const full = eater === this.player && this.player.mass >= Math.max(420, this.massCap);      // (a chamber's own cap limits what light can give — The Hunt keeps you lean so that only prey makes you grow — never what a hunt can)
       if (full) { if (Math.random() < 0.5) this.fx.sparks(P.x[j], P.y[j], 1, Bi.cx - P.x[j], Bi.cy - P.y[j], (eaten && eaten.tint || MATS[Bj.mat]).emit, 120, { spread: 2.4, life: 0.5 }); P.kill(j); }
+      else if (lodge) { P.transfer(j, Bi.id); P.glow[j] = 2.4; Bi.spores++; }
       else { P.transfer(j, Bi.id); mat[j] = Bi.mat; P.mix[j] = 1; P.glow[j] = 1.2; }
       moved++;
       if (Bi.ctrl) { Bi.ctrl.gulp = 1; }
       if (Bj.ctrl) { Bj.ctrl.hurtT = 0.4; Bj.ctrl.excite = 1; }
-      if (eaten === this.player) { this.stats.lost++; if (Math.random() < 0.3) this.hurt(Bj, 1, Bi.cx, Bi.cy); }
+      if (eaten === this.player && !lodge) { this.stats.lost++; if (Math.random() < 0.3) this.hurt(Bj, 1, Bi.cx, Bi.cy); }        // (a decoy taken is a gift, not a wound)
       if (eater === this.player) { this.stats.eaten = (this.stats.eaten || 0) + 1; if (Math.random() < 0.25 && this.sound) this.sound.gulp(); }
       if (Bj.count <= 6 && eaten !== this.player) {               // the last of it: swallowed whole
-        for (let q = 0; q < Bj.len; q++) { const p2 = P.bodyIdx[Bj.start + q]; if (P.alive[p2] && body[p2] === Bj.id) { if (full) P.kill(p2); else { P.transfer(p2, Bi.id); mat[p2] = Bi.mat; P.mix[p2] = 1; P.glow[p2] = 1.2; } } }
+        for (let q = 0; q < Bj.len; q++) { const p2 = P.bodyIdx[Bj.start + q]; if (P.alive[p2] && body[p2] === Bj.id) { if (full) P.kill(p2); else if (lodge) { P.transfer(p2, Bi.id); P.glow[p2] = 2.4; Bi.spores++; } else { P.transfer(p2, Bi.id); mat[p2] = Bi.mat; P.mix[p2] = 1; P.glow[p2] = 1.2; } } }
         this.fx.ring(Bj.cx, Bj.cy, (eaten.tint || MATS[Bj.mat]).emit, 90, 0.6); if (eater === this.player) { this.sound && this.sound.swallow(); this.hitStop = 0.07; this.emit('devour', eaten, Bi); }
       }
     }
@@ -365,6 +368,41 @@ export class World {
     const P = this.phys; if (Math.abs(Bi.count - Bj.count) < 8 || Math.random() < 0.5) return;
     const from = Bi.count > Bj.count ? i : j, To = Bi.count > Bj.count ? Bj : Bi; P.transfer(from, To.id); P.mat[from] = To.mat; P.mix[from] = 1; P.glow[from] = 1.2;
     if (To.ctrl) To.ctrl.gulp = 1; if (this.sound && Math.random() < 0.2) this.sound.heal();
+  }
+  // the Trojan: spores lodged in a belly light a short fuse — then the belly is everywhere at once
+  _spores(dt) {
+    for (const C of this.colonies) { if (C.isPlayer) continue; for (const O of C.orgs) {
+      if (!O.alive) continue; const B = O.B;
+      if (!(O.boomT > 0)) { if (B.spores >= 5) { O.boomT = O.boom0 = 1.0; O.crown.startle(1); this.emit('swallowed', O, C); } continue; }
+      O.boomT -= dt; const k = 1 - O.boomT / O.boom0; O.excite = 1; O.hurtT = 0.3; O.intent.x *= 0.5; O.intent.y *= 0.5;      // it stops, puzzled, glowing from the inside
+      if ((O.boomP = (O.boomP || 0) - dt) <= 0) { O.boomP = 0.26 - 0.2 * k; this.fx.ring(B.cx, B.cy, [0.75, 1, 0.5], B.r * (1.5 - 0.6 * k), 0.3, { r0: B.r * 1.6, a: 0.5 }); this.sound && this.sound.fuse(k); const P = this.phys; for (let q = 0; q < B.len; q++) { const p = P.bodyIdx[B.start + q]; if (P.body[p] === B.id && Math.random() < 0.3) P.glow[p] = 1 + k; } }
+      if (O.boomT <= 0) this.detonate(O, C);
+    } }
+  }
+  detonate(O, D) {
+    const P = this.phys, T = O.B; const K = T.count >= 150 ? 6 : T.count >= 90 ? 5 : T.count >= 50 ? 4 : 3; const a0 = Math.random() * TAU; const cx = T.cx, cy = T.cy, R = T.r;
+    const NB = [T]; for (let s = 1; s < K; s++) { const b = P.allocBody(T.group, 'ai', T.mat); if (b) NB.push(b); } const n = NB.map(() => 0); const idx = [];
+    for (let q = 0; q < T.len; q++) { const p = P.bodyIdx[T.start + q]; if (P.alive[p] && P.body[p] === T.id) idx.push(p); }
+    const sect = (p) => Math.floor((((Math.atan2(P.y[p] - cy, P.x[p] - cx) - a0) % TAU + TAU) % TAU) / TAU * NB.length) % NB.length;
+    for (const p of idx) {
+      const dx = P.x[p] - cx, dy = P.y[p] - cy, d = Math.hypot(dx, dy) + 1; for (let k = 0; k < 6; k++) P.sj[p * 6 + k] = -1;
+      if (P.mat[p] === MAT.SPORE || d < R * 0.42 || Math.random() < 0.1) { if (P.mat[p] === MAT.SPORE) P.mat[p] = MAT.DEW; this.shed(p, cx, cy, [0.75, 1, 0.5], 12); continue; }      // its heart comes out as a rain of dew
+      const s = sect(p), am = a0 + (s + 0.5) / NB.length * TAU; P.body[p] = NB[s].id; n[s]++;
+      P.vx[p] = dx / d * 150 + Math.cos(am) * 190; P.vy[p] = dy / d * 150 + Math.sin(am) * 190; P.ox[p] = P.x[p] - P.vx[p] / 120; P.oy[p] = P.y[p] - P.vy[p] / 120; P.glow[p] = 1.6;
+    }
+    for (let s = 0; s < NB.length; s++) {
+      const b = NB[s], am = a0 + (s + 0.5) / NB.length * TAU;
+      if (n[s] < 6) { for (const p of idx) if (P.alive[p] && P.body[p] === b.id && P.bodies[P.body[p]] === b) this.shed(p, cx, cy, [0.75, 1, 0.5], 12); if (s) { P.freeBody(b); } continue; }
+      b.fuseT = 600; b.spores = 0; if (!s) continue;                // what a trap has scattered never knits back together
+      b.tint = T.tint; b.count = n[s]; b.cx = cx + Math.cos(am) * R * 0.6; b.cy = cy + Math.sin(am) * R * 0.6; b.r = R * 0.5;
+      const S = D.adopt(b); S.brain = new Brain(D.kind); S.speedMul = O.speedMul; S.hurtT = 1; S.cleftT = this.time + 1.5; S.crown.startle(1);
+    }
+    O.boomT = 0; O.cleftT = this.time + 1.5; O.hurtT = 1; P.forceComponents = true;
+    this.fx.ring(cx, cy, [0.8, 1, 0.55], R * 4.2, 0.7, { w: 4 }); this.fx.ring(cx, cy, [1, 1, 0.9], R * 2.6, 0.45); this.fx.burst(cx, cy, 46, [0.8, 1, 0.5], 420, { life: 0.9, size: 3 });
+    this.shake = 1; this.flash = 0.8; this.hitStop = 0.16; this.sound && this.sound.boom && this.sound.boom(); this.host.haptics && this.host.haptics.snap && this.host.haptics.snap();
+    // the blast shoves whatever stands near (nothing of yours is harmed by your own trap)
+    for (const C of this.colonies) for (const Q of C.orgs) { if (!Q.alive || Q.B === T || NB.includes(Q.B)) continue; const dx = Q.B.cx - cx, dy = Q.B.cy - cy, d = Math.hypot(dx, dy) + 1; if (d < R * 3) Q.launch(dx / d * 330, dy / d * 330, 0.35); }
+    this.emit('trojan', O, D);
   }
   // the lance: a coiled dart that meets a bigger neighbour parts it cleanly in two — giants become meals
   _lances(dt) {

@@ -33,6 +33,8 @@ export class App {
     // how many pixels can this machine afford? measured, never assumed (and re-measured as the session goes)
     this.fixedPx = +(params.get('maxpx') || 0) > 1000;
     this.R.maxPixels = this.fixedPx ? +params.get('maxpx') : calibrate();
+    this.basePx = this.R.maxPixels; this.smooth = !!save.get('smooth', false) || params.has('smooth');
+    if (save.get('tilt', false) && typeof window.DeviceOrientationEvent !== 'undefined' && typeof window.DeviceOrientationEvent.requestPermission !== 'function') this.input.setTilt(true);      // (where a permission prompt is needed, it waits for the menu)
     this.wantPx = this.R.maxPixels; this.skip = 1; this.skipN = 0;
     this.R.resize(true);
     window.addEventListener('resize', () => { this._resizeT = performance.now(); });
@@ -110,11 +112,15 @@ export class App {
     if (m && m.pauseItems) items.push(...m.pauseItems());
     items.push([{ label: this.sound.muted ? 'Sound off' : 'Sound on', fn: (b) => { const mu = !this.sound.muted; this.sound.setMuted(mu); save.set('muted', mu); b.textContent = mu ? 'Sound off' : 'Sound on'; } },
       { label: 'Fullscreen', fn: () => { const d = document.documentElement; if (document.fullscreenElement) document.exitFullscreen(); else d.requestFullscreen && d.requestFullscreen().catch(() => {}); } }]);
+    // comfort: tilt to steer (where the device can feel it) · smooth motion (a softer picture, sixty frames) or a sharp one
+    const opts = [{ label: this.smooth ? 'Motion · smooth' : 'Motion · sharp', fn: (b) => { this.smooth = !this.smooth; save.set('smooth', this.smooth); this.perf.over = 0; if (!this.smooth) this.wantPx = this.basePx; b.textContent = this.smooth ? 'Motion · smooth' : 'Motion · sharp'; } }];
+    if (this.input.tiltAvailable) opts.unshift({ label: this.input.tilt.on ? 'Tilt on' : 'Tilt off', fn: (b) => { const want = !this.input.tilt.on; this.input.setTilt(want).then((ok) => { save.set('tilt', ok); b.textContent = ok ? 'Tilt on' : want ? 'Tilt unavailable' : 'Tilt off'; }); } });
+    items.push(opts);
     items.push({ label: 'Keep a picture', fn: (b) => { this.snapshot(); b.textContent = 'Kept ✓'; } });
     if (!m || m.isHub !== true) items.push({ label: 'Leave to the atrium', fn: () => { this.resume(); this.toHub(); } });
     hud.panel('Paused', m && m.pauseSub ? m.pauseSub() : '', items, CONTROLS_HTML);
   }
-  resume() { this.paused = false; this.hud.closePanel(); this.last = performance.now(); }
+  resume() { this.paused = false; this.hud.closePanel(); this.last = performance.now(); this.input.levelTilt(); }
 
   // ── intent → ctl ──────────────────────────────────────────────────────
   _events(evs) {
@@ -201,10 +207,17 @@ export class App {
   _adapt(dt) {
     const p = this.perf; p.ema += (dt - p.ema) * 0.04;
     const work = p.ren + p.sim * (this.skip === 2 ? 2 : 1);
-    if (this.skip === 1 && (work > 9.5 || p.ema > 1 / 44)) { p.slow += dt; if (p.slow > 1.2) { this.skip = 2; p.slow = 0; p.fast = 0; } }
+    const soft = this.smooth && !this.fixedPx && this.R.fb.w * this.R.fb.h > 0.40e6 * 1.08;      // (smooth: shrink first, see below)
+    if (this.skip === 1 && !soft && (work > 9.5 || p.ema > 1 / 44)) { p.slow += dt; if (p.slow > 1.2) { this.skip = 2; p.slow = 0; p.fast = 0; } }
     else if (this.skip === 2 && work < 5.2) { p.fast += dt; if (p.fast > 5) { this.skip = 1; p.fast = 0; p.slow = 0; p.ema = 1 / 60; } }
     else { p.slow = Math.max(0, p.slow - dt); p.fast = Math.max(0, p.fast - dt); }
     if (this.fixedPx) return;
+    // "smooth" preference: hold sixty frames by making the picture softer, now (behind a blink), down to a floor — half-rate pacing only if even that is not enough
+    if (this.smooth) {
+      const cur0 = this.R.fb.w * this.R.fb.h, w60 = p.ren + p.sim, FLOOR = 0.40e6;
+      if ((w60 > 9 || this.skip === 2) && cur0 > FLOOR * 1.08) { p.over = (p.over || 0) + dt; if (p.over > 1.4 && this.t - (p.lastRe || -99) > 4) { p.over = 0; p.lastRe = this.t; this.skip = 1; p.slow = 0; this._rebudget(Math.max(FLOOR, cur0 * Math.max(0.5, Math.min(0.85, 7.5 / w60)))); return; } }
+      else p.over = Math.max(0, (p.over || 0) - dt);
+    }
     // far over budget for a while → do not make the player wait for the next chamber: re-develop this one smaller, behind a blink
     if (work > 24) { p.hard = (p.hard || 0) + dt; if (p.hard > 2.2 && this.R.fb.w * this.R.fb.h > 0.6e6 && this.t - (p.lastRe || -99) > 8) { p.hard = 0; p.lastRe = this.t; this._rebudget(Math.max(0.52e6, this.R.fb.w * this.R.fb.h * (work > 40 ? 0.55 : 0.7))); return; } } else p.hard = Math.max(0, (p.hard || 0) - dt * 0.5);
     const cur = this.R.fb.w * this.R.fb.h; p.acc = (p.acc || 0) + dt;

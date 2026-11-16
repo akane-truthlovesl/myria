@@ -7,7 +7,8 @@
 //  to a visible force of the world.
 // ─────────────────────────────────────────────────────────────────────────────
 import { H } from '../sim/physics.js';
-import { M } from '../sim/materials.js';
+import { M, MAT } from '../sim/materials.js';
+const SPORE = MAT.SPORE;
 import { Crown, RAY } from './rays.js';
 import { clamp } from '../core/util.js';
 
@@ -41,7 +42,7 @@ export class Organism {
     this.breathT = Math.random() * 10; this.idleT = 0; this.idleNext = 2;
     this.forageT = 0; this.dormant = false; this.dead = false;
     this.hurtT = 0; this.joyT = 0; this.gulp = 0;
-    this.seek = null; this.rallyTo = null; this.cradle = null;
+    this.seek = null; this.rallyTo = null; this.cradle = null; this.flightT = 0; this.flightT0 = 0; this.flew = 0;
     this.swell = false; this.puff = 0; this.canSwell = this.crownKind === 'sun';     // a held breath: bluff volume, then pop
     this.heat = 0;                                                                   // −1 frozen … 0 … +1 ember-warm
     body.waveA = 20; body.waveW = 1.5;
@@ -61,7 +62,7 @@ export class Organism {
     this.hurtT = Math.max(0, this.hurtT - dt); this.joyT = Math.max(0, this.joyT - dt);
     this.gulp = Math.max(0, this.gulp - dt * 2.5);
     if (B.energy) B.energy *= Math.exp(-dt * 0.9);
-    if (this.dormant) { B.ax = 0; B.ay = 0; B.lead = 0; B.tonus = 6; B.adhMul = 1; B.damp = 1.5; B.waveA = 5; B.waveW = 0.9; return; }
+    if (this.dormant) { B.ax = 0; B.ay = 0; B.lead = 0; B.tonus = 6; B.adhMul = 1; B.damp = 1.5; B.glide = 0; B.waveA = 5; B.waveW = 0.9; return; }
     if (this.brain) this.brain.think(this, dt);
     // ── swell: hold a breath (silhouette doubles, mass does not), release it as a shove ──
     const want = this.swell && this.canSwell && this.dartT <= 0 ? 1 : 0; const was = this.puff;
@@ -85,12 +86,27 @@ export class Organism {
     this.prevV.x = B.vx; this.prevV.y = B.vy;
     this.excite = Math.max(0, this.excite - dt * 0.7);
     this.spread = Math.max(B.maxx - B.minx, B.maxy - B.miny) / Math.max(8, 2 * B.r + 2 * H);
+    if (this.flew > 0) this.flew -= dt;
+    // effervescent: it never stops fizzing
+    if (this.morph && this.morph.jet && (this.fizzT = (this.fizzT || 0) - dt) <= 0) { this.fizzT = 0.07 + Math.random() * 0.08; const a = Math.random() * 6.283, r = Math.sqrt(Math.random()) * B.r * 0.85; W.fx.bubble(B.cx + Math.cos(a) * r, B.cy + Math.sin(a) * r, 1.6 + Math.random() * 2.6); }
+    // a spore sibling left alone and still ripens into a decoy: it smells like the easiest meal in the dish
+    // (once ripe it stays ripe, however it is shoved — until you call it home)
+    if (B.mat === SPORE && !this.focused && !this.brain && !this.rallyTo && this.colony && this.colony.isPlayer && (this.ripe || Math.hypot(B.vx, B.vy) < 60)) { this.ripeT = (this.ripeT || 0) + dt; if (!this.ripe && this.ripeT > 0.8) { this.ripe = true; W.fx.ring(B.cx, B.cy, [0.75, 1, 0.5], B.r * 2.4, 0.6); W.sound && W.sound.ripe && W.sound.ripe(); } if (this.ripe && (this.pulseT = (this.pulseT || 0) - dt) <= 0) { this.pulseT = 1.1; W.fx.ring(B.cx, B.cy, [0.75, 1, 0.5], B.r * 1.9, 0.9, { a: 0.3, w: 1.4 }); } }
+    else if (this.ripeT) { this.ripeT = 0; this.ripe = false; }
     // ── locomotion: steer the body's velocity toward the wanted one ──
     const speed = this.speed * (1 - 0.78 * cold + 0.22 * warm) * (1 - 0.45 * this.puff);
     const g = W.gravityAt ? W.gravityAt(B.cx, B.cy) : ZERO;
     const heavy = Math.hypot(g[0], g[1]) > 60;
     let ax, ay, lead = 0, damp = 0, adhMul = 1;
-    if (im > 0.03) { ax = (ix * speed - B.vx) * ACCEL; ay = (iy * speed - B.vy) * ACCEL; lead = LEAD * im; }
+    if (this.flightT > 0) {                                              // launched (a trampoline, a throw): it coasts — lean to bend the arc, but nothing brakes it until it lands
+      this.flightT -= dt; this.flew = 0.14;
+      const sv = Math.hypot(B.vx, B.vy) + 1e-3, fx = B.vx / sv, fy = B.vy / sv; let fw = ix * fx + iy * fy; const lt = ix * -fy + iy * fx;     // forward / sideways lean
+      if (fw < 0) fw = 0;                                                  // you can bend a flight; you cannot brake it (the pointer you pushed off with is behind you now)
+      ax = (fx * fw * 0.5 - fy * lt) * speed * 1.3; ay = (fy * fw * 0.5 + fx * lt) * speed * 1.3;
+      if (touching && this.flightT < this.flightT0 - 0.12 && !this.flightKeep) this.flightT = 0;
+      if (this.flightT <= 0) this.flightKeep = 0;
+    }
+    else if (im > 0.03) { ax = (ix * speed - B.vx) * ACCEL; ay = (iy * speed - B.vy) * ACCEL; lead = LEAD * im; }
     else if (this.budT > 0) { this.budT -= dt; ax = 0; ay = 0; }             // a thrown sibling coasts to where it was thrown
     else { ax = -B.vx * BRAKE; ay = -B.vy * BRAKE; damp = 1.3; }           // no ice-parking: resting is a decision the body keeps
     if (heavy && !touching) { ax *= 0.45; ay *= 0.2; }                   // under real gravity you steer a fall, you do not fly
@@ -108,7 +124,7 @@ export class Organism {
     B.ax = ax; B.ay = ay; B.lead = lead; B.trail = TRAIL * Math.min(1, lead / LEAD);
     B.lx = im > 0.03 ? ix / im : this.facing.x; B.ly = im > 0.03 ? iy / im : this.facing.y;
     B.adhMul = this.peelT > 0 || this.dartT > 0 ? 0.05 : adhMul;
-    B.damp = damp; B.gs = 1;
+    B.damp = damp; B.gs = 1; B.glide = this.flightT > 0 ? 0.7 : 0;
     // ── tonus: a gathered pearl at rest, supple when reaching or squeezing ──
     const squeezing = this.spread > 1.25 ? Math.min(1, (this.spread - 1.25) / 0.8) : 0;
     this.squeeze += (squeezing - this.squeeze) * Math.min(1, dt * 6);
@@ -210,7 +226,8 @@ export class Organism {
     if (this.heat < -0.5) { this.heat += 0.45; W.fx && W.fx.burst(B.cx, B.cy, 12, [0.75, 0.95, 1], 200, { life: 0.5, size: 2.2, type: 1 }); }       // a dart cracks the ice
     const m = Math.hypot(dx, dy) || 1; dx /= m; dy /= m;
     const lance = power >= 1.25;                    // a coiled dart is a lance: it costs more and cleaves what it meets
-    const cost = W.dartCost ? W.dartCost(this) : Math.max(1, Math.round(B.count * (lance ? 0.05 : 0.025)));
+    const fizz = !!(this.morph && this.morph.jet);        // effervescent foam: every dart is a jet of bubbles — free, quick, and it skims
+    const cost = fizz ? 0 : W.dartCost ? W.dartCost(this) : Math.max(1, Math.round(B.count * (lance ? 0.05 : 0.025)));
     const sp = (W.dartSpeed || 600) * Math.min(1.25, 0.85 + 0.25 * power) * (this.morph ? this.morph.dart : 1);
     const jet = [];
     for (let k = 0; k < B.len; k++) {
@@ -238,9 +255,21 @@ export class Organism {
       }
     }
     this.dartCD = 0.34; this.dartT = 0.3; this.peelT = 0.2; this.lance = lance ? 0.34 : 0; this.lanceX = dx; this.lanceY = dy;
+    if (fizz) {
+      this.dartCD = 0.24; this.flightT = this.flightT0 = 0.3; this.flightKeep = 1;
+      for (let k = 0; k < 9; k++) W.fx.bubble(B.cx - dx * B.r * (0.5 + Math.random()) + (Math.random() - 0.5) * B.r, B.cy - dy * B.r * (0.5 + Math.random()) + (Math.random() - 0.5) * B.r, 2 + Math.random() * 3.5);
+      W.fx.sparks(B.cx - dx * B.r, B.cy - dy * B.r, 6, -dx, -dy, [0.9, 0.98, 1], 240, { spread: 1.1, life: 0.4 });
+    }
     this.excite = Math.min(1, this.excite + 0.5);
     W.onDart && W.onDart(this, dx, dy, cost);
     return true;
+  }
+
+  // launch: every grain gets the same velocity, and the body is left alone to fly for a while
+  launch(vx, vy, t = 0.8) {
+    const P = this.W.phys, B = this.B;
+    for (let k = 0; k < B.len; k++) { const i = P.bodyIdx[B.start + k]; if (P.body[i] !== B.id) continue; P.vx[i] = vx; P.vy[i] = vy; P.ox[i] = P.x[i] - vx / 120; P.oy[i] = P.y[i] - vy / 120; }
+    this.flightT = this.flightT0 = t; this.dartT = Math.max(this.dartT, 0.15); this.excite = Math.min(1, this.excite + 0.6); this.crown.startle(0.7);
   }
 
   // bud: eject a sibling droplet toward (tx,ty)

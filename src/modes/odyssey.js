@@ -14,6 +14,9 @@ const HINTS = {
   rally: '<span class="key">Q</span> gather yourself',
   still: 'rest against a wall and hold still — what does not move is not seen',
   coil: '<span class="mouse-ic"></span> hold to coil, release to lance — it cleaves what is bigger than you',
+  fly: 'lean into a bright band — and let it throw you',
+  jet: '<span class="mouse-ic"></span> <span class="key">Space</span> as foam every dart is a jet — and a jet skims',
+  decoy: '<span class="mouse-ic r"></span> <span class="key">E</span> leave a piece of yourself in its path — and be somewhere else',
   swell: '<span class="key">F</span> or hold <span class="mouse-ic r"></span> — swell: they judge by size · let go to pop',
 };
 
@@ -23,6 +26,8 @@ export const TRICKS = [
   ['Ghost Wall', 'be a wall while something looks straight at you'], ['Paper Tiger', 'frighten a hunter with nothing but breath'],
   ['Cleave', 'part a giant in two'], ['Slingshot', 'be thrown by one pole and caught by the other'],
   ['Gravity Assist', 'go in among a well\'s nearest light, and leave having paid it nothing'], ['Comet', 'twenty-four lights without a pause'],
+  ['Hole in One', 'leave two bands behind and do not land until you are home'],
+  ['Trojan Swallow', 'be swallowed — by something that will never swallow again'],
   ['Phoenix', 'leave a chamber whole after being an ember in it'], ['Immaculate', 'all three stars in a single visit'],
 ];
 export class Odyssey {
@@ -32,7 +37,7 @@ export class Odyssey {
 
   load(fromPore) {
     const app = this.app, room = this.room = ROOMS[this.i];
-    this.finished = false; this.tricks = []; this.thrownTo = null; this.skim = null; this.wasEmber = false; this.hintT = 0; this.usedHint = false; this.combT = 0;
+    this.finished = false; this.tricks = []; this.thrownTo = null; this.skim = null; this.wasEmber = false; this.hintT = 0; this.usedHint = false; this.combT = 0; this.air = 0; this.groundT = 0;
     app.travel((aspect) => { const s = room.build(aspect); s.name = room.name; s.no = this.i + 1; s.seed = s.seed || (this.i * 97 + 13); this.spec = s; return s; },
       (spec) => ({ mass: this.startMass = this.massFor(spec) }), {
         minDark: fromPore ? 1.9 : 0.5,
@@ -56,6 +61,7 @@ export class Odyssey {
   mote(m, O, chain) { if (chain && chain % 8 === 0) this.app.hud.toast(`Chain ×${chain} <small>+${1 + Math.min(3, chain >> 3)}</small>`, '♪', 'cool'); if (chain === 24) this.trick('Comet'); }
   moteLost() { for (const e of this.app.world.ents) if (e.d.type === 'pore' && e.need > 0) e.need--; }      // light a neighbour drank can no longer be asked of you
   film() { this.usedHint = this.room.hint === 'dart' || this.usedHint; }
+  dart(O) { if (this.room.hint === 'jet' && O.morph && O.morph.jet) this.usedHint = true; }
   bud() { if (this.room.hint === 'bud') this.usedHint = true; }
   split(parent, child, cut) { if (cut && !this.tricks.includes('Surgical Shear')) this.pendingShear = this.app.world.time; }
   pad(p) { if (p.active && this.pendingShear && this.app.world.time - this.pendingShear < 12 && this.app.world.player.orgs.length > 1) this.trick('Surgical Shear'); }
@@ -63,6 +69,8 @@ export class Odyssey {
   trick(name) { if (this.tricks.includes(name)) return; this.tricks.push(name); const first = this.app.save.trick(name); this.app.hud.toast(name, '✦'); this.app.sound.trick(); void first; }
   veilT(dt, W) { const F = W.player.focus; if (F && F.stealth) { this.veiled = (this.veiled || 0) + dt; this.usedHint = this.room.hint === 'still' || this.usedHint; if (this.veiled > 1.5 && W.ents.some(e => e.watch && Math.hypot(e.x - F.B.cx, e.y - F.B.cy) < e.range)) this.trick('Ghost Wall'); } }
   pop(O) { if (this.room.hint === 'swell') this.usedHint = true; const W = this.app.world; if (W.colonies.some(C => C.kind === 'hunter' && C.orgs.some(o => o.alive && o.brain && o.brain.state === 'flee' && Math.hypot(o.B.cx - O.B.cx, o.B.cy - O.B.cy) < 260))) this.trick('Paper Tiger'); }
+  bumper() { if (this.room.hint === 'fly') this.usedHint = true; this.air = (this.air || 0) + 1; this.groundT = 0; }      // bands touched in one unbroken flight
+  trojan() { this.trick('Trojan Swallow'); if (this.room.hint === 'decoy') this.usedHint = true; }
   thrown(core) { this.thrownT = this.app.world.time; this.thrownTo = core.twin; }                    // a pole threw us: if its twin catches us out of the air, that is a Slingshot
   cleave() { this.trick('Cleave'); if (this.room.hint === 'coil') this.usedHint = true; }
   hurt(B, n, gone) { const W = this.app.world; if (W.stats.lost === GRACE + 1) this.app.hud.toast('grace lost', '◇', 'cool'); }
@@ -73,6 +81,7 @@ export class Odyssey {
     const Ff = W.player.focus; if (Ff && Ff.alive) for (const e of W.ents) { if (e.d.type !== 'well') continue; const d = Math.hypot(Ff.B.cx - e.x, Ff.B.cy - e.y);
       if (!this.skim && d < Math.max(e.r * 4.5, e.reach * 0.36)) this.skim = { e, lost: W.stats.lost, mass: W.player.mass };
       else if (this.skim && this.skim.e === e && d > e.reach * 0.72) { if (W.stats.lost === this.skim.lost && W.player.mass >= this.skim.mass) this.trick('Gravity Assist'); this.skim = null; } }
+    if (this.air) { if (Ff && (Ff.flightT > 0 || Ff.flew > 0)) this.groundT = 0; else if ((this.groundT += dt) > 0.4) this.air = 0; }
     if (this.thrownTo) { const age = W.time - this.thrownT; if (age > 1.7) this.thrownTo = null; else if (age > 0.25 && this.thrownTo.coat >= 8) { this.thrownTo = null; this.trick('Slingshot'); } }
     // the unbreakable floor: if nothing of you is left, the chamber gives you back a seed of light
     if (!W.player.orgs.some(o => o.alive)) { const sp = W.spec.spawn; W.player.spawn(sp.x, sp.y, 24); W.stats.lost += GRACE + 1; W.fx.ring(sp.x, sp.y, [1, 0.8, 0.6], 120, 0.9); this.app.sound.bloom(); this.app.hud.toast('rekindled', '✺'); }
@@ -89,6 +98,7 @@ export class Odyssey {
   complete(pore) {
     if (this.finished) return; this.finished = true;
     const app = this.app, W = app.world, s = W.stats; const stars = this.stars(W);
+    if (this.air >= 2) this.trick('Hole in One');
     if (stars.every(Boolean)) this.trick('Immaculate'); if (this.wasEmber && W.player.mass >= this.startMass) this.trick('Phoenix');
     const rec = app.save.recordRoom(this.room.id, { stars, time: W.roomTime, light: s.motes });
     this.carryMass = W.player.mass;
