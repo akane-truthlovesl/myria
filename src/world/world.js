@@ -341,7 +341,7 @@ export class World {
       // particle j crosses the membrane into the larger body
       const eater = this.colonyOf(Bi), eaten = this.colonyOf(Bj);
       // a full body cannot hold more: past the room's cap what it drinks burns off as light (the hunt still counts — the dish just stays legible)
-      const full = eater === this.player && this.player.mass >= this.massCap;
+      const full = eater === this.player && this.player.mass >= Math.max(420, this.massCap);      // (a chamber's own cap limits what light can give — The Hunt keeps you lean so that only prey makes you grow — never what a hunt can)
       if (full) { if (Math.random() < 0.5) this.fx.sparks(P.x[j], P.y[j], 1, Bi.cx - P.x[j], Bi.cy - P.y[j], (eaten && eaten.tint || MATS[Bj.mat]).emit, 120, { spread: 2.4, life: 0.5 }); P.kill(j); }
       else { P.transfer(j, Bi.id); mat[j] = Bi.mat; P.mix[j] = 1; P.glow[j] = 1.2; }
       moved++;
