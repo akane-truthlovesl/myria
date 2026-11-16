@@ -293,9 +293,11 @@ export class World {
       if (this.ember) for (const O of pl.orgs) { O.emberK = 1; O.B.energy = 1.2; }
       // the floor is unbreakable in practice, not just on paper: if an ember has nothing left to drink, the slide
       // itself weeps a little light near it — a clutch way back, never a dead end
-      if (this.ember && pl.focus && pl.focus.alive) {
+      // …and the same mercy, more slowly, for a body worn well below its beginnings while something bigger still hunts the room
+      let lean = false; if (!this.ember && m > 0 && m < 0.6 * (this.spec.spawn.n || 40)) for (const C of this.colonies) { if (C === pl || C.ally || C.kind !== 'hunter') continue; for (const O of C.orgs) if (O.alive && O.B.count > m) { lean = true; break; } if (lean) break; }
+      if ((this.ember || lean) && pl.focus && pl.focus.alive) {
         this.pityT = (this.pityT || 0) + dt;
-        if (this.pityT > 2.2) {
+        if (this.pityT > (this.ember ? 2.2 : 3.2)) {
           this.pityT = 0; const B = pl.focus.B; let near = 0; for (const p of this.pickups) if (p.isMote && !p.dead && Math.hypot(p.x - B.cx, p.y - B.cy) < 260) near++;
           if (near < 2) for (let k = 0; k < 12; k++) { const a = Math.random() * TAU, d = 70 + Math.random() * 70; const x = B.cx + Math.cos(a) * d, y = B.cy + Math.sin(a) * d; if (x < 50 || y < 50 || x > this.spec.W - 50 || y > this.spec.H - 50 || P.solidAt(x, y) < 24 || P.blocked(B.cx, B.cy, x, y, 2)) continue; this.spawn({ type: 'mote', x, y, free: true, value: 2, col: [1, 0.9, 0.7], pity: true }); this.fx.ring(x, y, [1, 0.9, 0.7], 30, 0.5, { a: 0.6 }); break; }
         }

@@ -64,20 +64,24 @@ wall where something is watching makes you a veil it cannot see.
   pole crowned with light). Bigger membranes siphon smaller ones (the swallowed pigment swirls inside you
   before it becomes yours). Every second chamber you choose one of three ways to change; every fifth
   is a predator dish. Three embers; where a dive ends, an echo of your light waits for the next one.
-- **Daily** — the same dive for everyone today: one seed, one mutated axiom.
+- **Daily** — the same dive for everyone today: one seed, one mutated axiom. (Dives and Blooms end with
+  a *copy result* line for sharing.)
 - **Duet** — two players, one screen (pointer + W A S D / Space / F): **Together**, a co-op dive where
   touching shares mass between you, or **Versus**, ninety seconds of raining light.
 - **Pool** — a sandbox with nothing to win: knead the gel with the pointer, pour oil, quicksilver,
-  resin and foam, drop machines and neighbours, and watch one physics answer everything.
+  resin, foam and ferrofluid, drop gears, blades, wells, poles, turning rings, currents, vents and frost,
+  bathe to become iron, quicksilver or armour, invite neighbours, and watch one physics answer everything.
 
-Anything that parts you — a comb, a blade, a pole's throw — makes **siblings**, not debris: every
-piece of five grains or more is you, steerable (click it / Tab), callable (rally), and the open pore
-calls all of you home as you settle onto it. Crumbs smaller than that drift back by themselves, and
-if you are ever left steering a speck while the bulk of you lies elsewhere, the will moves to the bulk.
+Anything that parts you — a comb, a blade, a pole's throw — makes **siblings**, not debris. A real
+share of you (fourteen grains or more) is you: steerable (click it / Tab), callable (rally), and the
+open pore calls all of you home as you settle onto it. A mere splash hesitates a moment and rolls
+home by itself — as beads of quicksilver or iron always do — and if you are ever left steering a
+speck while the bulk of you lies elsewhere, the will moves to the bulk.
 
 If you are ever reduced to almost nothing you become an **ember**: nothing can drink you, you move
 faster, every mote counts double until you are whole again — and if the room has no light left to
-give, the slide itself weeps a little near you. There are no dead ends.
+give, the slide itself weeps a little near you (as it does, more slowly, whenever you have been worn
+well below your beginnings while something bigger still hunts the room). There are no dead ends.
 
 ## How it works
 

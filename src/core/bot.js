@@ -85,9 +85,11 @@ export class Bot {
     const ready = pore && pore.open > 0.8;
     if (!(ready && this.greed === 0)) for (const m of W.pickups) { if (m.dead || m.held) continue; if (this.greed < 2 && risky(m.x, m.y)) continue; add(m.x, m.y, 'mote', m, 4, 8); }
     // neighbours: prey is food, especially when the pore asks for it
-    for (const C of W.colonies) { if (C === pl || C.ally || !C.kind || C.kind === 'oil' || C.kind === 'thorn') continue; for (const O of C.orgs) { if (!O.alive) continue; if (O.B.count * 1.2 < B.count && MATS[O.B.mat].phase === MATS[B.mat].phase) add(O.B.cx, O.B.cy, 'prey', O, C.kind === 'hunter' ? 3.5 : 4.2, 6); } }
+    // (prey sheltering beside something that would drink us is not prey yet)
+    const guarded = (x, y) => { for (const C of W.colonies) { if (C === pl || C.ally || !C.kind || C.kind === 'oil') continue; for (const O of C.orgs) if (O.alive && O.B.count > B.count * 1.1 && MATS[O.B.mat].phase === MATS[B.mat].phase && Math.hypot(O.B.cx - x, O.B.cy - y) < O.B.r + 120) return true; } return false; };
+    for (const C of W.colonies) { if (C === pl || C.ally || !C.kind || C.kind === 'oil' || C.kind === 'thorn') continue; for (const O of C.orgs) { if (!O.alive) continue; if (O.B.count * 1.2 < B.count && MATS[O.B.mat].phase === MATS[B.mat].phase && !guarded(O.B.cx, O.B.cy)) add(O.B.cx, O.B.cy, 'prey', O, C.kind === 'hunter' ? 3.5 : 4.2, 6); } }
     // nothing left to eat but something too big to swallow: go and cleave it (a lance parts any neighbour in two)
-    if (!cands.some(c => c.kind === 'mote' || c.kind === 'prey') && B.count > 30) for (const C of W.colonies) { if (C === pl || C.ally || C.kind !== 'hunter') continue; for (const O of C.orgs) if (O.alive && O.B.count >= 18 && O.B.count * 1.2 >= B.count) add(O.B.cx, O.B.cy, 'cleave', O, 5, 6); }
+    if (!cands.some(c => c.kind === 'mote' || c.kind === 'prey') && B.count > 18) for (const C of W.colonies) { if (C === pl || C.ally || C.kind !== 'hunter') continue; for (const O of C.orgs) if (O.alive && O.B.count >= 18 && O.B.count * 1.2 >= B.count) add(O.B.cx, O.B.cy, 'cleave', O, 5, 6); }
     if (ready) add(pore.x, pore.y, 'pore', pore, cands.some(c => c.kind === 'mote' || c.kind === 'prey') && this.greed > 0 ? 6 : 1, pore.r * 0.3);
     if (!cands.length) { if (pore) return { x: pore.x, y: pore.y, kind: 'wait', ref: pore, r: pore.r * 2.2 }; return null; }
     // lowest priority class first; inside a class the shortest real path wins (checked for the few nearest by air)
