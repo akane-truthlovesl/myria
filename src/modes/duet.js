@@ -24,7 +24,7 @@ export class Duet {
   exit() { this.app.input.keysOff = false; }
   onEvent(e) {
     if (this.over || this.app.state !== 'play') return false;
-    if (e.type === 'dartKey') { const F = this.p2.focus; if (F && F.alive) F.dart(F.facing.x, F.facing.y, 1); return true; }
+    if (e.type === 'dartKey') { const F = this.p2.focus; if (F && F.alive) F.dart(F.facing.x, F.facing.y, 0.9 + Math.min(1, (e.hold || 0) / 0.7) * 0.7); return true; }
     if (e.type === 'budKey' || e.type === 'cycle') return true;
     return false;
   }
@@ -33,7 +33,7 @@ export class Duet {
     // player two: keys
     const K = this.app.input.keys; let x = (K.has('KeyD') || K.has('ArrowRight') ? 1 : 0) - (K.has('KeyA') || K.has('ArrowLeft') ? 1 : 0), y = (K.has('KeyS') || K.has('ArrowDown') ? 1 : 0) - (K.has('KeyW') || K.has('ArrowUp') ? 1 : 0);
     if (x && y) { x *= 0.707; y *= 0.707; }
-    const F = this.p2.focus; if (F && F.alive) { F.intent.x += (x - F.intent.x) * Math.min(1, dt * 20); F.intent.y += (y - F.intent.y) * Math.min(1, dt * 20); }
+    const F = this.p2.focus, V = this.p2.pilot || (this.p2.pilot = { x: 0, y: 0 }); V.x += (x - V.x) * Math.min(1, dt * 20); V.y += (y - V.y) * Math.min(1, dt * 20);
     for (const O of this.p2.orgs) if (O !== F && this.p2.focus) { O.rallyTo = this.p2.focus.B; O.B.fuseT = Math.min(O.B.fuseT, 0.05); }
     // light rains into the dish
     this.rain -= dt; if (this.rain <= 0 && W.pickups.length < 26) { this.rain = 0.35; for (let k = 0; k < 20; k++) { const px = 90 + Math.random() * (W.spec.W - 180), py = 90 + Math.random() * (W.spec.H - 180); if (W.phys.sampleSDF(px, py) > 30) { W.spawn({ type: 'mote', x: px, y: py, free: true, value: Math.random() < 0.15 ? 5 : 2 }); break; } } }

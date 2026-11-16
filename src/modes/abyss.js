@@ -35,10 +35,10 @@ export class Abyss {
   }
   enter() { if (this.coop) this.app.input.keysOff = true; this.load(null); }
   exit() { this.app.hud.hint(''); this.app.input.keysOff = false; }
-  onEvent(e) { if (!this.coop || this.app.state !== 'play') return false; if (e.type === 'dartKey') { const F = this.p2 && this.p2.focus; if (F && F.alive) F.dart(F.facing.x, F.facing.y, 1); return true; } return e.type === 'budKey' || e.type === 'cycle'; }
+  onEvent(e) { if (!this.coop || this.app.state !== 'play') return false; if (e.type === 'dartKey') { const F = this.p2 && this.p2.focus; if (F && F.alive) F.dart(F.facing.x, F.facing.y, 0.9 + Math.min(1, (e.hold || 0) / 0.7) * 0.7); return true; } return e.type === 'budKey' || e.type === 'cycle'; }
   update(dt, W) {
     if (!this.coop || !this.p2) return; const K = this.app.input.keys; let x = (K.has('KeyD') || K.has('ArrowRight') ? 1 : 0) - (K.has('KeyA') || K.has('ArrowLeft') ? 1 : 0), y = (K.has('KeyS') || K.has('ArrowDown') ? 1 : 0) - (K.has('KeyW') || K.has('ArrowUp') ? 1 : 0); if (x && y) { x *= 0.707; y *= 0.707; }
-    const F = this.p2.focus; if (F && F.alive) { F.intent.x += (x - F.intent.x) * Math.min(1, dt * 20); F.intent.y += (y - F.intent.y) * Math.min(1, dt * 20); F.swell = K.has('KeyF'); }
+    const F = this.p2.focus, V = this.p2.pilot || (this.p2.pilot = { x: 0, y: 0 }); V.x += (x - V.x) * Math.min(1, dt * 20); V.y += (y - V.y) * Math.min(1, dt * 20); if (F && F.alive) F.swell = K.has('KeyF');
     for (const O of this.p2.orgs) if (O !== F && F) { O.rallyTo = F.B; O.B.fuseT = Math.min(O.B.fuseT, 0.05); }
   }
   pauseSub() { return `${this.daily ? 'Daily Abyss · ' + this.axiom.name : this.coop ? 'Abyss together · pointer + W A S D / Space / F' : 'Abyss'} · depth ${this.depth}`; }

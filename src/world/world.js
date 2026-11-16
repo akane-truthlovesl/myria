@@ -304,7 +304,8 @@ export class World {
       } else this.pityT = 0;
     }
     if (this.callHome > 0) this.callHome -= dt;
-    for (const C of this.colonies) C.update(dt, C === pl ? ctl.intent : null, C === pl ? ctl.aim : null, C === pl ? !!ctl.rally || this.callHome > 0 : false);
+    // (a second pilot — player two in Duet or a co-op dive — steers through its colony's own `pilot` vector)
+    for (const C of this.colonies) C.update(dt, C === pl ? ctl.intent : C.pilot || null, C === pl ? ctl.aim : null, C === pl ? !!ctl.rally || this.callHome > 0 : false);
     this._dewHoming(dt);
     P.step(dt);
     this._chemistry(dt); this._lances(dt); this._spores(dt);

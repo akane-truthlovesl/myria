@@ -8,3 +8,5 @@ They need `npm i puppeteer-core` somewhere on the module path and Chrome at /usr
   node ftue.mjs 1280 720 0                    # a brand-new save: seconds to first movement / first light (mouse); `480 860 1` = touch stick
   node tilttest.mjs                           # optional gyro, driven by synthetic deviceorientation events (declares the test origin secure)
   node echotest.mjs                           # clear a chamber, replay against the ghost, round-trip the share code
+  node duettest.mjs                           # two players, one screen: pointer + W A S D / Space, in Duet and in a co-op dive
+  node modes.mjs 6                            # every mode opened and left running, plus the Atrium's menus: nothing may throw

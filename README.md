@@ -33,29 +33,29 @@ wall where something is watching makes you a veil it cannot see.
 ## What is in it
 
 - **The Atrium** — the title is written in motes. Wake the sleeping pearl and eat the word.
-- **Odyssey** — twenty-six single-screen chambers in four strata (Dew · Glassworks · Chemistry · Abyss),
-  each teaching one idea through physics alone: squeezing, darting through a soap film, budding to
-  hold two pads, threading a comb, blades, sling bands that throw you whole through doubled films no
-  dart can break, grinders and healing springs, pistons, sticky resin against a river, quicksilver
-  among hunters, an effervescent foam whose every dart is a free jet that skims a river too strong to
-  wade (wade it anyway: a one-way valve turns being swept off into a flume ride home), oil that will not mix, shear-thickening armour, ferrofluid
-  leaping between pulsing poles, frost that stiffens you and vents that thaw a frozen door, watchers
-  you hide from by holding still, a gyre of currents, a black hole, bluffing giants with a held
-  breath, a spore bath that turns whatever you leave behind into a ripening decoy — and whatever
-  swallows it into a rain of dew — a hunt, and a heart that needs you in three places at once.
-  Three **wardens** close the first strata: **The Lock** (two rings of glass turning against each other
-  around a heart of light — every doorway is a moment, not a place), **The Centrifuge** (a drum whose
-  three arms sweep you past lanterns and gears: you do not cross it, you ride it) and **Twin Cores**
-  (two electromagnets circling one another inside a ring of gears: as iron you are drawn in, the pole
-  flickers, leans, and throws you — to its twin, unless you lean elsewhere; coat both long enough and
-  the pair falls together and pays out).
-  Three living stars per chamber: **Radiance** (all the light), **Grace** (lose almost nothing),
-  **Swift** (under par). The pore opens at 60 % — the rest is appetite. Thirteen named tricks (Thread the
-  Needle, Surgical Shear, Ghost Wall, Paper Tiger, Cleave, Slingshot, Gravity Assist, Hole in One,
-  Trojan Swallow, Outrun, Comet, Phoenix, Immaculate) are noticed when you find them; the Atrium keeps a journal in which the ones you have
-  not found yet are riddles.
-  The stars you gather dye you: six **hues** (Coral · Honey · Rose · Jade · Pearl · Nebula) unlock as
-  they add up — each a full optical recipe, chosen from the pause menu in the Atrium.
+- **Odyssey** — twenty-six single-screen chambers in four strata (Dew · Glassworks · Chemistry ·
+  Abyss), each teaching one idea through physics alone: squeezing, darting through a soap film,
+  budding to hold two pads, threading a comb, blades, sling bands that throw you whole through doubled
+  films no dart can break, grinders and healing springs, pistons, sticky resin against a river,
+  quicksilver among hunters, an effervescent foam whose every dart is a free jet that skims a river
+  too strong to wade (wade it anyway: a one-way valve turns being swept off into a flume ride home),
+  oil that will not mix, shear-thickening armour, ferrofluid leaping between pulsing poles, frost that
+  stiffens you and vents that thaw a frozen door, watchers you hide from by holding still, a gyre of
+  currents, a black hole, bluffing giants with a held breath, a spore bath that turns whatever you
+  leave behind into a ripening decoy — and whatever swallows it into a rain of dew — a hunt, and a
+  heart that needs you in three places at once. Three **wardens** close the first strata: **The Lock**
+  (two rings of glass turning against each other around a heart of light — every doorway is a moment,
+  not a place), **The Centrifuge** (a drum whose three arms sweep you past lanterns and gears: you do
+  not cross it, you ride it) and **Twin Cores** (two electromagnets circling one another inside a ring
+  of gears: as iron you are drawn in, the pole flickers, leans, and throws you — to its twin, unless
+  you lean elsewhere; coat both long enough and the pair falls together and pays out). Three living
+  stars per chamber: **Radiance** (all the light), **Grace** (lose almost nothing), **Swift** (under
+  par). The pore opens at 60 % — the rest is appetite. Thirteen named tricks (Thread the Needle,
+  Surgical Shear, Ghost Wall, Paper Tiger, Cleave, Slingshot, Gravity Assist, Hole in One, Trojan
+  Swallow, Outrun, Comet, Phoenix, Immaculate) are noticed when you find them; the Atrium keeps a
+  journal in which the ones you have not found yet are riddles. The stars you gather dye you: six
+  **hues** (Coral · Honey · Rose · Jade · Pearl · Nebula) unlock as they add up — each a full optical
+  recipe, chosen from the pause menu in the Atrium.
 - **Echo** — clear a chamber and your best run stays in it: come back, and a pale bead of your own hue
   retraces that run beside you, to race. The pause menu can **copy your echo** as a short code; anyone
   who pastes it into *Race an echo* in their Atrium races your bead (in blue) through that chamber —
@@ -63,32 +63,35 @@ wall where something is watching makes you a veil it cannot see.
 - **Myriad** — the last room has no door. Everything you met on the way is there, and nothing in it is
   hungry; what you do with all that light is the ending. (Afterwards the Atrium keeps the morning.)
 - **Flow** — light taken in quick succession becomes a chain. A chain makes the crown *bloom*: longer,
-  brighter feelers that fetch from further, a faint pull on nearby motes, a little more speed, a rising
-  melody — and every eighth link pays a bonus of mass. Greed with rhythm is rewarded; nothing is punished.
-- **Bloom** — seventy-five seconds of rain. Light falls in drawn figures (lines, arcs, spirals, crosses);
-  every mote scores, an unbroken chain multiplies it up to ×8, and the dish wakes as the clock runs:
-  a blade, then a gear, then both faster. Four medals: Dew · Pearl · Bloom · Prism.
+  brighter feelers that fetch from further, a faint pull on nearby motes, a little more speed, a
+  rising melody — and every eighth link pays a bonus of mass. Greed with rhythm is rewarded; nothing
+  is punished.
+- **Bloom** — seventy-five seconds of rain. Light falls in drawn figures (lines, arcs, spirals,
+  crosses); every mote scores, an unbroken chain multiplies it up to ×8, and the dish wakes as the
+  clock runs: a blade, then a gear, then both faster. Four medals: Dew · Pearl · Bloom · Prism.
 - **Abyss** — an endless generated descent with grazers, lancers, thornbacks and oil for neighbours,
   each measured against your own size; from the fourth depth on one of them is an apex that only wit
   (a lance, a held breath) will answer. Vaults — rings of glass turning around a hoard — are worth the
-  wait at their doorway; deeper down there are turnstiles, sling bands, lodestones (an iron bath beside a
-  pulsing pole crowned with light), **geysers** (white holes: they draw breath, then throw whatever stands
-  on them — and a little light — outward), **sponges** (desiccant: thirsty pores drink whatever leans on
-  them, a grain at a time, until they are sated — strike one with a dart and it is wrung out, everything
-  it ever drank bursting free for whoever is nearest) and **mimics** (something curled up wearing a ring of light:
-  its lights blink all together, there is a knot of thorns at its heart, and no feeler ever reaches for
-  it; wander in and it bites, dart through it and it bursts into the light it pretended to be). The daily
-  dive's rule mutation may now be *White Tide* (a geyser in every chamber) or *Masquerade*. Bigger membranes siphon smaller ones (the swallowed pigment swirls inside you
-  before it becomes yours). Every second chamber you choose one of three ways to change; every fifth
-  is a predator dish. Three embers; where a dive ends, an echo of your light waits for the next one.
+  wait at their doorway; deeper down there are turnstiles, sling bands, lodestones (an iron bath
+  beside a pulsing pole crowned with light), **geysers** (white holes: they draw breath, then throw
+  whatever stands on them — and a little light — outward), **sponges** (desiccant: thirsty pores drink
+  whatever leans on them, a grain at a time, until they are sated — strike one with a dart and it is
+  wrung out, everything it ever drank bursting free for whoever is nearest) and **mimics** (something
+  curled up wearing a ring of light: its lights blink all together, there is a knot of thorns at its
+  heart, and no feeler ever reaches for it; wander in and it bites, dart through it and it bursts into
+  the light it pretended to be). The daily dive's rule mutation may now be *White Tide* (a geyser in
+  every chamber) or *Masquerade*. Bigger membranes siphon smaller ones (the swallowed pigment swirls
+  inside you before it becomes yours). Every second chamber you choose one of three ways to change;
+  every fifth is a predator dish. Three embers; where a dive ends, an echo of your light waits for the
+  next one.
 - **Daily** — the same dive for everyone today: one seed, one mutated axiom. (Dives and Blooms end with
   a *copy result* line for sharing.)
 - **Duet** — two players, one screen (pointer + W A S D / Space / F): **Together**, a co-op dive where
   touching shares mass between you, or **Versus**, ninety seconds of raining light.
 - **Pool** — a sandbox with nothing to win: knead the gel with the pointer, pour oil, quicksilver,
   resin, foam and ferrofluid, drop gears, blades, wells, poles, turning rings, sling bands, geysers,
-  sponges, mimics, currents, vents and frost, bathe to become iron, quicksilver, armour, foam or spore, invite neighbours, and watch one
-  physics answer everything.
+  sponges, mimics, currents, vents and frost, bathe to become iron, quicksilver, armour, foam or
+  spore, invite neighbours, and watch one physics answer everything.
 
 Anything that parts you — a comb, a blade, a pole's throw — makes **siblings**, not debris. A real
 share of you (fourteen grains or more) is you: steerable (click it / Tab), callable (rally), and the
@@ -155,6 +158,8 @@ node tools/axioms.mjs                             # the eight foundational laws,
 node tools/scales.mjs sheet.png                   # every substance at 2 · 5 · 12 · 40 · 120 · 400 grains, still and moving, at true scale
 node tools/browser/ftue.mjs 1280 720 0            # a brand-new save: seconds to first movement / first light (mouse; `480 860 1` = touch)
 node tools/browser/echotest.mjs                   # clear, replay against the ghost, round-trip the share code
+node tools/browser/modes.mjs                      # every mode opened and left running, plus the Atrium's menus
+node tools/browser/duettest.mjs                   # two players on one screen (Duet, co-op dive): both steer, both dart and lance
 node tools/browser/tilttest.mjs                   # the optional gyro, driven by synthetic device-orientation events
 ```
 
