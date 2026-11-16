@@ -88,6 +88,14 @@ export class App {
   }
   // the first backdrop tells us how fast this machine paints → choose an internal pixel budget it can afford
 
+  // the frame on the glass, as a PNG: every screenshot of this game should be worth keeping
+  snapshot() {
+    try {
+      const c = this.R.canvas, name = ((this.world.spec && this.world.spec.name) || 'myria').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      c.toBlob((blob) => { if (!blob) return; const a = document.createElement('a'); a.download = `myria-${name}-${String(Date.now() % 1e6).padStart(6, '0')}.png`; a.href = URL.createObjectURL(blob); document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }, 'image/png');
+      this.sound.ui && this.sound.ui();
+    } catch (_) { /* a locked-down browser: no picture, no harm */ }
+  }
   pause() {
     if (this.paused || this.state !== 'play') return; this.paused = true;
     const m = this.mode, hud = this.hud;
@@ -96,6 +104,7 @@ export class App {
     if (m && m.pauseItems) items.push(...m.pauseItems());
     items.push([{ label: this.sound.muted ? 'Sound off' : 'Sound on', fn: (b) => { const mu = !this.sound.muted; this.sound.setMuted(mu); save.set('muted', mu); b.textContent = mu ? 'Sound off' : 'Sound on'; } },
       { label: 'Fullscreen', fn: () => { const d = document.documentElement; if (document.fullscreenElement) document.exitFullscreen(); else d.requestFullscreen && d.requestFullscreen().catch(() => {}); } }]);
+    items.push({ label: 'Keep a picture', fn: (b) => { this.snapshot(); b.textContent = 'Kept ✓'; } });
     if (!m || m.isHub !== true) items.push({ label: 'Leave to the atrium', fn: () => { this.resume(); this.toHub(); } });
     hud.panel('Paused', m && m.pauseSub ? m.pauseSub() : '', items, CONTROLS_HTML);
   }

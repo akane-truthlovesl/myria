@@ -436,7 +436,8 @@ export class Core extends Entity {
     const u = (this.t / this.period + this.phase) % 1; const draw = !both && u < 0.56;
     this.warn = draw && u > 0.56 - 1.1 / this.period ? 1 : 0;                       // the last moments of every draw: it flickers, and shows where it will throw
     this.pol += ((draw ? 1 : 0) - this.pol) * Math.min(1, dt * (draw ? 7 : 30)); this.Z.magnet = this.power * this.pol; this.flare = Math.max(0, this.flare - dt * 2.4);
-    let ak = 0; if (this.warn) this._held((B) => { if (B.group === 0 && B.count > ak) { ak = B.count; this._dir(B, this.aim); } }); this.aimK += ((ak ? 1 : 0) - this.aimK) * Math.min(1, dt * (ak ? 5 : 9));
+    let ak = 0; if (this.warn) this._held((B) => { if (B.group === 0 && B.count > ak) { ak = B.count; this._dir(B, this.aim); } });
+    if (ak) { const left = (0.56 - u) * this.period; W.tug = Math.max(W.tug || 0, 1 - Math.max(0, left) / 1.1); if (W.host.haptics && W.host.haptics.tension) W.host.haptics.tension(1 - Math.max(0, left) / 1.1, dt); } this.aimK += ((ak ? 1 : 0) - this.aimK) * Math.min(1, dt * (ak ? 5 : 9));
     // the throw: every particle of a held body gets the same push — it leaves whole
     if (!draw && this._drew && !both) {
       let any = false; const D = [0, 0];

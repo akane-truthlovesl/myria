@@ -204,7 +204,7 @@ export class World {
     const B = F.B; const sp = Math.hypot(B.vx, B.vy); const contact = Math.min(1, B.contact / Math.max(4, B.count * 0.08));
     s.setGlide(sp, contact);
     const stretch = Math.max(0, Math.min(1, (F.spread - 1.22) / 0.9));
-    s.setTension(Math.max(stretch * 0.8, F.coil || 0, F.puff * 0.5));
+    s.setTension(Math.max(stretch * 0.8, F.coil || 0, F.puff * 0.5, this.tug || 0)); this.tug = 0;      // tug: a machine winding up on you (a pole about to throw) sings in the same voice
     let danger = this.ember ? 0.7 : 0; if (F.hurtT > 0) danger = Math.max(danger, 0.8);
     for (const h of this.hazards()) { const d = Math.hypot(h.x - B.cx, h.y - B.cy) - (h.r || 40) - B.r; if (d < 90) danger = Math.max(danger, 0.75 * (1 - Math.max(0, d) / 90)); }
     s.setDanger(danger);

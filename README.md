@@ -20,6 +20,8 @@ file: no server, no install, no network. Any window shape works, portrait includ
 | **Focus** another sibling | click it | Tab | tap it | bumpers |
 | Pause | ‖ | Esc / P | ‖ | Start |
 
+The pause menu can also **keep a picture** — the frame on the glass, saved as a PNG.
+
 Nothing else to learn: feelers fetch nearby light by themselves, pushing into a gap softens the gel
 so it flows through, resting near a pad or an open pore settles you onto it, and resting against a
 wall where something is watching makes you a veil it cannot see.
