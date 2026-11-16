@@ -125,3 +125,10 @@ canvas#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block;
 .ch.next { box-shadow: 0 0 16px rgba(255,170,110,.35); border-color: rgba(255,180,138,.75); }
 .ch.full i { color: #fff3c9; text-shadow: 0 0 8px rgba(255,220,150,.8); }
 @media (max-width: 560px) { .ch-row { flex-direction: column; align-items: stretch; gap: 5px; } .ch-row > label { flex: none; text-align: left; } .ch-row > label small { display: inline; margin-left: 8px; } .ch { width: calc((100% - 24px) / 5); min-width: 58px; } }
+.tk-list { display: flex; flex-direction: column; gap: 5px; margin: 6px 0 2px; text-align: left; min-width: min(520px, 84vw); }
+.tk { display: grid; grid-template-columns: 200px 1fr 34px; align-items: baseline; gap: 12px; padding: 8px 12px; border-radius: 10px; background: rgba(140,210,235,.04); border: 1px solid transparent; }
+.tk b { font-weight: 400; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--dim); }
+.tk span { font-size: 12px; letter-spacing: .04em; color: var(--dim); font-style: italic; }
+.tk i { font-style: normal; font-size: 11px; color: var(--dim); text-align: right; }
+.tk.on { background: rgba(255,180,138,.08); border-color: rgba(255,180,138,.25); } .tk.on b { color: #ffe1bd; } .tk.on span { color: var(--ink); opacity: .8; }
+@media (max-width: 560px) { .tk { grid-template-columns: 1fr 30px; } .tk span { grid-column: 1 / -1; grid-row: 2; } }

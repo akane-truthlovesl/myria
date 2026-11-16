@@ -17,6 +17,14 @@ const HINTS = {
   swell: '<span class="key">F</span> or hold <span class="mouse-ic r"></span> — swell: they judge by size · let go to pop',
 };
 
+// every named trick, with the riddle the journal shows until you have found it
+export const TRICKS = [
+  ['Thread the Needle', 'pass a comb, lose nothing, be one again'], ['Surgical Shear', 'let a blade make two of you — and use both'],
+  ['Ghost Wall', 'be a wall while something looks straight at you'], ['Paper Tiger', 'frighten a hunter with nothing but breath'],
+  ['Cleave', 'part a giant in two'], ['Slingshot', 'be thrown by one pole and caught by the other'],
+  ['Gravity Assist', 'go in among a well\'s nearest light, and leave having paid it nothing'], ['Comet', 'twenty-four lights without a pause'],
+  ['Phoenix', 'leave a chamber whole after being an ember in it'], ['Immaculate', 'all three stars in a single visit'],
+];
 export class Odyssey {
   constructor(app, index = 0, o = {}) { this.app = app; this.i = Math.max(0, Math.min(ROOMS.length - 1, index)); this.carryMass = o.mass || 0; this.single = !!o.single; this.tricks = []; }
   enter() { this.load(false); }
@@ -24,7 +32,7 @@ export class Odyssey {
 
   load(fromPore) {
     const app = this.app, room = this.room = ROOMS[this.i];
-    this.finished = false; this.tricks = []; this.thrownTo = null; this.hintT = 0; this.usedHint = false; this.combT = 0;
+    this.finished = false; this.tricks = []; this.thrownTo = null; this.skim = null; this.wasEmber = false; this.hintT = 0; this.usedHint = false; this.combT = 0;
     app.travel((aspect) => { const s = room.build(aspect); s.name = room.name; s.no = this.i + 1; s.seed = s.seed || (this.i * 97 + 13); this.spec = s; return s; },
       (spec) => ({ mass: this.startMass = this.massFor(spec) }), {
         minDark: fromPore ? 1.9 : 0.5,
@@ -44,8 +52,8 @@ export class Odyssey {
   poreReady(p) { const W = this.app.world; return W.stats.motes >= p.need && (!p.d.key || W.check(p.d.key)); }
   poreProgress(p) { const W = this.app.world; return p.need ? Math.min(1, W.stats.motes / p.need) : 1; }
   tier(name) { this.app.hud.toast(name, '✺'); }
-  ember(on) { this.app.hud.toast(on ? 'ember — nothing can drink you · light counts double' : 'whole again', '✺', on ? '' : 'cool'); }
-  mote(m, O, chain) { if (chain && chain % 8 === 0) this.app.hud.toast(`Chain ×${chain} <small>+${1 + Math.min(3, chain >> 3)}</small>`, '♪', 'cool'); }
+  ember(on) { if (on) this.wasEmber = true; this.app.hud.toast(on ? 'ember — nothing can drink you · light counts double' : 'whole again', '✺', on ? '' : 'cool'); }
+  mote(m, O, chain) { if (chain && chain % 8 === 0) this.app.hud.toast(`Chain ×${chain} <small>+${1 + Math.min(3, chain >> 3)}</small>`, '♪', 'cool'); if (chain === 24) this.trick('Comet'); }
   moteLost() { for (const e of this.app.world.ents) if (e.d.type === 'pore' && e.need > 0) e.need--; }      // light a neighbour drank can no longer be asked of you
   film() { this.usedHint = this.room.hint === 'dart' || this.usedHint; }
   bud() { if (this.room.hint === 'bud') this.usedHint = true; }
@@ -61,6 +69,10 @@ export class Odyssey {
 
   post(dt, W) {
     if (this.finished) return; this.veilT(dt, W);
+    // Gravity Assist: go in among a well's nearest light and come out again having paid it nothing
+    const Ff = W.player.focus; if (Ff && Ff.alive) for (const e of W.ents) { if (e.d.type !== 'well') continue; const d = Math.hypot(Ff.B.cx - e.x, Ff.B.cy - e.y);
+      if (!this.skim && d < Math.max(e.r * 4.5, e.reach * 0.36)) this.skim = { e, lost: W.stats.lost, mass: W.player.mass };
+      else if (this.skim && this.skim.e === e && d > e.reach * 0.72) { if (W.stats.lost === this.skim.lost && W.player.mass >= this.skim.mass) this.trick('Gravity Assist'); this.skim = null; } }
     if (this.thrownTo) { const age = W.time - this.thrownT; if (age > 1.7) this.thrownTo = null; else if (age > 0.25 && this.thrownTo.coat >= 8) { this.thrownTo = null; this.trick('Slingshot'); } }
     // the unbreakable floor: if nothing of you is left, the chamber gives you back a seed of light
     if (!W.player.orgs.some(o => o.alive)) { const sp = W.spec.spawn; W.player.spawn(sp.x, sp.y, 24); W.stats.lost += GRACE + 1; W.fx.ring(sp.x, sp.y, [1, 0.8, 0.6], 120, 0.9); this.app.sound.bloom(); this.app.hud.toast('rekindled', '✺'); }
@@ -77,6 +89,7 @@ export class Odyssey {
   complete(pore) {
     if (this.finished) return; this.finished = true;
     const app = this.app, W = app.world, s = W.stats; const stars = this.stars(W);
+    if (stars.every(Boolean)) this.trick('Immaculate'); if (this.wasEmber && W.player.mass >= this.startMass) this.trick('Phoenix');
     const rec = app.save.recordRoom(this.room.id, { stars, time: W.roomTime, light: s.motes });
     this.carryMass = W.player.mass;
     // celebration at the pore: the body pours in, the room exhales light
@@ -95,7 +108,7 @@ export class Odyssey {
   }
   loadNext(result, pore) {
     const app = this.app; const room = this.room = ROOMS[this.i];
-    this.finished = false; this.tricks = []; this.thrownTo = null; this.hintT = 0; this.usedHint = false; this.pendingShear = 0;
+    this.finished = false; this.tricks = []; this.thrownTo = null; this.skim = null; this.wasEmber = false; this.hintT = 0; this.usedHint = false; this.pendingShear = 0;
     app.travel((aspect) => { const s = room.build(aspect); s.name = room.name; s.no = this.i + 1; s.seed = s.seed || (this.i * 97 + 13); this.spec = s; return s; }, (spec) => ({ mass: this.startMass = this.massFor(spec) }), {
       from: { x: pore.x, y: pore.y }, minDark: 2.3,
       onDark: () => { app.applyBudget(); app.hud.showResult(result); },

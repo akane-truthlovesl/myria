@@ -43,8 +43,10 @@ wall where something is watching makes you a veil it cannot see.
   flickers, leans, and throws you — to its twin, unless you lean elsewhere; coat both long enough and
   the pair falls together and pays out).
   Three living stars per chamber: **Radiance** (all the light), **Grace** (lose almost nothing),
-  **Swift** (under par). The pore opens at 60 % — the rest is appetite. Named tricks (Thread the
-  Needle, Surgical Shear, Ghost Wall, Paper Tiger, Cleave, Slingshot…) are noticed when you find them.
+  **Swift** (under par). The pore opens at 60 % — the rest is appetite. Ten named tricks (Thread the
+  Needle, Surgical Shear, Ghost Wall, Paper Tiger, Cleave, Slingshot, Gravity Assist, Comet, Phoenix,
+  Immaculate) are noticed when you find them; the Atrium keeps a journal in which the ones you have
+  not found yet are riddles.
   The stars you gather dye you: six **hues** (Coral · Honey · Rose · Jade · Pearl · Nebula) unlock as
   they add up — each a full optical recipe, chosen from the pause menu in the Atrium.
 - **Myriad** — the last room has no door. Everything you met on the way is there, and nothing in it is
