@@ -58,7 +58,8 @@ wall where something is watching makes you a veil it cannot see.
 - **Abyss** — an endless generated descent with grazers, lancers, thornbacks and oil for neighbours,
   each measured against your own size; from the fourth depth on one of them is an apex that only wit
   (a lance, a held breath) will answer. Vaults — rings of glass turning around a hoard — are worth the
-  wait at their doorway. Bigger membranes siphon smaller ones (the swallowed pigment swirls inside you
+  wait at their doorway; deeper down there are turnstiles, and lodestones (an iron bath beside a pulsing
+  pole crowned with light). Bigger membranes siphon smaller ones (the swallowed pigment swirls inside you
   before it becomes yours). Every second chamber you choose one of three ways to change; every fifth
   is a predator dish. Three embers; where a dive ends, an echo of your light waits for the next one.
 - **Daily** — the same dive for everyone today: one seed, one mutated axiom.

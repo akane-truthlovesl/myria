@@ -340,13 +340,17 @@ export class World {
       if (eatenC !== this.player && moved >= 3) break;
       // particle j crosses the membrane into the larger body
       const eater = this.colonyOf(Bi), eaten = this.colonyOf(Bj);
-      P.transfer(j, Bi.id); mat[j] = Bi.mat; P.mix[j] = 1; P.glow[j] = 1.2; moved++;
+      // a full body cannot hold more: past the room's cap what it drinks burns off as light (the hunt still counts — the dish just stays legible)
+      const full = eater === this.player && this.player.mass >= this.massCap;
+      if (full) { if (Math.random() < 0.5) this.fx.sparks(P.x[j], P.y[j], 1, Bi.cx - P.x[j], Bi.cy - P.y[j], (eaten && eaten.tint || MATS[Bj.mat]).emit, 120, { spread: 2.4, life: 0.5 }); P.kill(j); }
+      else { P.transfer(j, Bi.id); mat[j] = Bi.mat; P.mix[j] = 1; P.glow[j] = 1.2; }
+      moved++;
       if (Bi.ctrl) { Bi.ctrl.gulp = 1; }
       if (Bj.ctrl) { Bj.ctrl.hurtT = 0.4; Bj.ctrl.excite = 1; }
       if (eaten === this.player) { this.stats.lost++; if (Math.random() < 0.3) this.hurt(Bj, 1, Bi.cx, Bi.cy); }
       if (eater === this.player) { this.stats.eaten = (this.stats.eaten || 0) + 1; if (Math.random() < 0.25 && this.sound) this.sound.gulp(); }
       if (Bj.count <= 6 && eaten !== this.player) {               // the last of it: swallowed whole
-        for (let q = 0; q < Bj.len; q++) { const p2 = P.bodyIdx[Bj.start + q]; if (P.alive[p2] && body[p2] === Bj.id) { P.transfer(p2, Bi.id); mat[p2] = Bi.mat; P.mix[p2] = 1; P.glow[p2] = 1.2; } }
+        for (let q = 0; q < Bj.len; q++) { const p2 = P.bodyIdx[Bj.start + q]; if (P.alive[p2] && body[p2] === Bj.id) { if (full) P.kill(p2); else { P.transfer(p2, Bi.id); mat[p2] = Bi.mat; P.mix[p2] = 1; P.glow[p2] = 1.2; } } }
         this.fx.ring(Bj.cx, Bj.cy, (eaten.tint || MATS[Bj.mat]).emit, 90, 0.6); if (eater === this.player) { this.sound && this.sound.swallow(); this.hitStop = 0.07; this.emit('devour', eaten, Bi); }
       }
     }
