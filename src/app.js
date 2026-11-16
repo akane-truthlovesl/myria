@@ -15,9 +15,11 @@ import { skinFor } from './core/skins.js';
 
 const STEP = 1 / 60;
 
+import { Link } from './core/link.js';
+
 export class App {
   constructor(canvas, uiRoot, params) {
-    this.canvas = canvas; this.params = params;
+    this.canvas = canvas; this.params = params; this.link = new Link(this);
     this.R = new Renderer(canvas);
     this.input = new Input(canvas);
     this.hud = new HUD(uiRoot);
@@ -183,6 +185,8 @@ export class App {
     const raw = (now - this.last) / 1000; this.last = now;
     const dt = Math.min(0.1, Math.max(0, raw)); this.t += dt; this.frames++;
     if (this._resizeT && now - this._resizeT > 180) { this._resizeT = 0; if (this.R.resize()) { /* room is re-developed synchronously by the renderer */ } }
+    // a guest on a Link only watches the host's picture and lends it a hand: its own world stands still underneath (core/link.js)
+    if (this.linkGuest) { this.input.poll(dt); return; }
     const evs = this.input.poll(dt);
     this._events(evs);
     const live = (this.state === 'play' || this.state === 'in' || this.state === 'out') && !this.paused;

@@ -25,6 +25,7 @@ check('browser: first three seconds on a new save (touch stick)', () => { const 
 check('browser: touch gestures (stick, tap-dart, bud, swell, pinch-rally)', () => { const o = run(['touchtest.mjs'], B); return [/pinch → rally.*"orgs":1/.test(o) && /no console errors/.test(o), 'stick · dart · bud · swell · rally all answered']; });
 check('browser: optional gyro tilt', () => { const o = run(['tilttest.mjs'], B); return [/TILT OK/.test(o) && /no console errors/.test(o), last(o, 2)]; });
 check('browser: two players on one screen (Duet and co-op dive)', () => { const o = run(['duettest.mjs'], B); return [/DUET OK/.test(o), last(o, 3).slice(0, 200)]; });
+check('browser: Link — two browsers paired by two lines of text, no server', () => { const o = run(['linktest.mjs'], B); return [/LINK OK/.test(o), (/guest points[^\n]*/.exec(o) || [''])[0].slice(0, 170)]; });
 check('browser: echo (ghost on replay, share code)', () => { const o = run(['echotest.mjs'], B); return [/ECHO OK/.test(o) && /no console errors/.test(o), last(o, 2)]; });
 check('browser: a stranger told nothing (random pointer, new save)', () => { const o = run(['stranger.mjs', quick ? '3' : '5', '0'], B); return [/STRANGER OK/.test(o), last(o, 4).split(' | ')[0].slice(0, 190)]; });
 if (!quick) check('browser: a stranger told nothing (random thumb, phone)', () => { const o = run(['stranger.mjs', '5', '1', '480', '860'], B); return [/STRANGER OK/.test(o), last(o, 4).split(' | ')[0].slice(0, 190)]; });

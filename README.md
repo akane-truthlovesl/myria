@@ -33,12 +33,15 @@ wall where something is watching makes you a veil it cannot see.
 ## What is in it
 
 - **The Atrium** — the title is written in motes. Wake the sleeping pearl and eat the word.
-- **Odyssey** — twenty-six single-screen chambers in four strata (Dew · Glassworks · Chemistry ·
+- **Odyssey** — twenty-seven single-screen chambers in four strata (Dew · Glassworks · Chemistry ·
   Abyss), each teaching one idea through physics alone: squeezing, darting through a soap film,
   budding to hold two pads, threading a comb, blades, sling bands that throw you whole through doubled
-  films no dart can break, grinders and healing springs, pistons, sticky resin against a river,
+  films no dart can break (and one flat, pale band that aims nothing: it gives back the mirror image of
+  whatever strikes it — the vault under the lace only opens to a bank shot), grinders and healing springs, pistons, sticky resin against a river,
   quicksilver among hunters, an effervescent foam whose every dart is a free jet that skims a river
   too strong to wade (wade it anyway: a one-way valve turns being swept off into a flume ride home),
+  membranes that stop the whole of you and let any part of you through — send a piece where you cannot
+  go, hold two switches on two sides of a door that only opens one way —
   oil that will not mix, shear-thickening armour, ferrofluid leaping between pulsing poles, frost that
   stiffens you and vents that thaw a frozen door, watchers you hide from by holding still, a gyre of
   currents, a black hole, bluffing giants with a held breath, a spore bath that turns whatever you
@@ -50,9 +53,9 @@ wall where something is watching makes you a veil it cannot see.
   of gears: as iron you are drawn in, the pole flickers, leans, and throws you — to its twin, unless
   you lean elsewhere; coat both long enough and the pair falls together and pays out). Three living
   stars per chamber: **Radiance** (all the light), **Grace** (lose almost nothing), **Swift** (under
-  par). The pore opens at 60 % — the rest is appetite. Thirteen named tricks (Thread the Needle,
-  Surgical Shear, Ghost Wall, Paper Tiger, Cleave, Slingshot, Gravity Assist, Hole in One, Trojan
-  Swallow, Outrun, Comet, Phoenix, Immaculate) are noticed when you find them; the Atrium keeps a
+  par). The pore opens at 60 % — the rest is appetite. Fifteen named tricks (Thread the Needle,
+  Surgical Shear, Ghost Wall, Paper Tiger, Cleave, Slingshot, Gravity Assist, Hole in One, Bank Shot,
+  Go-Between, Trojan Swallow, Outrun, Comet, Phoenix, Immaculate) are noticed when you find them; the Atrium keeps a
   journal in which the ones you have not found yet are riddles. The stars you gather dye you: six
   **hues** (Coral · Honey · Rose · Jade · Pearl · Nebula) unlock as they add up — each a full optical
   recipe, chosen from the pause menu in the Atrium.
@@ -82,20 +85,42 @@ wall where something is watching makes you a veil it cannot see.
   the light it pretended to be). The daily dive's rule mutation may now be *White Tide* (a geyser in
   every chamber) or *Masquerade*. Bigger membranes siphon smaller ones (the swallowed pigment swirls
   inside you before it becomes yours). Every second chamber you choose one of three ways to change;
-  every fifth is a predator dish. Three embers; where a dive ends, an echo of your light waits for the
-  next one.
-- **Daily** — the same dive for everyone today: one seed, one mutated axiom. (Dives and Blooms end with
-  a *copy result* line for sharing.)
+  every fifth is a predator dish. Three embers.
+- **Hauntings** — where a dive ends it leaves something of the diver: a tacky stain, false lights where
+  it bled, and — for whoever comes that deep later and steps in the stain — a pale **revenant** of the
+  body it was, in the ghost of its hue, with a small name of its own. It rises as your equal: outgrow it
+  and swallow it, or cleave it, and it is laid to rest (its light comes back to you, and it will not be
+  waiting again). "Whoever" is you on a later dive — or a stranger: the end of a dive offers *Copy my
+  haunting*, one line of text; pasted into *Invite a haunting* in anyone's Atrium, your remains wait
+  for them at that depth. Asynchronous, serverless, and a little personal.
+- **Daily** — the same for everyone, from the date alone. **The day's dive** is bent by one of fourteen
+  mutations of the world (Thick Water, Hungry Dark, Feast, Glass Storm, White Tide, Masquerade, Quick
+  Tide, Glass Water, Long Winter, Rapids, Slingshot, Famine, Giants, Champagne) — two at once on
+  weekends, never a pair that cancels out. **The day's sprint** is one Odyssey chamber in mutated water
+  (faster, thicker, frictionless, or "every light or no door"), against the clock, drawn only from the
+  89 chamber × mutation pairs the autopilot finishes in both orientations. *Copy today* makes a result
+  line to compare with anyone's.
 - **Duet** — two players, one screen (pointer + W A S D / Space / F): **Together**, a co-op dive where
   touching shares mass between you, or **Versus**, ninety seconds of raining light.
-- **Pool** — a sandbox with nothing to win: knead the gel with the pointer, pour oil, quicksilver,
+- **Link** — the same two modes on **two devices, with no server**. One hosts, one joins; they find each
+  other by handing over two lines of text (any messenger). The host's picture and sound stream to the
+  guest, whose pointer or finger is player two (move · tap to dart, hold to lance · second finger to
+  swell). No ICE server is named, so nothing is sent to anyone else — and so the two devices must be
+  able to reach each other directly (the same network).
+- **Pool** — a sandbox with nothing to win. **Every finger holds a pinch of gel**: pull a strand between
+  two fingers, pinch it thin, tear it — let go and it gathers itself (the mouse does the same with one
+  hand). Blow **bubbles**: gel that touches one swallows it and swells with the air until a dart
+  breathes it out again. Give the pool a **down** — and with motion sensing on, tip the device to
+  pour. Pour oil, quicksilver,
   resin, foam and ferrofluid, drop gears, blades, wells, poles, turning rings, sling bands, geysers,
   sponges, mimics, currents, vents and frost, bathe to become iron, quicksilver, armour, foam or
   spore, invite neighbours, and watch one physics answer everything.
 
 Anything that parts you — a comb, a blade, a pole's throw — makes **siblings**, not debris. A real
 share of you (fourteen grains or more) is you: steerable (click it / Tab), callable (rally), and the
-open pore calls all of you home as you settle onto it. A mere splash hesitates a moment and rolls
+open pore calls all of you home as you settle onto it — and a called sibling **finds its way**: round
+walls, through open gates and through membranes it is small enough for, instead of leaning on the
+nearest wall. A mere splash hesitates a moment and rolls
 home by itself — as beads of quicksilver or iron always do — and if you are ever left steering a
 speck while the bulk of you lies elsewhere, the will moves to the bulk.
 
@@ -117,12 +142,19 @@ GPU behind a remote desktop, so it is designed to cost only what moves.
   ebbs with a slow wave travelling round the body (angular modes 2 and 3 — area is moved, never made),
   serene at rest, taut when startled, held when veiled. Shear-thickening armour flows at a walk and
   takes a blow as one piece. A launched body glides, skims currents, and can be bent but not braked.
+  A current acts on bodies, not on loose grains: a cohesive body shares most of the drag across its
+  whole self, a torrent becomes the frame its will swims in, and nothing keeps its grip in one — so a
+  river carries you away whole instead of shearing off whatever dipped a toe in.
 - **Will** (`src/life`) — local actuation with global viscoelastic coupling; a crown of verlet feelers
   that trail, reach, fetch and startle; colonies of siblings with focus and rally; small legible
   brains for the other species (they judge you by silhouette, so a held breath can bluff them).
 - **Playtesting** (`src/core/bot.js`, `tools/`) — a path-planning Bot uses the same verbs through the
-  same input record as a player. It finishes all twenty-six chambers in landscape and portrait, sets
-  the par times, plays Bloom, and powers `?bot`.
+  same input record as a player. It finishes all twenty-seven chambers in landscape and portrait, sets
+  the par times, plays Bloom, proves which daily sprints are fair, and powers `?bot`. It is not a
+  person: `tools/browser/hands.mjs` lets whoever is developing play one decision at a time with their
+  eyes on real frames — which is how the ghost lights, the dragged relay, the shredding river and the
+  re-sealing film were found. `stranger.mjs` plays as someone told nothing; `senses.mjs` measures what
+  cannot be heard or felt from a silent machine.
 - **Light** (`src/render`) — each room's backdrop is painted once, per pixel, like a photographic
   plate: a pool of stage light, a caustic network on the water film, bevelled frosted-glass walls with
   bubbles frozen inside, an etched grid, shadows, a reflectance map — and a garden of diatoms,
@@ -145,8 +177,9 @@ GPU behind a remote desktop, so it is designed to cost only what moves.
 npm install          # esbuild only
 npm run build        # bundles src/ into the single index.html
 node tools/play.mjs out 1280 720 8 "2,5,8"       # headless playtest → PNG frames + CPU timings
-node tools/solve.mjs 0 25 1280 720 1               # the Bot plays the real Odyssey: every chamber must end DONE
-node tools/rooms.mjs out 1280 720 0 25 40         # render / bot-run every Odyssey chamber
+node tools/solve.mjs 0 26 1280 720 1               # the Bot plays the real Odyssey: every chamber must end DONE (SPRINT=thick … plays them as daily sprints)
+node tools/sprint.mjs                             # which chamber × mutation pairs the daily sprint may draw from (prints SPRINT_OK)
+node tools/rooms.mjs out 1280 720 0 26 40         # render / bot-run every Odyssey chamber
 node tools/film.mjs sheet.png 4 800 450 2.5 3 6   # contact sheet of the Bot playing one chamber
 node tools/bloom.mjs sheet.png                    # the Bot plays a full Bloom run
 node tools/closeup.mjs strip.png dart             # close-up filmstrip of a verb (move · dart · bud · swell)
@@ -160,9 +193,16 @@ node tools/browser/ftue.mjs 1280 720 0            # a brand-new save: seconds to
 node tools/browser/echotest.mjs                   # clear, replay against the ghost, round-trip the share code
 node tools/browser/modes.mjs                      # every mode opened and left running, plus the Atrium's menus
 node tools/browser/duettest.mjs                   # two players on one screen (Duet, co-op dive): both steer, both dart and lance
+node tools/browser/linktest.mjs                   # two browsers paired by two lines of text: picture arrives, far pointer steers and darts player two
+node tools/browser/haunttest.mjs                  # a dive ends → its haunting is found, raised, laid to rest; a stranger's line is invited
+node tools/browser/dailytest.mjs                  # a year of the mutation calendar, the day's dive, the day's sprint, the Today panel
+node tools/browser/sandbox.mjs                    # emulated fingers: a strand between two of them, bubbles, a down, pouring, dropping
+node tools/browser/stranger.mjs 5 0               # five strangers told nothing (random pointer; `5 1 480 860` = random thumb): how soon are they moving, fed?
+node tools/browser/senses.mjs                     # every voice measured (level, length, pitch centre), the tension hum, the haptic patterns and tremors
+node tools/browser/hands.mjs dir "/index.html?room=7"   # play by hand, one decision per turn, a real frame after each (see the file's header)
 node tools/browser/tilttest.mjs                   # the optional gyro, driven by synthetic device-orientation events
 ```
 
 `dev.html` loads the ES modules directly (it must be served over http). URL switches: `?room=N`,
-`?mode=abyss|daily|bloom|pool|duet|coop|myriad`, `?all` (unlock everything), `?bot` (autopilot), `?maxpx=N` (fix the
+`?mode=abyss|daily|sprint|bloom|pool|duet|coop|myriad`, `?all` (unlock everything), `?bot` (autopilot), `?maxpx=N` (fix the
 internal pixel budget). The first WebGL prototype is kept in `legacy/`.

@@ -33,6 +33,8 @@ export class Duet {
     // player two: keys
     const K = this.app.input.keys; let x = (K.has('KeyD') || K.has('ArrowRight') ? 1 : 0) - (K.has('KeyA') || K.has('ArrowLeft') ? 1 : 0), y = (K.has('KeyS') || K.has('ArrowDown') ? 1 : 0) - (K.has('KeyW') || K.has('ArrowUp') ? 1 : 0);
     if (x && y) { x *= 0.707; y *= 0.707; }
+    // …or the far end of a Link: their pointer pulls, their taps dart, their held second finger swells
+    { const L = this.app.link && this.app.link.p2(this.p2), G = this.p2.focus; if (L && G) { x = L.x; y = L.y; G.swell = L.swell; for (const d of L.darts) G.dart(d.x, d.y, d.power); } }
     const F = this.p2.focus, V = this.p2.pilot || (this.p2.pilot = { x: 0, y: 0 }); V.x += (x - V.x) * Math.min(1, dt * 20); V.y += (y - V.y) * Math.min(1, dt * 20);
     for (const O of this.p2.orgs) if (O !== F && this.p2.focus) { O.rallyTo = this.p2.focus.B; O.B.fuseT = Math.min(O.B.fuseT, 0.05); }
     // light rains into the dish

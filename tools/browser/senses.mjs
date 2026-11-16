@@ -33,12 +33,12 @@ console.log('tension hum: ' + A.tension.map(t => `tension ${t.x} → ~${t.hz} Hz
 const tensionUp = A.tension[2].hz > A.tension[0].hz * 1.08 || A.tension[2].rms > A.tension[0].rms * 1.5;
 // ── touch ──
 const Hp = await page.evaluate(async () => {
-  const out = { err: window.__vibErr || '', active: !!(navigator.userActivation && navigator.userActivation.hasBeenActive), ev: {} }; const a = window.__app, h = a.haptics, W = a.world; const take = () => { const v = window.__vib.slice(); window.__vib.length = 0; return v; }; take();
+  const out = { err: window.__vibErr || '', active: !!(navigator.userActivation && navigator.userActivation.hasBeenActive), ev: {} }; const a = window.__app, h = a.haptics, W = a.world; const take = () => { const v = window.__vib.slice(); window.__vib.length = 0; return v; }; a.paused = true; await new Promise(r => setTimeout(r, 300)); take();      // (frozen: a light eaten in the background would rate-limit the pattern under test)
   const each = { tick: () => h.tick(), 'thump soft': () => h.thump(0.1), 'thump hard': () => h.thump(1), snap: () => h.snap(), fuse: () => h.fuse(), dart: () => h.dart(), hurt: () => h.hurt() };
   for (const [k, f] of Object.entries(each)) { await new Promise(r => setTimeout(r, 260)); take(); f(); const v = take(); out.ev[k] = v.length ? v[0][1] : null; }
   out.tension = []; for (const x of [0.2, 0.5, 0.95]) { await new Promise(r => setTimeout(r, 200)); take(); const t0 = performance.now(); let last = t0; while (performance.now() - t0 < 1000) { const now = performance.now(); h.tension(x, (now - last) / 1000); last = now; await new Promise(r => setTimeout(r, 8)); } const v = take(); out.tension.push({ x, pulses: v.length, ms: v.length ? v[0][1][0] : 0 }); }
   // …and in real play: eat a light, dart
-  await new Promise(r => setTimeout(r, 300)); take(); const F = W.player.focus; const m = W.pickups.find(p => !p.dead); if (m) m.absorb(F, null); await new Promise(r => setTimeout(r, 120)); out.play_mote = take().map(v => v[1]); F.dart(1, 0, 1); await new Promise(r => setTimeout(r, 120)); out.play_dart = take().map(v => v[1]);
+  a.paused = false; await new Promise(r => setTimeout(r, 300)); take(); const F = W.player.focus; const m = W.pickups.find(p => !p.dead); if (m) m.absorb(F, null); await new Promise(r => setTimeout(r, 120)); out.play_mote = take().map(v => v[1]); F.dart(1, 0, 1); await new Promise(r => setTimeout(r, 120)); out.play_dart = take().map(v => v[1]);
   return out;
 });
 console.log(`TOUCH · vibration recorder ${Hp.err ? 'FAILED: ' + Hp.err : 'installed'}; page has a user gesture: ${Hp.active}`);
