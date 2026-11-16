@@ -205,7 +205,7 @@ export class Organism {
           if (it.shy > W.time) continue;
           if (W.phys.blocked(B.cx, B.cy, it.x, it.y, 1)) { it.shy = W.time + 0.3; continue; }      // glass is glass: no reaching through it
           const r = crown.reach(it.x, it.y, it, 1.0);
-          if (r) it.claim = r; else it.shy = W.time + 0.25;
+          if (r) { it.claim = r; r.beat = W.time; } else it.shy = W.time + 0.25;
         }
       }
       // the lead feelers look where the player points

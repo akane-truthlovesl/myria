@@ -37,6 +37,9 @@ export class Mote extends Entity {
     this.t += dt;
     if (this.spawnT < 0.35) this.spawnT += dt;
     if (this.ttl && this.spawnT > 0 && !this.held) { this.age += dt; if (this.age > this.ttl) { this.dead = true; this.W.fx.ring(this.x, this.y, this.col, 14, 0.3, { a: 0.4 }); this.W.emit('moteGone', this); return; } }
+    // A feeler that claimed or carried this light belonged to a body; if that body is gone (eaten, fused into a sibling) the feeler went with it, and a claim
+    // nobody is making must not keep every other feeler — and the autopilot — away from the light for ever (found as an unwinnable "every light" sprint).
+    { const r = this.held || this.claim; if (r && r.beat !== undefined && this.W.time - r.beat > 0.6) { this.held = null; this.claim = null; } }
     if (this.held) { if (this.baked) this.W.release(this); return; }
     if (this.baked) return;                           // at home, painted into the plate: costs nothing until something wants it
     if (this.free) { const dr = Math.max(0, 1 - 2.2 * dt); this.vx *= dr; this.vy *= dr; this.hx += this.vx * dt; this.hy += this.vy * dt; }

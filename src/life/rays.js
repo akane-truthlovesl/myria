@@ -135,6 +135,7 @@ export class Crown {
       const ca = Math.cos(a), sa = Math.sin(a);
       const rx = B.cx + ca * rad, ry = B.cy + sa * rad;
       if (!r.born) { for (let i = 0; i < NN; i++) { r.x[i] = r.px[i] = rx; r.y[i] = r.py[i] = ry; } r.born = true; }
+      if (r.item) r.beat = time;       // (its heart still beats: a light held or claimed by a feeler whose body has since died or fused is let go — see Mote.update)
       // ── length & intent of this ray ──
       let target = baseLen * r.lk * (1 + 0.55 * this.flare + 0.30 * bloom) * (1 - 0.94 * this.furl);
       // crown shimmer: a wave of joy runs once around the body

@@ -2,9 +2,9 @@
 //  World — one chamber of the slide, alive: matter, will, things and rules.
 //  DOM-free: the same class runs in the browser and in headless playtests.
 // ─────────────────────────────────────────────────────────────────────────────
-import { Physics, H } from '../sim/physics.js';
+import { Physics, H, shapeSDF } from '../sim/physics.js';
 import { buildSDF } from '../sim/sdf.js';
-import { MAT, MATS } from '../sim/materials.js';
+import { MAT, MATS, SURF } from '../sim/materials.js';
 import { Colony } from '../life/colony.js';
 import { FX } from './fx.js';
 import { ENT } from './entities.js';
@@ -17,6 +17,8 @@ import { Nav } from '../core/nav.js';
 const MAXP = 4096, MAXB = 512;
 let SHARED = null;      // one solver for the whole session (typed arrays are reused between rooms)
 
+const WAY_OUT = new Float32Array(3);
+const NOWAY = !!(globalThis.process && globalThis.process.env && globalThis.process.env.NOWAY);      // (experiment switch: rally in a straight line, as it used to)
 export class World {
   constructor(host = {}) {
     this.host = host;                       // { sound, haptics } — both optional
@@ -68,17 +70,26 @@ export class World {
   }
   entity(id) { return this.ents.find(e => e.id === id); }
   release(e) { if (e.baked) (this._rel || (this._rel = [])).push(e); }
+  // is there something between two points that body B cannot simply go through? Walls and machines are; a soap film is not (a sibling coming home at a run
+  // bursts it, as it always did — steering it round the film's end instead left the two halves of a body either side of it for good), nor is a membrane it is small enough for
+  _wayBlocked(B, x0, y0, x1, y1) {
+    const P = this.phys, dx = x1 - x0, dy = y1 - y0, n = Math.max(2, Math.ceil(Math.hypot(dx, dy) / 6));
+    for (let k = 1; k < n; k++) { const x = x0 + dx * k / n, y = y0 + dy * k / n; if (P.sampleSDF(x, y) < 3) return true;
+      for (const S of P.shapes) { if (!S.active || S.cut || S.porous) continue; if (S.surf === SURF.BOUNCE && S.type === 1 && !S.tough) continue; if (S.oneWay && S.small && B.count <= S.small) continue; if (x < S.bx0 - 6 || x > S.bx1 + 6 || y < S.by0 - 6 || y > S.by1 + 6) continue; shapeSDF(S, x, y, Math.cos(S.angle), Math.sin(S.angle), WAY_OUT); if (WAY_OUT[0] < 3) return true; } }
+    return false;
+  }
   // Coming home is not a straight line: when a wall, a gate or a membrane stands between a called sibling and the body that called it, it walks the way
   // round (planned three times a second on the same map the bot uses, built for a body of its size). Returns the point to head for, or null for "straight there".
   homeWay(O, T) {
+    if (NOWAY) return null;
     const B = O.B, P = this.phys; let h = O._home; if (!h) h = O._home = { t: -1, x: 0, y: 0, on: false };
     if (this.time - h.t < 0.33 && this.time >= h.t) return h.on ? h : null;
     h.t = this.time; h.on = false;
-    if (!P.blocked(B.cx, B.cy, T.cx, T.cy, 3)) return null;
+    if (!this._wayBlocked(B, B.cx, B.cy, T.cx, T.cy)) return null;
     if (!this._nav || this._navFor !== this.spec) { this._nav = new Nav(this); this._navFor = this.spec; }
-    const nav = this._nav; nav.build(0, { count: B.count, films: false }); const path = nav.path(B.cx, B.cy, T.cx, T.cy); if (!path || path.pts.length < 3) return null;
+    const nav = this._nav; nav.build(0, { count: B.count }); const path = nav.path(B.cx, B.cy, T.cx, T.cy); if (!path || path.pts.length < 3) return null;
     // the farthest point of the path it can see — and, when that is right under its nose (a membrane it may pass looks like a wall to the eye), the one just beyond
-    const pts = path.pts; let k = 1; for (let q = Math.min(pts.length - 1, 14); q > 1; q--) if (!P.blocked(B.cx, B.cy, pts[q][0], pts[q][1], 3)) { k = q; break; }
+    const pts = path.pts; let k = 1; for (let q = Math.min(pts.length - 1, 14); q > 1; q--) if (!this._wayBlocked(B, B.cx, B.cy, pts[q][0], pts[q][1])) { k = q; break; }
     if (Math.hypot(pts[k][0] - B.cx, pts[k][1] - B.cy) < 34) k = Math.min(pts.length - 1, k + 3);
     h.x = pts[k][0]; h.y = pts[k][1]; h.on = true; return h;
   }
