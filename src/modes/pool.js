@@ -8,11 +8,13 @@ import { MAT } from '../sim/materials.js';
 import { SPACING } from '../sim/physics.js';
 
 const TOOLS = [
-  { id: 'hand', g: '✋', name: 'knead · hold to pull the gel' },
+  { id: 'hand', g: '☟', name: 'knead · hold to pull the gel' },
   { id: 'light', g: '✦', name: 'light' }, { id: 'dew', g: '◌', name: 'dew' }, { id: 'oil', g: '●', name: 'oil', mat: MAT.OIL }, { id: 'silver', g: '◍', name: 'quicksilver', mat: MAT.SILVER },
-  { id: 'resin', g: '◉', name: 'resin', mat: MAT.RESIN }, { id: 'foam', g: '○', name: 'foam', mat: MAT.FOAM },
+  { id: 'resin', g: '◉', name: 'resin', mat: MAT.RESIN }, { id: 'foam', g: '○', name: 'foam', mat: MAT.FOAM }, { id: 'iron', g: '✺', name: 'ferrofluid', mat: MAT.FERRO },
   { id: 'grazer', g: '☼', name: 'grazer' }, { id: 'hunter', g: '➶', name: 'lancer' }, { id: 'thorn', g: '✸', name: 'thornback' },
   { id: 'grinder', g: '⚙', name: 'grinder' }, { id: 'blade', g: '／', name: 'blade' }, { id: 'well', g: '◎', name: 'well' }, { id: 'pool', g: '♨', name: 'spring' }, { id: 'film', g: '⌇', name: 'film' },
+  { id: 'magnet', g: '⊛', name: 'pulsing pole · iron answers it' }, { id: 'rotor', g: '◔', name: 'turning ring' }, { id: 'current', g: '≋', name: 'current' }, { id: 'vent', g: '♁', name: 'warm vent' }, { id: 'frost', g: '❄', name: 'frost' },
+  { id: 'b-iron', g: '⬡', name: 'bath · become iron', bath: MAT.FERRO }, { id: 'b-silver', g: '⬢', name: 'bath · become quicksilver', bath: MAT.SILVER }, { id: 'b-armour', g: '⬣', name: 'bath · become armour', bath: MAT.BASTION }, { id: 'b-rinse', g: '◇', name: 'rinse · be yourself', rinse: true },
   { id: 'clear', g: '⌫', name: 'clear the pool' },
 ];
 
@@ -44,7 +46,11 @@ export class Pool {
     if (W.phys.sampleSDF(wx, wy) < 12) return;
     if (t === 'light') for (let k = 0; k < 7; k++) { const a = k / 7 * 6.28; W.spawn({ type: 'mote', x: wx + Math.cos(a) * 26, y: wy + Math.sin(a) * 26, free: true }); }
     else if (t === 'dew') { const P = W.phys; for (let k = 0; k < 10; k++) { const D = P.allocBody(-1, 'dew', MAT.DEW); if (D) P.spawn(wx + (Math.random() - 0.5) * 50, wy + (Math.random() - 0.5) * 50, 0, 0, MAT.DEW, D.id); } }
-    else if (['oil', 'silver', 'resin', 'foam'].includes(t)) this.blob(W, wx, wy, 44, TOOLS.find(q => q.id === t).mat);
+    else if (['oil', 'silver', 'resin', 'foam', 'iron'].includes(t)) this.blob(W, wx, wy, 44, TOOLS.find(q => q.id === t).mat);
+    else if (t === 'magnet') add({ type: 'magnet', reach: 210, power: 620, period: 4.2 }); else if (t === 'rotor') add({ type: 'rotor', R: 96, gap: 0.5, spin: Math.random() < 0.5 ? 0.5 : -0.5 });
+    else if (t === 'current') { const a = Math.random() * 6.28; add({ type: 'current', w: 260, h: 110, vx: Math.cos(a) > 0 ? 220 : -220, vy: 0 }); }
+    else if (t === 'vent') add({ type: 'vent' }); else if (t === 'frost') add({ type: 'frost', r: 120, rate: 0.6 });
+    else if (t.startsWith('b-')) { const q = TOOLS.find(z => z.id === t); add(q.rinse ? { type: 'pool', kind: 'rinse', r: 40 } : { type: 'pool', kind: 'morph', mat: q.bath, morph: { speed: 1, tonus: 1, dart: 1 }, r: 44 }); }
     else if (['grazer', 'hunter', 'thorn'].includes(t)) W.addRival(t, wx, wy, t === 'grazer' ? 26 : 50);
     else if (t === 'grinder') add({ type: 'grinder', r: 40, spin: 2.6 }); else if (t === 'blade') add({ type: 'blade', len: 140, spin: 1.5 });
     else if (t === 'well') add({ type: 'well', r: 17, reach: 220 }); else if (t === 'pool') add({ type: 'pool', kind: 'heal', r: 50, max: 80 }); else if (t === 'film') add({ type: 'film', len: 170, a: Math.random() * 3.14 });

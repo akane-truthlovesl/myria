@@ -4,7 +4,7 @@
 //  the title. Pores lead onward; their names are the only words on screen.
 // ─────────────────────────────────────────────────────────────────────────────
 import { frame, dish } from '../world/rooms.js';
-import { ROOMS } from '../world/odyssey.js';
+import { ROOMS, STRATA, stratumOf } from '../world/odyssey.js';
 import { moteTrail } from '../world/entities.js';
 import { Odyssey } from './odyssey.js';
 import { SKINS, skinFor, unlockedSkins } from '../core/skins.js';
@@ -60,10 +60,17 @@ export class Hub {
     const app = this.app, save = app.save; const list = unlockedSkins(save); const cur = skinFor(save); const nx = list[(list.indexOf(cur) + 1) % list.length]; save.set('skin', SKINS.indexOf(nx));
     const W = app.world, C = W.player; if (C) { C.tint = nx.tint; for (const O of C.orgs) if (O.alive) { O.B.tint = nx.tint; O.crown.joy(); W.fx.ring(O.B.cx, O.B.cy, (nx.tint || { emit: [1, 0.6, 0.4] }).emit, 140, 0.8); } } app.sound.morph();
   }
+  // the Odyssey as a map: four strata, each closed by its warden
   chambers() {
-    const app = this.app, save = app.save;
-    const items = ROOMS.map((r, i) => { const rec = save.room(r.id); const open = i === 0 || save.room(ROOMS[i - 1].id) || app.params.has('all'); return { label: `${i + 1} · ${r.name} ${rec ? rec.stars.map(s => (s ? '◆' : '◇')).join('') : ''}`, cls: open ? '' : 'locked', fn: () => { if (!open) return; app.resume(); app.setMode(new Odyssey(app, i, { single: false })); } }; });
-    app.hud.panel('Chambers', `${save.stars()} ✦ gathered`, [...items, { label: 'Back', cls: 'pri', fn: () => app.resume() }]);
+    const app = this.app, save = app.save; const RN = ['I', 'II', 'III', 'IV']; const nextI = ROOMS.findIndex(r => !save.room(r.id));
+    const open = (i) => i === 0 || !!save.room(ROOMS[i - 1].id) || app.params.has('all');
+    const cell = (r, i) => { const rec = save.room(r.id); const cls = ['ch', open(i) ? '' : 'locked', r.boss ? 'boss' : '', i === nextI ? 'next' : '', rec && rec.stars.every(Boolean) ? 'full' : ''].filter(Boolean).join(' ');
+      return `<button class="${cls}" data-i="${i}"><b>${i + 1}</b><span>${r.name}</span><i>${rec ? rec.stars.map(q => (q ? '◆' : '◇')).join('') : open(i) ? '···' : '&nbsp;'}</i></button>`; };
+    const rows = STRATA.map((S, k) => { const cells = ROOMS.map((r, i) => (stratumOf(i) === k ? cell(r, i) : '')).join(''); const got = ROOMS.reduce((n, r, i) => n + (stratumOf(i) === k && save.room(r.id) ? save.room(r.id).stars.filter(Boolean).length : 0), 0), of = ROOMS.filter((r, i) => stratumOf(i) === k).length * 3;
+      return `<div class="ch-row"><label>${RN[k]} · ${S.name}<small>${got} / ${of} ✦</small></label><div class="ch-cells">${cells}</div></div>`; }).join('');
+    app.hud.panel('Chambers', `${save.stars()} ✦ gathered`, [{ label: 'Back', cls: 'pri', fn: () => app.resume() }], `<div class="ch-map">${rows}</div>`);
+    const veil = app.hud.veil; veil.querySelector('.panel').classList.add('wide');
+    veil.querySelectorAll('.ch').forEach(b => { b.onclick = (e) => { e.stopPropagation(); const i = +b.dataset.i; if (!open(i)) return; app.sound.ui(); app.resume(); app.setMode(new Odyssey(app, i, { single: false })); }; });
   }
   wake() {
     if (this.awake) return; this.awake = true; const W = this.app.world;

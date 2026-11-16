@@ -3,7 +3,7 @@
 //  Three living stars per room: Radiance (all the light), Grace (lose almost
 //  nothing), Swift (under par). The pore wakes at 60 % — the rest is appetite.
 // ─────────────────────────────────────────────────────────────────────────────
-import { ROOMS } from '../world/odyssey.js';
+import { ROOMS, STRATA, stratumOf } from '../world/odyssey.js';
 
 const GRACE = 3;       // particles you may lose and still keep the Grace star
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX', 'XXI', 'XXII', 'XXIII', 'XXIV', 'XXV', 'XXVI', 'XXVII', 'XXVIII', 'XXIX', 'XXX'];
@@ -30,13 +30,15 @@ export class Odyssey {
         minDark: fromPore ? 1.9 : 0.5,
         onDark: () => app.applyBudget(),
         onLoad: (W) => { for (const e of W.ents) if (e.d.type === 'pore' && !e.need) e.need = Math.ceil(W.stats.motesTotal * (this.room.quota ?? this.spec.quota ?? 0.6)); },
-        onReveal: () => { app.hud.hideResult(); app.hud.showTitle(ROMAN[this.i] || '', room.name); app.hud.setCorner(true, () => app.pause()); app.sound.ready && app.sound.ambience('deep', 50 - (this.i % 4) * 2); },
+        onReveal: () => { app.hud.hideResult(); app.hud.showTitle(ROMAN[this.i] || '', room.name, this.titleSub()); app.hud.setCorner(true, () => app.pause()); app.sound.ready && app.sound.ambience('deep', 50 - (this.i % 4) * 2); },
       });
   }
   // carry: what you ended the last chamber with — never less than the chamber's own seed, never more than it can hold
   massFor(spec) { const base = spec.minMass || spec.spawn.n || 40; const carry = this.carryMass || base; return Math.round(Math.max(base, Math.min(spec.cap || base * 1.5, base + (carry - base) * 0.3))); }
   restart() { this.carryMass = this.startMass; this.load(false); }
   pauseSub() { return `${ROMAN[this.i]} · ${this.room.name}`; }
+  // a stratum announces itself once, at its first chamber; a warden always does
+  titleSub() { const k = stratumOf(this.i); return this.room.boss ? `warden of ${STRATA[k].name}` : STRATA[k].from === this.i ? STRATA[k].name : ''; }
 
   // ── world listener ────────────────────────────────────────────────────
   poreReady(p) { const W = this.app.world; return W.stats.motes >= p.need && (!p.d.key || W.check(p.d.key)); }
@@ -98,7 +100,7 @@ export class Odyssey {
       from: { x: pore.x, y: pore.y }, minDark: 2.3,
       onDark: () => { app.applyBudget(); app.hud.showResult(result); },
       onLoad: (W) => { for (const e of W.ents) if (e.d.type === 'pore' && !e.need) e.need = Math.ceil(W.stats.motesTotal * (this.room.quota ?? this.spec.quota ?? 0.6)); },
-      onReveal: () => { app.hud.hideResult(); app.hud.showTitle(ROMAN[this.i] || '', room.name); app.hud.setCorner(true, () => app.pause()); },
+      onReveal: () => { app.hud.hideResult(); app.hud.showTitle(ROMAN[this.i] || '', room.name, this.titleSub()); app.hud.setCorner(true, () => app.pause()); },
     });
   }
 }

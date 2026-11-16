@@ -329,3 +329,7 @@ export const ROOMS = [
   } },
 ];
 export { PAL, L as layout, MAT, TAU };
+
+// the four strata, by the chamber that opens each
+export const STRATA = [['Dew', 'first-light'], ['Glassworks', 'comb'], ['Chemistry', 'amber'], ['Abyss', 'veil']].map(([name, id]) => ({ name, from: ROOMS.findIndex(r => r.id === id) }));
+export function stratumOf(i) { let k = 0; for (let q = 0; q < STRATA.length; q++) if (i >= STRATA[q].from) k = q; return k; }
