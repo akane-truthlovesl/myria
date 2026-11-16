@@ -126,6 +126,7 @@ export class Crown {
     const stiffK = thorn ? 60 : whip ? 5 : 15;
     const drag = Math.exp(-dt * (whip ? 2.2 : 5.5));
     const maxReach = this.maxReach(R);
+    const bloom = this.bloom = O.colony && O.colony === W.player ? W.flow || 0 : 0;      // a feeding streak makes the whole crown open
     for (const r of this.rays) {
       r.t += dt;
       { let d = r.angT - r.ang; d -= Math.round(d / TAU) * TAU; r.ang += d * Math.min(1, dt * 3); }
@@ -135,7 +136,7 @@ export class Crown {
       const rx = B.cx + ca * rad, ry = B.cy + sa * rad;
       if (!r.born) { for (let i = 0; i < NN; i++) { r.x[i] = r.px[i] = rx; r.y[i] = r.py[i] = ry; } r.born = true; }
       // ── length & intent of this ray ──
-      let target = baseLen * r.lk * (1 + 0.55 * this.flare) * (1 - 0.94 * this.furl);
+      let target = baseLen * r.lk * (1 + 0.55 * this.flare + 0.30 * bloom) * (1 - 0.94 * this.furl);
       // crown shimmer: a wave of joy runs once around the body
       if (this.shimmer >= 0) { let d = ((a - this.shimmer) % TAU + TAU) % TAU; if (d > Math.PI) d = TAU - d; target *= 1 + 0.7 * Math.exp(-d * d * 6); }
       // breathing: slow swell of the whole crown plus each ray's own little tide
@@ -187,8 +188,8 @@ export class Crown {
       }
       // walls: feelers splay along surfaces instead of passing through
       if (P.sdf && r.len > 4) for (let i = 2; i < NN; i++) {
-        const d = P.sampleSDF(r.x[i], r.y[i]);
-        if (d < 2.5) { const n = P.sdfNormal(r.x[i], r.y[i], NRM); const push = 2.5 - d; r.x[i] += n[0] * push; r.y[i] += n[1] * push; }
+        const d = P.solidAt(r.x[i], r.y[i]);
+        if (d < 2.5) { const n = P.solidNormal(r.x[i], r.y[i], NRM); const push = 2.5 - d; r.x[i] += n[0] * push; r.y[i] += n[1] * push; }
       }
       // carried things ride the tip
       if (r.mode === RAY.CARRY && r.item) { r.item.x = r.x[NN - 1]; r.item.y = r.y[NN - 1]; }
@@ -225,7 +226,7 @@ export class Crown {
     for (const r of this.rays) {
       if (r.len < 2.5) continue;
       const busy = r.mode !== RAY.IDLE ? 1 : 0;
-      const tipGlow = (0.95 + 0.9 * r.glow + 0.5 * busy) * (1 - veil);
+      const tipGlow = (0.95 + 0.9 * r.glow + 0.5 * busy + 0.9 * (this.bloom || 0)) * (1 - veil);
       const full = Math.min(1, r.len / 14);                    // a ray being born or furled is slim all along
       const wr = w1 + (w0 - w1) * full;
       // the root: a short buried stroke from inside the body out to the first node

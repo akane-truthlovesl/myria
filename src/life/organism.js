@@ -46,7 +46,7 @@ export class Organism {
 
   get alive() { return this.B.serial === this.serial && this.B.alive && this.B.count > 0; }
   get mass() { return this.B.count; }
-  get speed() { const m = this.morph; return (m ? m.speed : 1) * CRUISE * this.speedMul * (1 + 0.55 * (this.emberK || 0)) * Math.pow(Math.max(16, this.B.count) / 130, -0.13) * (this.W.speedScale || 1); }
+  get speed() { const m = this.morph; return (m ? m.speed : 1) * CRUISE * this.speedMul * (1 + 0.55 * (this.emberK || 0)) * (1 + 0.12 * (this.colony && this.colony === this.W.player ? this.W.flow || 0 : 0)) * Math.pow(Math.max(16, this.B.count) / 130, -0.13) * (this.W.speedScale || 1); }
 
   // ── before physics: write the body's drive ─────────────────────────────
   update(dt) {
@@ -151,6 +151,7 @@ export class Organism {
           if (d2 < (B.r * 0.92 + it.r) * (B.r * 0.92 + it.r)) { if (!it.held || it.held && crown.rays.includes(it.held)) it.absorb(this, null); continue; }   // body contact: straight in
           if (it.held || it.claim && it.claim.item === it && it.claim.mode === RAY.REACH) continue;
           if (it.shy > W.time) continue;
+          if (W.phys.blocked(B.cx, B.cy, it.x, it.y, 1)) { it.shy = W.time + 0.3; continue; }      // glass is glass: no reaching through it
           const r = crown.reach(it.x, it.y, it, 1.0);
           if (r) it.claim = r; else it.shy = W.time + 0.25;
         }

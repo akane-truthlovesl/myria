@@ -6,7 +6,7 @@
 import { ROOMS } from '../world/odyssey.js';
 
 const GRACE = 3;       // particles you may lose and still keep the Grace star
-const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX'];
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX', 'XXI', 'XXII', 'XXIII', 'XXIV', 'XXV', 'XXVI', 'XXVII', 'XXVIII', 'XXIX', 'XXX'];
 const HINTS = {
   push: '<span class="mouse-ic m"></span> lean into the gap — the gel lets go and flows',
   dart: '<span class="mouse-ic"></span> <span class="key">Space</span> dart',
@@ -43,7 +43,7 @@ export class Odyssey {
   poreProgress(p) { const W = this.app.world; return p.need ? Math.min(1, W.stats.motes / p.need) : 1; }
   tier(name) { this.app.hud.toast(name, '✺'); }
   ember(on) { this.app.hud.toast(on ? 'ember — nothing can drink you · light counts double' : 'whole again', '✺', on ? '' : 'cool'); }
-  mote(m, O, chain) { if (chain && chain % 8 === 0) this.app.hud.toast(`Chain ×${chain}`, '♪', 'cool'); }
+  mote(m, O, chain) { if (chain && chain % 8 === 0) this.app.hud.toast(`Chain ×${chain} <small>+${1 + Math.min(3, chain >> 3)}</small>`, '♪', 'cool'); }
   film() { this.usedHint = this.room.hint === 'dart' || this.usedHint; }
   bud() { if (this.room.hint === 'bud') this.usedHint = true; }
   split(parent, child, cut) { if (cut && !this.tricks.includes('Surgical Shear')) this.pendingShear = this.app.world.time; }
@@ -67,7 +67,7 @@ export class Odyssey {
     const app = this.app, W = app.world; if (this.finished || app.state !== 'play' && app.state !== 'in') return;
     const s = W.stats; const pore = W.ents.find(e => e.d.type === 'pore');
     app.hud.setTop({ light: s.motes, total: s.motesTotal, quota: pore ? pore.need : 0,
-      stars: this.finished ? null : [s.motes >= s.motesTotal ? 1 : 0, s.lost <= GRACE ? 1 : -1, W.roomTime <= this.room.par ? 1 : -1] });
+      stars: this.finished ? null : [s.motes >= s.motesTotal ? 1 : 0, s.lost <= GRACE ? 1 : -1, W.roomTime <= this.room.par ? 1 : -1], extra: W.chain >= 4 ? `♪ ${W.chain}` : '' });
   }
   complete(pore) {
     if (this.finished) return; this.finished = true;

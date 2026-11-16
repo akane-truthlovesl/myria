@@ -110,15 +110,15 @@ export class Sound {
   }
 
   // ── game events ───────────────────────────────────────────────────────
-  mote(pan = 0) {
-    const now = performance.now();
-    if (now - this.chainT > 1400) this.chain = 0;
-    this.chainT = now;
-    const deg = this.chain++;
+  // every mote is the next note of a rising line; the game keeps the streak (in its own time), the sound just sings it
+  mote(pan = 0, chain = 0) {
+    if (!chain) { const now = performance.now(); if (now - this.chainT > 1400) this.chain = 0; this.chainT = now; chain = ++this.chain; } else this.chain = chain;
+    const deg = chain - 1;
     const m = this.note(deg % 10, 1 + Math.floor(deg / 10) % 2);
-    this.bell(m, 0.42, 1.4, 0.8, 0.6, pan);
-    if (this.chain % 5 === 0) this.bell(m + 12, 0.18, 2.2, 0.5, 0.8, pan);
-    return this.chain;
+    this.bell(m, 0.42, 1.4, 0.8 + Math.min(0.6, chain * 0.02), 0.6, pan);
+    if (chain % 5 === 0) this.bell(m + 12, 0.18, 2.2, 0.5, 0.8, pan);
+    if (chain % 8 === 0) { const d0 = deg % 10; [0, 2, 4].forEach((d, i) => setTimeout(() => this.bell(this.note(d0 + d, 2), 0.2, 2.4, 1.0, 0.85, pan), 60 + i * 70)); this.blip(90, 180, 0.12, 0.5, 'sine', 0.5); }
+    return chain;
   }
   prism() { [0, 2, 4, 7].forEach((d, i) => setTimeout(() => this.bell(this.note(d, 2), 0.35, 2.4, 1.2, 0.8), i * 70)); }
   squish(v = 0.5) { if (!this._rate('squish', 60)) return; this.noiseHit(500 + v * 600, 2.5, 0.12 + v * 0.22, 0.16 + v * 0.1, 0.2, 0.25, 'lowpass'); this.blip(180 + v * 80, 60, 0.12 * v, 0.12, 'sine', 0.1); }

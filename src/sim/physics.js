@@ -871,6 +871,26 @@ export class Physics {
     const gy = this.sampleSDF(px, py + e) - this.sampleSDF(px, py - e);
     const l = Math.hypot(gx, gy) || 1; out[0] = gx / l; out[1] = gy / l; return out;
   }
+  // distance to the nearest solid of any kind — the room's walls and its moving machines alike (blades cut, they do not block)
+  solidAt(px, py) {
+    let d = this.sampleSDF(px, py); const sh = this.shapes;
+    for (let k = 0; k < sh.length; k++) {
+      const S = sh[k]; if (!S.active || S.cut || S.porous) continue;
+      if (px < S.bx0 - 24 || px > S.bx1 + 24 || py < S.by0 - 24 || py > S.by1 + 24) continue;
+      shapeSDF(S, px, py, Math.cos(S.angle), Math.sin(S.angle), SD_OUT); if (SD_OUT[0] < d) d = SD_OUT[0];
+    }
+    return d;
+  }
+  solidNormal(px, py, out) {
+    const e = 2; const gx = this.solidAt(px + e, py) - this.solidAt(px - e, py), gy = this.solidAt(px, py + e) - this.solidAt(px, py - e);
+    const l = Math.hypot(gx, gy) || 1; out[0] = gx / l; out[1] = gy / l; return out;
+  }
+  // is the straight line between two points interrupted by anything solid?
+  blocked(x0, y0, x1, y1, pad = 2) {
+    const dx = x1 - x0, dy = y1 - y0; const n = Math.max(2, Math.ceil(Math.hypot(dx, dy) / 6));
+    for (let k = 1; k < n; k++) { const t = k / n; if (this.solidAt(x0 + dx * t, y0 + dy * t) < pad) return true; }
+    return false;
+  }
   // raycast against static SDF (sphere tracing)
   raycast(x0, y0, dx, dy, maxD, out) {
     let t = 0;
@@ -892,6 +912,7 @@ export class Physics {
 }
 
 // ── dynamic shape SDFs (CPU mirror of the GPU versions) ─────────────────────
+const SD_OUT = new Float32Array(3);
 export function shapeSDF(S, px, py, ca, sa, out) {
   const dx = px - S.x, dy = py - S.y;
   const lx = dx * ca + dy * sa, ly = -dx * sa + dy * ca;

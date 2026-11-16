@@ -33,7 +33,11 @@ export function solidSprite(S, z, o = {}) {
     else if (m === SURF.GLASS) { const band = Math.exp(-depth / 16); cr = 0.05 + 0.2 * band; cg = 0.09 + 0.33 * band; cb = 0.12 + 0.42 * band; gloss = 1; rimK = 1.6; }
     else if (m === SURF.BOUNCE) { cr = 0.03; cg = 0.34; cb = 0.42; gloss = 0.8; const e = Math.exp(-depth / 3.5); eg = 0.5 * e; eb = 0.6 * e; }
     else if (m === SURF.RESIN) { cr = 0.4; cg = 0.18; cb = 0.03; gloss = 0.7; er = 0.1; eg = 0.04; }
-    else { const br = vnoise(wx * 0.55, wy * 0.04); cr = 0.17 * (0.7 + 0.5 * br); cg = 0.20 * (0.7 + 0.5 * br); cb = 0.25 * (0.7 + 0.5 * br); gloss = 0.7; }   // METAL
+    else {                                                                                   // METAL: cool brushed steel, a milled lip, a faint inlay line
+      const br = vnoise(wx * 0.5, wy * 0.045); const lipIn = Math.exp(-Math.pow((depth - 7) / 1.6, 2));
+      cr = 0.24 * (0.78 + 0.4 * br) + 0.10 * lipIn; cg = 0.30 * (0.78 + 0.4 * br) + 0.16 * lipIn; cb = 0.40 * (0.78 + 0.4 * br) + 0.22 * lipIn; gloss = 0.9; rimK = 1.3;
+      if (o.hazard) { const st = Math.abs(((wx + wy) * 0.09) % 2); const band = depth > 10 ? (st < 1 ? 1 : 0) : 0; cr += 0.22 * band; cg += 0.13 * band; cb -= 0.05 * band; }
+    }
     if (tint) { cr = cr * 0.5 + tint[0] * 0.2; cg = cg * 0.5 + tint[1] * 0.2; cb = cb * 0.5 + tint[2] * 0.2; }
     const diff = Math.max(0, Nx * KEY[0] + Ny * KEY[1] + Nz * KEY[2]);
     const ndh = Math.max(0, Nx * KEY[0] * 0.5 + Ny * KEY[1] * 0.5 + Nz * (KEY[2] + 1) * 0.5) / 0.88;

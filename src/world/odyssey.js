@@ -82,6 +82,19 @@ export const ROOMS = [
     ];
     return { W, H, geo, ents, pal: PAL.dew, spawn: { ...f.P(0.10, 0.5), n: 70 }, minMass: 70 };
   } },
+  { id: 'lock', name: 'The Lock', par: 44, boss: true, quota: 0.55, build(a) {
+    const f = L(a), { W, H } = f; const geo = dish(W, H, { r: Math.min(W, H) * 0.34 }); const c = f.P(0.5, 0.5);
+    // two rings of glass turning against each other around a heart of light: every doorway is a moment, not a place
+    const R2 = Math.min(W, H) / 2 - 86, R1 = R2 * 0.52; const a0 = f.land ? Math.PI : -Math.PI / 2;
+    const ents = [
+      { type: 'rotor', x: c.x, y: c.y, R: R2, r: 8, gap: 0.27, spin: 0.36, a: a0 + 1.9, pulse: 0.5 },
+      { type: 'rotor', x: c.x, y: c.y, R: R1, r: 8, gap: 0.42, spin: -0.52, a: a0 - 1.2, col: [1.0, 0.8, 0.5] },
+      ...moteRing(c.x, c.y, (R1 + R2) / 2, 12, 2), ...moteRing(c.x, c.y, R1 * 0.52, 6, 4, { col: [1.0, 0.8, 0.5], a0: 0.4 }),
+      ...trail(f, [[0.13, 0.26], [0.20, 0.5], [0.13, 0.74]], 5), ...trail(f, [[0.87, 0.26], [0.80, 0.5], [0.87, 0.74]], 5),
+      { type: 'pore', x: c.x, y: c.y, r: 34, col: [1.0, 0.8, 0.5] },
+    ];
+    return { W, H, geo, ents, pal: PAL.dew, spawn: { ...f.P(0.09, 0.5), n: 70 }, minMass: 70, cap: 110, decor: 0.6 };
+  } },
   // ── II · GLASSWORKS ────────────────────────────────────────────────────
   { id: 'comb', name: 'The Comb', par: 34, hint: 'rally', build(a) {
     const f = L(a), { W, H } = f; const geo = dish(W, H);
@@ -132,6 +145,25 @@ export const ROOMS = [
     ents.push(...trail(f, [[0.26, 0.5], [0.74, 0.5]], 13), ...trail(f, [[0.12, 0.24], [0.16, 0.5], [0.12, 0.76]], 5), ...trail(f, [[0.88, 0.24], [0.84, 0.40]], 3, 3),
       { type: 'lantern', id: 'L1', ...f.P(0.12, 0.14) }, { type: 'lantern', id: 'L2', ...f.P(0.88, 0.86) }, { type: 'pore', ...f.P(0.88, 0.5), key: ['L1', 'L2'] });
     return { W, H, geo, ents, pal: PAL.glass, spawn: { ...f.P(0.10, 0.5), n: 110 }, minMass: 110 };
+  } },
+  { id: 'centrifuge', name: 'The Centrifuge', par: 80, boss: true, quota: 0.5, build(a) {
+    const f = L(a), { W, H } = f; const c = f.P(0.5, 0.5); const RR = Math.min(W, H) / 2 - 40;
+    // a drum cut from solid glass, an antechamber at either end; three arms turn inside it, and you ride between them
+    const geo = [{ op: 'carve', t: 'circle', x: c.x, y: c.y, r: RR }];
+    const an = f.land ? [W * 0.115, H * 0.5, W * 0.17, H * 0.52] : [W * 0.5, H * 0.115, W * 0.52, H * 0.17];
+    geo.push({ op: 'carve', t: 'box', x: an[0], y: an[1], w: an[2], h: an[3], r: 46 }, { op: 'carve', t: 'box', x: W - an[0], y: H - an[1], w: an[2], h: an[3], r: 46 });
+    const ch = f.land ? [W * 0.5, H * 0.5, W * 0.80, 96] : [W * 0.5, H * 0.5, 96, H * 0.80];
+    geo.push({ op: 'carve', t: 'box', x: ch[0], y: ch[1], w: ch[2], h: ch[3], r: 40 });
+    const up = f.vec(0, -1), q = (ang, r) => ({ x: c.x + Math.cos(ang) * r, y: c.y + Math.sin(ang) * r }); const ua = Math.atan2(up[1], up[0]);
+    const ents = [
+      { type: 'spinner', x: c.x, y: c.y, n: 3, r0: 30, r1: RR - 14, w: 8, hub: 24, spin: 0.42, pulse: 0.37, a: ua + 0.5 },
+      { type: 'lantern', id: 'L1', ...q(ua, RR - 30) }, { type: 'lantern', id: 'L2', ...q(ua + Math.PI, RR - 30) },
+      { type: 'grinder', ...q(ua + 0.95, RR - 6), r: 22, spin: 3 }, { type: 'grinder', ...q(ua + Math.PI + 0.95, RR - 6), r: 22, spin: -3 },
+      ...moteRing(c.x, c.y, RR * 0.50, 12, 2, { a0: 0.26 }), ...moteRing(c.x, c.y, RR * 0.80, 10, 3, { a0: ua + 0.2, col: [0.8, 0.75, 1] }).filter((m, k) => k !== 2 && k !== 7),
+      ...trail(f, [[0.09, 0.36], [0.09, 0.64]], 3), ...trail(f, [[0.91, 0.36], [0.91, 0.64]], 3),
+      { type: 'pore', ...f.P(0.905, 0.5), r: 34, key: ['L1', 'L2'] },
+    ];
+    return { W, H, geo, ents, pal: PAL.glass, spawn: { ...f.P(0.085, 0.5), n: 100 }, minMass: 100, decor: 0.5 };
   } },
   // ── III · CHEMISTRY ────────────────────────────────────────────────────
   { id: 'amber', name: 'Amber', par: 34, build(a) {

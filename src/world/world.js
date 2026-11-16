@@ -52,6 +52,7 @@ export class World {
     this.player = this.addColony(0, sp.x, sp.y, carry.mass || sp.n || 40, { tint: carry.tint || null, mat: carry.mat ?? MAT.LUMEN, crown: carry.crown || 'sun', morph: carry.morph || null });
     for (const r of spec.rivals || []) this.addRival(r.kind, r.x, r.y, r.n);
     this.time = 0; this.roomTime = 0; this.done = false; this.eatT = 0; this.ember = false; this.tierMax = this.player ? this.player.mass : 0;
+    this.chain = 0; this.chainT = -9; this.flow = 0;
     this.stats = { motes: 0, motesTotal: this.pickups.filter(p => p.isMote).length, lost: 0, darts: 0, splits: 0, fuses: 0, tricks: [] };
     return this;
   }
@@ -158,6 +159,55 @@ export class World {
     this.emit('morph', B, mat);
   }
 
+  // ── flow: light taken in quick succession becomes a streak. A streak makes the crown bloom —
+  //    longer, brighter feelers that fetch from further, a faint pull on nearby motes, a little more speed —
+  //    and every eighth mote of an unbroken chain pays a bonus. Greed with rhythm is rewarded; nothing is punished. ──
+  chainUp(m, O) {
+    if (this.time - this.chainT > CHAIN_GAP) this.chain = 0;
+    this.chainT = this.time; const c = ++this.chain;
+    this.flow = Math.min(1, this.flow + 0.085 + 0.004 * c);
+    if (c > (this.stats.bestChain || 0)) this.stats.bestChain = c;
+    if (c % 8 === 0 && O && O.alive) {
+      const bonus = 1 + Math.min(3, c >> 3);
+      this.feed(O.B, bonus, O.B.cx, O.B.cy, [1, 0.95, 0.8], true); this.stats.bonus = (this.stats.bonus || 0) + bonus;
+      O.crown.joy(); this.fx.ring(O.B.cx, O.B.cy, [1, 0.92, 0.7], O.B.r * 2.6 + 30, 0.6, { a: 0.7, w: 2.6 });
+      this.fx.burst(O.B.cx, O.B.cy, 8 + bonus * 2, [1, 0.9, 0.6], 190, { life: 0.7, size: 2.4 });
+    }
+    return c;
+  }
+  _flow(dt) {
+    const idle = this.time - this.chainT;
+    if (idle > CHAIN_GAP && this.chain) { const was = this.chain; this.chain = 0; if (was >= 8) this.emit('chainEnd', was); }
+    this.flow = Math.max(0, this.flow - dt * (idle > 1.1 ? 0.42 : 0.06));
+    const pl = this.player; const f = this.flow; if (!pl) return;
+    for (const O of pl.orgs) O.reachK = 1 + 0.5 * f;
+    const F = pl.focus; if (!F || !F.alive || f < 0.2) return;
+    // the bloom's pull: nearby motes lift off the plate and drift in
+    const B = F.B; const reach = B.r + 34 + 76 * f, r2 = reach * reach; const P = this.phys;
+    for (const p of this.pickups) {
+      if (!p.isMote || p.dead || p.held || p.owner != null && p.owner !== B.group) continue;
+      const dx = B.cx - p.x, dy = B.cy - p.y; const d2 = dx * dx + dy * dy; if (d2 > r2) continue;
+      if (P.blocked(p.x, p.y, B.cx, B.cy, 1)) continue;                               // never through glass
+      if (p.baked) { this.release(p); continue; }
+      const d = Math.sqrt(d2) + 1; const a = 420 * f * (1 - d / reach) * dt; p.free = true; p.vx += dx / d * a; p.vy += dy / d * a;
+    }
+    // light spills from the feeler tips while the streak holds
+    if (f > 0.45 && Math.random() < dt * 22 * f) { const rs = F.crown.rays; const r = rs[(Math.random() * rs.length) | 0]; if (r && r.len > 8) this.fx.add({ x: r.x[6], y: r.y[6], vx: (Math.random() - 0.5) * 30 - B.vx * 0.1, vy: (Math.random() - 0.5) * 30 - B.vy * 0.1, col: [1, 0.9, 0.65], life: 0.5 + Math.random() * 0.3, size: 1.6 + Math.random() * 1.4, a: 0.8, drag: 1.5 }); }
+  }
+  // the continuous voice of the body: a silk whisper when gliding against things, a hum that climbs as it is
+  // stretched or coiled, a low pulse when something near can hurt it
+  _voice() {
+    const s = this.sound; if (!s || !s.ready) return; const F = this.player && this.player.focus;
+    if (!F || !F.alive) { s.setGlide(0, 0); s.setTension(0); s.setDanger(0); return; }
+    const B = F.B; const sp = Math.hypot(B.vx, B.vy); const contact = Math.min(1, B.contact / Math.max(4, B.count * 0.08));
+    s.setGlide(sp, contact);
+    const stretch = Math.max(0, Math.min(1, (F.spread - 1.22) / 0.9));
+    s.setTension(Math.max(stretch * 0.8, F.coil || 0, F.puff * 0.5));
+    let danger = this.ember ? 0.7 : 0; if (F.hurtT > 0) danger = Math.max(danger, 0.8);
+    for (const h of this.hazards()) { const d = Math.hypot(h.x - B.cx, h.y - B.cy) - (h.r || 40) - B.r; if (d < 90) danger = Math.max(danger, 0.75 * (1 - Math.max(0, d) / 90)); }
+    s.setDanger(danger);
+  }
+
   // ── physics callbacks ────────────────────────────────────────────────
   _onSplit(parent, child) {
     const C = this.colonyOf(parent);
@@ -236,6 +286,7 @@ export class World {
     for (const e of this.ents) if (!e.dead) e.post(dt);
     if (this.ents.some(e => e.dead)) { this.ents = this.ents.filter(e => !e.dead); this.pickups = this.pickups.filter(e => !e.dead); }
     this.colonies = this.colonies.filter(C => C === pl || C.orgs.length > 0);
+    this._flow(dt); this._voice();
     this.fx.update(dt);
     this.shake = Math.max(0, this.shake - dt * 3); this.flash = Math.max(0, this.flash - dt * 2);
     if (this.listener && this.listener.post) this.listener.post(dt, this);
@@ -343,8 +394,9 @@ export class World {
       for (const O of C.orgs) {
         if (!O.alive) continue; const B = O.B;
         const beat = 0.5 + 0.5 * Math.sin(this.time * (O.focused ? 2.5 : 1.4) + O.id);
-        const hs = (O.focused ? 1.0 : 0.6) * (0.85 + 0.25 * beat) + 0.35 * Math.min(1, B.energy || 0) + 0.35 * O.gulp;
-        const cl = R.addBody(P, B, { key: 'c' + C.group, look: R.lookFor(B.mat, B.tint), order: C === this.player ? 20 + (O.focused ? 1 : 0) : 10, veil: O.veil, glowBoost: 1 + 0.35 * (B.energy || 0), coarse: !C.isPlayer,
+        const fl = C === this.player ? this.flow : 0;
+        const hs = (O.focused ? 1.0 : 0.6) * (0.85 + 0.25 * beat) + 0.35 * Math.min(1, B.energy || 0) + 0.35 * O.gulp + 0.45 * fl;
+        const cl = R.addBody(P, B, { key: 'c' + C.group, look: R.lookFor(B.mat, B.tint), order: C === this.player ? 20 + (O.focused ? 1 : 0) : 10, veil: O.veil, glowBoost: 1 + 0.35 * (B.energy || 0) + 0.2 * fl, coarse: !C.isPlayer,
           heart: O.dormant ? null : [B.cx - O.facing.x * B.r * 0.08, B.cy - O.facing.y * B.r * 0.08, B.r * 0.34 + 5, hs * 0.85] });
         if (cl) { O.crown.draw(R, cl); if (O.heat < -0.05) { cl.hasMix = true; cl.frost = Math.max(cl.frost || 0, -O.heat); } if (O.heat > 0.05) cl.glowBoost += 0.6 * O.heat; }
       }
@@ -395,4 +447,5 @@ const ETCH = (W) => ({ x: 0, y: 0, bakeR: 0, bake(ink) {
 } });
 const TIERS = [[60, 'Drop'], [100, 'Pearl'], [150, 'Bloom'], [210, 'Tide'], [280, 'Leviathan']];
 const NOCTL = { intent: null, aim: null, rally: false };
+const CHAIN_GAP = 1.7;       // seconds a streak survives without a new mote
 export { PROF, H };

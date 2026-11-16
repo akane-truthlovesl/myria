@@ -45,7 +45,7 @@ export class Mote extends Entity {
     if (this.dead) return; this.dead = true;
     const W = this.W; W.release(this);
     W.feed(O.B, (this.value + (O.colony === W.player ? W.moteBonus || 0 : 0)) * (O.colony === W.player && W.ember ? 2 : 1), this.x, this.y, this.col);
-    if (O.colony === W.player || O.colony && O.colony.ally) { W.stats.motes++; const chain = W.sound ? W.sound.mote((this.x / W.spec.W) * 1.6 - 0.8) : 0; W.host.haptics && W.host.haptics.tick(); W.emit('mote', this, O, chain); }
+    if (O.colony === W.player || O.colony && O.colony.ally) { W.stats.motes++; const chain = W.chainUp(this, O); W.sound && W.sound.mote((this.x / W.spec.W) * 1.6 - 0.8, chain); W.host.haptics && W.host.haptics.tick(); W.emit('mote', this, O, chain); }
     else W.emit('moteLost', this, O);
   }
   // a mote at rest is static light → painted once into the backdrop, lifted out again the moment a feeler takes it
@@ -211,15 +211,22 @@ export class Blade extends Entity {
     this.a += this.spin * dt; moveShape(this.S, x, y, this.a, dt); this.hazard.x = x; this.hazard.y = y;
   }
   bake(ink) { if (this.spin) ink.ring(this.x, this.y, this.len / 2 + 3, 0.5, 0.5, 0.16, 0.13, 0.5, 0); else if (this.sweep) ink.beam(this.x - this.sweep[0], this.y - this.sweep[1], this.x + this.sweep[0], this.y + this.sweep[1], 1.4, 0.5, 0.16, 0.13, 0.25); ink.disc(this.x, this.y, 5, 0.16, 0.18, 0.22, 1); }
-  under(ink) { const S = this.S, ca = Math.cos(S.angle) * this.len / 2, sa = Math.sin(S.angle) * this.len / 2; ink.beam(S.x - ca, S.y - sa, S.x + ca, S.y + sa, 5, 1.0, 0.36, 0.3, 0.9); ink.beam(S.x - ca, S.y - sa, S.x + ca, S.y + sa, 1.6, 1, 0.95, 0.9, 1, PROF.core); }
-  over(ov) { const S = this.S; ov.glow(S.x, S.y, this.len * 0.5, [1, 0.3, 0.25], 0.10); }
+  under(ink) { const S = this.S, ca = Math.cos(S.angle) * this.len / 2, sa = Math.sin(S.angle) * this.len / 2; ink.beam(S.x - ca, S.y - sa, S.x + ca, S.y + sa, 6.5, 1.0, 0.30, 0.26, 1.0); ink.beam(S.x - ca, S.y - sa, S.x + ca, S.y + sa, 1.8, 1, 0.96, 0.92, 1, PROF.core); }
+  // a blade announces itself: an after-image of where it has just been, hot tips, a red breath on the plate
+  over(ov) {
+    const S = this.S, h = this.len / 2; const red = COL.danger;
+    if (this.spin) for (let k = 1; k <= 3; k++) { const a = S.angle - this.spin * 0.055 * k; const ca = Math.cos(a) * h, sa = Math.sin(a) * h; ov.line(S.x - ca, S.y - sa, S.x + ca, S.y + sa, 2.6 - 0.5 * k, red, 0.20 - 0.05 * k); }
+    const ca = Math.cos(S.angle) * h, sa = Math.sin(S.angle) * h; const fl = 0.75 + 0.25 * Math.sin(this.t * 23);
+    ov.glow(S.x - ca, S.y - sa, 15, [1, 0.6, 0.45], 0.8 * fl); ov.glow(S.x + ca, S.y + sa, 15, [1, 0.6, 0.45], 0.8 * fl);
+    ov.glow(S.x, S.y, this.len * 0.55, red, 0.13);
+  }
 }
 
 // ── Grinder: an abrasive gear. It shaves mass into sparks you can chase back. ──
 export class Grinder extends Entity {
   constructor(W, d) {
     super(W, d); this.r = d.r ?? 46; this.spin = d.spin ?? 2.4; this.acc = 0; this.orbit = d.orbit || null;
-    this.S = makeShape({ type: 0, x: d.x, y: d.y, r: this.r + 3, surf: SURF.GRIT, grip: 0.5 }); W.phys.shapes.push(this.S);
+    this.S = makeShape({ type: 0, x: d.x, y: d.y, r: this.r + 3, surf: SURF.GRIT, grip: 0.5, porous: true }); W.phys.shapes.push(this.S);      // porous: a feeler may dare to reach between the teeth
     this.hazard = { x: d.x, y: d.y, r: this.r + 12 };
   }
   update(dt) { this.t += dt; let x = this.x, y = this.y; if (this.orbit) { const o = this.orbit; const a = this.t * (o.w ?? 0.6) + (o.p ?? 0); x = o.x + Math.cos(a) * o.r; y = o.y + Math.sin(a) * (o.ry ?? o.r); } moveShape(this.S, x, y, this.S.angle + this.spin * dt, dt); this.hazard.x = x; this.hazard.y = y; }
@@ -385,7 +392,42 @@ export class Magnet extends Entity {
   over(ov) { const k = this.onK; if (k > 0.03) { for (let q = 0; q < 2; q++) { const u = 1 - ((this.t * 0.7 + q * 0.5) % 1); ov.ring(this.x, this.y, 20 + u * this.reach * 0.8, 1.3, this.col, 0.4 * k * u); } ov.glow(this.x, this.y, 34, this.col, 0.7 * k); } else ov.glow(this.x, this.y, 16, this.col, 0.15); }
 }
 
-export const ENT = { mote: Mote, pore: Pore, pad: Pad, gate: Gate, film: Film, blade: Blade, grinder: Grinder, pool: Pool, current: Current, well: Well, crusher: Crusher, lantern: Lantern, watcher: Watcher, frost: Frost, vent: Vent, iceplug: IcePlug, magnet: Magnet };
+// ── Rotor: a ring of glass with a doorway, turning. The doorway is the only way through — and it will not wait. ──
+export class Rotor extends Entity {
+  constructor(W, d) {
+    super(W, d); this.spin = d.spin ?? 0.4; this.pulse = d.pulse || 0; this.R = d.R ?? 120; this.th = d.r ?? 9;
+    this.S = makeShape({ type: 3, x: d.x, y: d.y, R: this.R, r: this.th, gap: d.gap ?? 0.3, surf: d.surf ?? SURF.GLASS, angle: d.a ?? 0 });
+    W.phys.shapes.push(this.S); this.col = d.col || COL.cyan;
+  }
+  update(dt) { this.t += dt; const k = this.pulse ? 0.6 + 0.4 * Math.sin(this.t * this.pulse) : 1; moveShape(this.S, this.x, this.y, this.S.angle + this.spin * k * dt, dt); }
+  bake(ink) { ink.ring(this.x, this.y, this.R, this.th + 5, 0, 0, 0, 0, 0); const c = this.col; ink.ring(this.x, this.y, this.R + this.th + 4, 0.4, c[0] * 0.5, c[1] * 0.5, c[2] * 0.5, 0.35, 0); ink.ring(this.x, this.y, this.R - this.th - 4, 0.4, c[0] * 0.5, c[1] * 0.5, c[2] * 0.5, 0.35, 0); }
+  under(ink, R) { R.solid(spriteFor(this, R, this.S, {}), this.x, this.y, this.S.angle); }
+  // the doorway announces itself: two jamb-lights and a breath of light between them
+  over(ov) {
+    const S = this.S, g = S.gap; const b = 0.6 + 0.4 * Math.sin(this.t * 3);
+    for (const sg of [-1, 1]) { const a = S.angle + sg * g; ov.glow(this.x + Math.cos(a) * this.R, this.y + Math.sin(a) * this.R, this.th * 1.9, this.col, 0.75 * b); }
+    ov.glow(this.x + Math.cos(S.angle) * this.R, this.y + Math.sin(S.angle) * this.R, this.R * Math.sin(g) * 1.3, this.col, 0.16, 1);
+  }
+}
+
+// ── Spinner: arms of glass turning about a hub — a centrifuge. Each arm may be whole or broken by a doorway. ──
+export class Spinner extends Entity {
+  constructor(W, d) {
+    super(W, d); this.spin = d.spin ?? 0.45; this.pulse = d.pulse || 0; this.ang = d.a ?? 0; this.w = d.w ?? 9; this.arms = []; this.col = d.col || COL.cyan;
+    const n = d.n ?? 3, r0 = d.r0 ?? 34, r1 = d.r1 ?? 180;
+    for (let k = 0; k < n; k++) {
+      const segs = d.door ? [[r0, d.door[k % d.door.length] - 30], [d.door[k % d.door.length] + 30, r1]] : [[r0, r1]];
+      for (const [a, b] of segs) { if (b - a < 12) continue; const S = makeShape({ type: 1, x: d.x, y: d.y, hl: (b - a) / 2, r: this.w, surf: d.surf ?? SURF.GLASS }); S._mid = (a + b) / 2; S._k = k; W.phys.shapes.push(S); this.arms.push(S); }
+    }
+    this.n = n; this.hub = makeShape({ type: 0, x: d.x, y: d.y, r: d.hub ?? 26, surf: d.surf ?? SURF.GLASS }); W.phys.shapes.push(this.hub); this._place(1 / 60);
+  }
+  _place(dt) { for (const S of this.arms) { const a = this.ang + S._k / this.n * TAU; moveShape(S, this.x + Math.cos(a) * S._mid, this.y + Math.sin(a) * S._mid, a, dt); } }
+  update(dt) { this.t += dt; const k = this.pulse ? 0.62 + 0.38 * Math.sin(this.t * this.pulse) : 1; this.omega = this.spin * k; this.ang += this.omega * dt; this._place(dt); }
+  under(ink, R) { for (const S of this.arms) { if (!S._sp || S._sp.z !== R.view.z) S._sp = solidSprite(S, R.view.z, {}); R.solid(S._sp, S.x, S.y, S.angle); } R.solid(spriteFor(this, R, this.hub, {}), this.x, this.y, this.ang); }
+  over(ov) { ov.glow(this.x, this.y, 46, this.col, 0.35 + 0.15 * Math.sin(this.t * 2)); for (const S of this.arms) { const a = S.angle; const e = S._mid + S.hl; ov.glow(this.x + Math.cos(a) * e, this.y + Math.sin(a) * e, 12, this.col, 0.5); } }
+}
+
+export const ENT = { rotor: Rotor, spinner: Spinner, mote: Mote, pore: Pore, pad: Pad, gate: Gate, film: Film, blade: Blade, grinder: Grinder, pool: Pool, current: Current, well: Well, crusher: Crusher, lantern: Lantern, watcher: Watcher, frost: Frost, vent: Vent, iceplug: IcePlug, magnet: Magnet };
 
 // helpers for room builders
 export function moteTrail(pts, n, value = 2, extra = {}) {
