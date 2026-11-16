@@ -7,6 +7,7 @@ import { Odyssey } from './modes/odyssey.js';
 import { Abyss } from './modes/abyss.js';
 import { Pool } from './modes/pool.js';
 import { Duet } from './modes/duet.js';
+import { Epilogue } from './modes/epilogue.js';
 import { Bloom } from './modes/bloom.js';
 import { ROOMS } from './world/odyssey.js';
 
@@ -17,6 +18,7 @@ try { app = new App(canvas, document.getElementById('ui'), params); }
 catch (err) { document.getElementById('ui').innerHTML = `<div class="fatal">MYRIA could not start.<br><small style="opacity:.6">${err.message}</small></div>`; throw err; }
 app.toHub = (o) => app.setMode(new Hub(app, o));
 app.startOdyssey = (i, o) => app.setMode(new Odyssey(app, i, o));
+app.toEpilogue = (o) => app.setMode(new Epilogue(app, o));
 const all = params.has('all');
 const today = () => new Date().toISOString().slice(0, 10);
 app.extraModes = [
@@ -32,6 +34,7 @@ if (params.has('room')) app.start(new Odyssey(app, +params.get('room') || 0, { m
 else if (m === 'abyss' || m === 'daily') app.start(new Abyss(app, { daily: m === 'daily' }));
 else if (m === 'pool') app.start(new Pool(app));
 else if (m === 'bloom') app.start(new Bloom(app));
+else if (m === 'myriad') app.start(new Epilogue(app));
 else if (m === 'duet') app.start(new Duet(app));
 else if (m === 'coop') app.start(new Abyss(app, { coop: true }));
 else app.start(new Hub(app, { awake: params.has('awake') }));

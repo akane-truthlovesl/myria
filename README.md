@@ -45,6 +45,8 @@ wall where something is watching makes you a veil it cannot see.
   Needle, Surgical Shear, Ghost Wall, Paper Tiger, Cleave, Slingshot…) are noticed when you find them.
   The stars you gather dye you: six **hues** (Coral · Honey · Rose · Jade · Pearl · Nebula) unlock as
   they add up — each a full optical recipe, chosen from the pause menu in the Atrium.
+- **Myriad** — the last room has no door. Everything you met on the way is there, and nothing in it is
+  hungry; what you do with all that light is the ending. (Afterwards the Atrium keeps the morning.)
 - **Flow** — light taken in quick succession becomes a chain. A chain makes the crown *bloom*: longer,
   brighter feelers that fetch from further, a faint pull on nearby motes, a little more speed, a rising
   melody — and every eighth link pays a bonus of mass. Greed with rhythm is rewarded; nothing is punished.
@@ -116,9 +118,10 @@ node tools/film.mjs sheet.png 4 800 450 2.5 3 6   # contact sheet of the Bot pla
 node tools/bloom.mjs sheet.png                    # the Bot plays a full Bloom run
 node tools/closeup.mjs strip.png dart             # close-up filmstrip of a verb (move · dart · bud · swell)
 node tools/hues.mjs hues.png                      # every hue side by side
+node tools/myriad.mjs sheet.png                   # contact sheet of the epilogue under a wandering pointer
 node tools/abyss.mjs out 1280 720 6 40            # soak-test six Abyss depths
 ```
 
 `dev.html` loads the ES modules directly (it must be served over http). URL switches: `?room=N`,
-`?mode=abyss|daily|bloom|pool|duet|coop`, `?all` (unlock everything), `?bot` (autopilot), `?maxpx=N` (fix the
+`?mode=abyss|daily|bloom|pool|duet|coop|myriad`, `?all` (unlock everything), `?bot` (autopilot), `?maxpx=N` (fix the
 internal pixel budget). The first WebGL prototype is kept in `legacy/`.

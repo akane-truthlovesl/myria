@@ -83,10 +83,11 @@ export class Odyssey {
     app.sound.portal(); app.haptics.fuse();
     app.hud.hint(''); app.hud.setTop(null); app.hud.setCorner(false);
     const last = this.i >= ROOMS.length - 1;
-    const result = { name: `${ROMAN[this.i]} · ${this.room.name}`, stars, light: s.motes, total: s.motesTotal, time: W.roomTime, par: this.room.par, mass: W.player.mass, tricks: this.tricks, next: last ? 'the slide is awake · you are myria' : rec.newBest && !rec.firstClear ? 'new best' : '', onStar: (k) => app.sound.star(k) };
+    const result = { name: `${ROMAN[this.i]} · ${this.room.name}`, stars, light: s.motes, total: s.motesTotal, time: W.roomTime, par: this.room.par, mass: W.player.mass, tricks: this.tricks, next: last ? 'one more room' : rec.newBest && !rec.firstClear ? 'new best' : '', onStar: (k) => app.sound.star(k) };
     setTimeout(() => {
       if (app.mode !== this) return;
-      if (last || this.single) { app.toHub({ result }); return; }
+      if (last && !this.single) { app.toEpilogue({ result, mass: W.player.mass }); return; }           // the last room has no door
+      if (this.single) { app.toHub({ result }); return; }
       this.i++; this.loadNext(result, pore);
     }, 650);
   }

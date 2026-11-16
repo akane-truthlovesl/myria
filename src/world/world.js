@@ -319,7 +319,7 @@ export class World {
   // same phase: the larger membrane siphons the smaller one (mass crosses over, carrying its pigment as a swirl);
   // thorns shed whatever touches them; oil never mixes — it only slips and bounces.
   _chemistry(dt) {
-    const P = this.phys; const n = P.ncontacts; if (!n) return;
+    const P = this.phys; const n = P.ncontacts; if (!n || this.peace) return;
     this.eatT += dt; if (this.eatT < 0.05) return; this.eatT = 0;
     const A = P.contactA, Bc = P.contactB, body = P.body, bodies = P.bodies, mat = P.mat;
     let moved = 0;

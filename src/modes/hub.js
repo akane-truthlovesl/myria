@@ -8,6 +8,7 @@ import { ROOMS } from '../world/odyssey.js';
 import { moteTrail } from '../world/entities.js';
 import { Odyssey } from './odyssey.js';
 import { SKINS, skinFor, unlockedSkins } from '../core/skins.js';
+import { DAWN } from './epilogue.js';
 
 // stroke font on a 4×6 grid
 const GLYPH = {
@@ -43,7 +44,7 @@ export class Hub {
       const ents = wordMotes('MYRIA', W / 2, H * 0.30, Math.min(W * 0.72, 760));
       const n = this.dests.length; this.pores = [];
       this.dests.forEach((d, k) => { const x = W * (n === 1 ? 0.5 : 0.16 + 0.68 * k / (n - 1)), y = H * (W < H * 1.2 && n > 3 ? (k % 2 ? 0.86 : 0.70) : 0.76); ents.push({ type: 'pore', x, y, r: 40, dest: d.id, col: d.col || (k === 0 ? [1.0, 0.72, 0.5] : [0.45, 0.95, 1.0]) }); });
-      return { name: 'Atrium', seed: 3, W, H, geo, ents, spawn: { x: W / 2, y: H * 0.55, n: 14 }, pal: { grid: 0.8 } };
+      return { name: 'Atrium', seed: 3, W, H, geo, ents, spawn: { x: W / 2, y: H * 0.55, n: 14 }, pal: save.get('awake', 0) ? { ...DAWN, grid: 0.8 } : { grid: 0.8 } };       // once the slide is awake, the Atrium keeps the morning
     }, null, {
       minDark: this.o.result ? 2.6 : 0.35,
       onDark: () => { app.applyBudget(); if (this.o.result) app.hud.showResult(this.o.result); },
@@ -53,7 +54,7 @@ export class Hub {
     });
   }
   exit() { this.app.hud.setLabels([]); }
-  pauseItems() { return [{ label: 'Chambers', fn: () => this.chambers() }, { label: this.hueLabel(), fn: (b) => { this.nextHue(); b.innerHTML = this.hueLabel(); } }]; }
+  pauseItems() { const app = this.app; return [{ label: 'Chambers', fn: () => this.chambers() }, { label: this.hueLabel(), fn: (b) => { this.nextHue(); b.innerHTML = this.hueLabel(); } }, ...(app.save.get('awake', 0) ? [{ label: 'Myriad', fn: () => { app.resume(); app.toEpilogue({}); } }] : [])]; }
   hueLabel() { const save = this.app.save; const cur = skinFor(save); const nx = SKINS.find(s => s.need > save.stars()); return `Hue · ${cur.name}${nx ? ` <small style="opacity:.55;letter-spacing:.1em;text-transform:none">&nbsp; next: ${nx.name} at ${nx.need} ✦</small>` : ''}`; }
   nextHue() {
     const app = this.app, save = app.save; const list = unlockedSkins(save); const cur = skinFor(save); const nx = list[(list.indexOf(cur) + 1) % list.length]; save.set('skin', SKINS.indexOf(nx));
