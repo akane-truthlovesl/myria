@@ -20,6 +20,9 @@ export class HUD {
     this.loader = el('div', 'h-loader', '<i></i>'); root.appendChild(this.loader);
     this.flash = el('div', 'h-flash'); root.appendChild(this.flash); this._fl = 0;
     this._top = ''; this.labelEls = [];
+    // the HUD is drawn for a ~900 px window and grows with a bigger one (a 4K desktop should not need a magnifying glass)
+    this.k = 1; const fit = () => { const k = Math.max(1, Math.min(1.8, Math.min(window.innerWidth, window.innerHeight) / 900)); if (Math.abs(k - this.k) > 0.02 || k === 1 && this.k !== 1) { this.k = k; root.style.zoom = k === 1 ? '' : k.toFixed(3); root.style.setProperty('--k', k.toFixed(3)); } };
+    if (typeof window !== 'undefined' && window.addEventListener) { fit(); window.addEventListener('resize', fit); }
   }
   // ── iris wipe: a hole of light centred on (x,y) css px, radius r css px (r<0 → fully dark) ──
   setIris(x, y, r, a = 1) {
@@ -79,6 +82,6 @@ export class HUD {
   // ── labels pinned to world points ──
   setLabels(list) {       // [{x,y (css px), html, cls}]
     while (this.labelEls.length < list.length) { const e = el('div', 'h-label'); this.labels.appendChild(e); this.labelEls.push(e); }
-    this.labelEls.forEach((e, i) => { const l = list[i]; if (!l) { e.style.display = 'none'; return; } e.style.display = ''; if (e._h !== l.html) { e.innerHTML = l.html; e._h = l.html; } e.className = 'h-label ' + (l.cls || ''); e.style.left = l.x + 'px'; e.style.top = l.y + 'px'; });
+    this.labelEls.forEach((e, i) => { const l = list[i]; if (!l) { e.style.display = 'none'; return; } e.style.display = ''; if (e._h !== l.html) { e.innerHTML = l.html; e._h = l.html; } e.className = 'h-label ' + (l.cls || ''); e.style.left = l.x / this.k + 'px'; e.style.top = l.y / this.k + 'px'; });
   }
 }
