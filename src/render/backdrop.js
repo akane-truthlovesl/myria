@@ -7,14 +7,15 @@
 //  grid, wall shadows, ambient occlusion, dither. It also writes a reflectance
 //  map so moving lights can later re-illuminate rims and grid lines.
 // ─────────────────────────────────────────────────────────────────────────────
-import { hash2, vnoise, fbm, cells, sat } from '../core/util.js';
+import { hash2, vnoise, fbm, cells, cellEdge, sat } from '../core/util.js';
 import { SURF } from '../sim/materials.js';
 
 export const DEFAULT_PAL = {
-  deep: [0.012, 0.030, 0.050],     // far water
-  mid: [0.030, 0.085, 0.120],      // near water
-  wall: [0.060, 0.115, 0.150],     // glass-stone body
-  rim: [0.50, 0.86, 0.98],         // wet highlights, grid etching
+  deep: [0.016, 0.050, 0.078],     // far water
+  mid: [0.050, 0.170, 0.225],      // near water
+  pool: [0.085, 0.250, 0.290],     // the stage lamp's pool of light on the plate
+  wall: [0.085, 0.215, 0.270],     // glass-stone body
+  rim: [0.56, 0.90, 1.00],         // wet highlights, grid etching
   accent: [1.0, 0.62, 0.40],       // warm counter-light
   grid: 1.0, haze: 1.0,
 };
@@ -30,13 +31,20 @@ export class Backdrop {
     this.room = room; this.view = view;
     const pal = this.pal = { ...DEFAULT_PAL, ...(room.pal || {}) };
     const s = 8; const nw = this.nw = ((fb.w / s) | 0) + 2, nh = this.nh = ((fb.h / s) | 0) + 2; this.ns = s;
-    const neb = this.neb = new Float32Array(nw * nh), cau = this.cau = new Float32Array(nw * nh);
+    const neb = this.neb = new Float32Array(nw * nh);
     const seed = (room.seed || 1) % 1000;
     for (let j = 0; j < nh; j++) for (let i = 0; i < nw; i++) {
       const wx = i * s / view.z + view.ox, wy = j * s / view.z + view.oy;
       neb[j * nw + i] = fbm(wx * 0.0032 + seed, wy * 0.0032 - seed * 0.37, 4);
-      const c1 = cells(wx * 0.0105 + seed * 0.11, wy * 0.0105), c2 = cells(wx * 0.0178 + 4.1, wy * 0.0178 + seed * 0.07);
-      cau[j * nw + i] = Math.pow(sat(1 - Math.min(c1, c2) * 1.18), 5);
+    }
+    // the water film's light network: bright filaments along the borders of two drifting cell layers (1/4 resolution)
+    const cs = this.cs = 4, cw = this.cw = ((fb.w / cs) | 0) + 2, chh = ((fb.h / cs) | 0) + 2; const cau = this.cau = new Float32Array(cw * chh);
+    for (let j = 0; j < chh; j++) for (let i = 0; i < cw; i++) {
+      const wx = i * cs / view.z + view.ox, wy = j * cs / view.z + view.oy;
+      const ux = wx + 26 * Math.sin(wy * 0.011 + seed), uy = wy + 26 * Math.sin(wx * 0.013 - seed * 0.7);
+      const e1 = cellEdge(ux * 0.0125 + seed * 0.11, uy * 0.0125), e2 = cellEdge(ux * 0.021 + 4.1, uy * 0.021 + seed * 0.07);
+      const a = Math.exp(-e1 * e1 * 150), b = Math.exp(-e2 * e2 * 110);
+      cau[j * cw + i] = a * 0.7 + b * 0.38 + a * b * 0.6;
     }
     // far light: the specimen lamp (upper left) and a handful of out-of-focus highlights, at 1/8 resolution
     const lum = this.lum = new Float32Array(nw * nh), lumW = this.lumW = new Float32Array(nw * nh);
@@ -60,11 +68,11 @@ export class Backdrop {
     const g = room.sdf; const data = g.data, gmat = g.mat, sw = g.w, sh = g.h, ires = 1 / g.res, gx0 = g.x0, gy0 = g.y0;
     const W = fb.w, back = fb.back, refl = this.reflect;
     const iz = 1 / view.z, ox = view.ox, oy = view.oy, z = view.z;
-    const { neb, cau, lum, lumW, nw, ns } = this; const ins = 1 / ns;
+    const { neb, cau, lum, lumW, nw, ns, cw } = this; const ins = 1 / ns, ics = 1 / this.cs;
     const lights = this.lights, nl = lights.length, wells = this.wells, nwell = wells.length;
-    const deep = pal.deep, mid = pal.mid, wallC = pal.wall, rim = pal.rim, acc = pal.accent;
+    const deep = pal.deep, mid = pal.mid, pool = pal.pool, wallC = pal.wall, rim = pal.rim, acc = pal.accent;
     const gridK = pal.grid, RW = room.W, RH = room.H;
-    const cxr = RW * 0.5, cyr = RH * 0.5, vr = 1 / (Math.hypot(RW, RH) * 0.62);
+    const cxr = RW * 0.5, cyr = RH * 0.5, vr = 1 / (Math.hypot(RW, RH) * 0.62), ipw = 1 / (RW * 0.40), iph = 1 / (RH * 0.40);
     const sdf = (wx, wy) => {
       let fx = (wx - gx0) * ires, fy = (wy - gy0) * ires;
       if (fx < 0) fx = 0; else if (fx > sw - 1.001) fx = sw - 1.001; if (fy < 0) fy = 0; else if (fy > sh - 1.001) fy = sh - 1.001;
@@ -90,14 +98,16 @@ export class Backdrop {
         if (cov < 1) {
           // ── the plate: deep water, nebula, etched grid, caustic web ──
           const vg = Math.hypot(wx - cxr, wy - cyr) * vr;
-          const vig = 1 - 0.55 * vg * vg;
+          const vig = 1 - 0.50 * vg * vg;
           const t = sat(0.25 + 0.9 * (n1 - 0.25) + 0.25 * (1 - vg));
           r = deep[0] + (mid[0] - deep[0]) * t; gg = deep[1] + (mid[1] - deep[1]) * t; b = deep[2] + (mid[2] - deep[2]) * t;
-          const c1 = (cau[nk] + (cau[nk + 1] - cau[nk]) * na) * (1 - nb) + (cau[nk + nw] + (cau[nk + nw + 1] - cau[nk + nw]) * na) * nb;
-          const ck = c1 * 0.035 * pal.haze;
+          { const px_ = (wx - cxr) * ipw, py_ = (wy - cyr) * iph; const pv = Math.exp(-(px_ * px_ + py_ * py_)) * (0.72 + 0.56 * n1); r += pool[0] * pv; gg += pool[1] * pv; b += pool[2] * pv; }
+          const cfx = x * ics, cfy = y * ics; const ci = cfx | 0, cj = cfy | 0, ca = cfx - ci, cb = cfy - cj; const ck0 = cj * cw + ci;
+          const c1 = (cau[ck0] + (cau[ck0 + 1] - cau[ck0]) * ca) * (1 - cb) + (cau[ck0 + cw] + (cau[ck0 + cw + 1] - cau[ck0 + cw]) * ca) * cb;
+          const ck = c1 * 0.075 * pal.haze * (0.35 + 1.0 * t);
           r += rim[0] * ck; gg += rim[1] * ck; b += rim[2] * ck;
-          const lv = ((lum[nk] + (lum[nk + 1] - lum[nk]) * na) * (1 - nb) + (lum[nk + nw] + (lum[nk + nw + 1] - lum[nk + nw]) * na) * nb) * 0.030 * pal.haze;
-          const lw = ((lumW[nk] + (lumW[nk + 1] - lumW[nk]) * na) * (1 - nb) + (lumW[nk + nw] + (lumW[nk + nw + 1] - lumW[nk + nw]) * na) * nb) * 0.030 * pal.haze;
+          const lv = ((lum[nk] + (lum[nk + 1] - lum[nk]) * na) * (1 - nb) + (lum[nk + nw] + (lum[nk + nw + 1] - lum[nk + nw]) * na) * nb) * 0.055 * pal.haze;
+          const lw = ((lumW[nk] + (lumW[nk + 1] - lumW[nk]) * na) * (1 - nb) + (lumW[nk + nw] + (lumW[nk + nw + 1] - lumW[nk + nw]) * na) * nb) * 0.060 * pal.haze;
           r += rim[0] * lv + acc[0] * lw; gg += rim[1] * lv + acc[1] * lw; b += rim[2] * lv + acc[2] * lw;
           // grid, bent by gravity wells
           let qx = wx, qy = wy;
@@ -113,9 +123,9 @@ export class Backdrop {
           const Mx = Math.abs(((qx / 192) % 1 + 1.5) % 1 - 0.5) * 192, My = Math.abs(((qy / 192) % 1 + 1.5) % 1 - 0.5) * 192;
           const minor = sat(1 - Math.min(mx, my) / (0.8 * pw + 0.35)), major = sat(1 - Math.min(Mx, My) / (1.1 * pw + 0.6));
           const cross = sat(1 - Math.max(Mx, My) / 7) * 0.9;     // registration ticks where majors meet
-          const gl = (minor * 0.020 + major * 0.050 + cross * 0.10) * gridK * (0.55 + 0.9 * t);
+          const gl = (minor * 0.032 + major * 0.075 + cross * 0.14) * gridK * (0.45 + 1.0 * t);
           r += rim[0] * gl; gg += rim[1] * gl; b += rim[2] * gl;
-          rf = 0.07 + (minor * 0.35 + major * 0.65 + cross * 0.5) * gridK * 0.55 + c1 * 0.25;
+          rf = 0.07 + (minor * 0.35 + major * 0.65 + cross * 0.5) * gridK * 0.55 + c1 * 0.22;
           // dust & micro-bubbles frozen in the glass
           const hx = Math.floor(wx / 9), hy = Math.floor(wy / 9); const hh = hash2(hx, hy);
           if (hh > 0.972) {
@@ -178,11 +188,22 @@ export class Backdrop {
             const vein = sat(1 - Math.abs(fbm(wx * 0.03, wy * 0.03, 3) - 0.5) * 14);
             cr = 0.15 + 0.8 * vein; cg = 0.06 + 0.26 * vein; cb = 0.04 + 0.05 * vein; gloss = 0.3;
             glowR = 0.22 * band; glowG = 0.07 * band;
-          } else {                          // STONE: dark glass-stone, luminous near the skin, abyssal at the core
-            const skin = 0.22 + 0.78 * band;
-            cr = wallC[0] * skin * (0.75 + 0.5 * n1); cg = wallC[1] * skin * (0.75 + 0.5 * n1); cb = wallC[2] * skin * (0.75 + 0.5 * n1);
-            const line = Math.pow(strata, 10) * Math.exp(-depth / 60) * 0.045;     // contour etching
+          } else {                          // STONE: thick sea-glass — luminous at the skin, frosted and bubbled within
+            const skin = 0.58 + 0.42 * band;
+            const frost = 0.72 + 0.56 * n1;
+            cr = wallC[0] * skin * frost; cg = wallC[1] * skin * frost; cb = wallC[2] * skin * frost;
+            // the polished top catches the window: a broad diagonal sheen, broken by the glass's own waviness
+            const sheen = Math.pow(0.5 + 0.5 * Math.sin((wx * 0.62 + wy) * 0.021 + n1 * 4.0), 6) * 0.055 * tb;
+            cr += rim[0] * sheen; cg += rim[1] * sheen; cb += rim[2] * sheen;
+            const line = Math.pow(strata, 10) * Math.exp(-depth / 60) * 0.050;     // contour etching
             cr += rim[0] * line; cg += rim[1] * line; cb += rim[2] * line;
+            const bx = Math.floor(wx / 13), by = Math.floor(wy / 13); const bh = hash2(bx + 91, by + 17);
+            if (bh > 0.90) {                // bubbles frozen in the glass
+              const px = (bx + 0.25 + 0.5 * hash2(bx + 3, by)) * 13, py = (by + 0.25 + 0.5 * hash2(bx, by + 7)) * 13, br = 1.2 + 3.2 * hash2(bx + 11, by + 5);
+              const dd = Math.hypot(wx - px, wy - py); const ringv = sat(1 - Math.abs(dd - br) / (0.7 + iz)) * 0.10 + sat(1 - Math.hypot(wx - px + br * 0.4, wy - py + br * 0.4) / (0.9 + iz)) * 0.16;
+              cr += rim[0] * ringv; cg += rim[1] * ringv; cb += rim[2] * ringv;
+            }
+            gloss = 0.45;
           }
           const ndk = Nx * KEY[0] + Ny * KEY[1] + Nz * KEY[2];
           const diff = ndk > 0 ? ndk : 0;

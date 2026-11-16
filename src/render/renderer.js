@@ -142,6 +142,16 @@ export class Renderer {
     if (lo < C.x0) C.x0 = lo; if (hi > C.x1) C.x1 = hi; if (lo2 < C.y0) C.y0 = lo2; if (hi2 > C.y1) C.y1 = hi2;
   }
 
+  // a single bead of gel (a dew-pearl on a feeler tip): w = visible radius in world units
+  addDot(C, x, y, w, glow) {
+    this.fluid.setZoom(this.view.z);
+    const zc = this.view.z / Math.min(5, this.fluid.cell + (C.coarse ? 1 : 0));
+    const R = Math.max(w * 2.0, 2.4 / zc); const q = 1 - (w * w) / (R * R);
+    if (C.ns + 1 > C.stamps.length / 5) { const s = new Float32Array((C.ns + 1) * 10); s.set(C.stamps.subarray(0, C.ns * 5)); C.stamps = s; }
+    const st = C.stamps, o = C.ns * 5; st[o] = x; st[o + 1] = y; st[o + 2] = R; st[o + 3] = 0.66 / (q * q * q); st[o + 4] = glow; C.ns++;
+    if (x - R < C.x0) C.x0 = x - R; if (x + R > C.x1) C.x1 = x + R; if (y - R < C.y0) C.y0 = y - R; if (y + R > C.y1) C.y1 = y + R;
+  }
+
   // ── the frame ────────────────────────────────────────────────────────────
   // scene: { phys, under(R), inner(R), overlay(R) }
   frame(scene, time) {

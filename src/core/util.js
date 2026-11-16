@@ -44,6 +44,17 @@ export function cells(x, y) {
   return Math.sqrt(d);
 }
 
+// distance between the two nearest cell sites (F2 − F1): zero along cell borders → light networks, cracks, membranes
+export function cellEdge(x, y) {
+  const xi = Math.floor(x), yi = Math.floor(y); let d1 = 8, d2 = 8;
+  for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
+    const ox = hash2(xi + i, yi + j), oy = hash2(xi + i + 57, yi + j - 113);
+    const rx = i + ox - (x - xi), ry = j + oy - (y - yi); const q = rx * rx + ry * ry;
+    if (q < d1) { d2 = d1; d1 = q; } else if (q < d2) d2 = q;
+  }
+  return Math.sqrt(d2) - Math.sqrt(d1);
+}
+
 // colour helpers (linear-ish 0..1 triples)
 export function hsl(h, s, l) {
   const f = (n) => { const k = (n + h * 12) % 12; const a = s * Math.min(l, 1 - l); return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)); };

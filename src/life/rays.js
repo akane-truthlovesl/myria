@@ -46,7 +46,7 @@ export class Crown {
     if (k === 'cilia') return 7 + R * 0.16;
     if (k === 'whips') return 22 + R * 0.95;
     if (k === 'thorns') return 9 + R * 0.34;
-    return 12 + R * 0.62;
+    return 13 + R * 0.74;
   }
   maxReach(R) { return (46 + R * 1.25) * (this.O.reachK || 1); }
 
@@ -187,33 +187,44 @@ export class Crown {
   startle(a = 1) { this.flare = Math.max(this.flare, a); }
   joy() { if (this.shimmer < 0) this.shimmer = 0; }
 
-  // emit strokes into the creature's fluid cluster
+  // emit strokes into the creature's fluid cluster: each ray is a tapering arm of the same gel —
+  // a broad root that melts into the body (so the silhouette is a soft star, never a ball with pins),
+  // a long fine reach, and a dew-pearl at the tip that carries the light
   draw(Rn, C) {
     if (!this.count) return;
     const O = this.O, B = O.B;
-    const mass = B.count;
+    const R = B.r;
     const thorn = this.kind === 'thorns', cilia = this.kind === 'cilia', whip = this.kind === 'whips';
-    const w0 = (thorn ? 3.0 : cilia ? 1.8 : whip ? 3.8 : 2.6) + Math.min(1.8, Math.sqrt(mass) * 0.10), w1 = thorn ? 0.6 : cilia ? 1.1 : 1.45;
+    const w0 = thorn ? 2.6 + R * 0.10 : cilia ? 1.6 + R * 0.03 : whip ? 3.2 + R * 0.09 : 2.4 + R * 0.165;
+    const w1 = thorn ? 0.5 : cilia ? 1.0 : 1.25;
+    const pw = thorn ? 1.25 : whip ? 1.5 : 2.1;                 // how quickly the arm slims
     const veil = O.veil || 0;
+    const SUB = 3;
     for (const r of this.rays) {
       if (r.len < 2.5) continue;
-      const tipGlow = (1.25 + 0.8 * r.glow + (r.mode !== RAY.IDLE ? 0.45 : 0)) * (1 - veil);
-      // Catmull–Rom through the nodes, two strokes per span
+      const busy = r.mode !== RAY.IDLE ? 1 : 0;
+      const tipGlow = (0.95 + 0.9 * r.glow + 0.5 * busy) * (1 - veil);
+      const full = Math.min(1, r.len / 14);                    // a ray being born or furled is slim all along
+      const wr = w1 + (w0 - w1) * full;
+      // the root: a short buried stroke from inside the body out to the first node
+      const ix = B.cx + (r.x[0] - B.cx) * 0.72, iy = B.cy + (r.y[0] - B.cy) * 0.72;
+      Rn.addStroke(C, ix, iy, r.x[0], r.y[0], wr * 1.12, wr, 0.18);
+      // Catmull–Rom through the nodes
+      let lx = r.x[0], ly = r.y[0], lw = wr, lu = 0;
       for (let i = 0; i < NN - 1; i++) {
         const i0 = i > 0 ? i - 1 : 0, i3 = i < NN - 2 ? i + 2 : NN - 1;
-        let lx = r.x[i], ly = r.y[i];
-        for (let s = 1; s <= 2; s++) {
-          const t = s / 2, t2 = t * t, t3 = t2 * t;
+        for (let q = 1; q <= SUB; q++) {
+          const t = q / SUB, t2 = t * t, t3 = t2 * t;
           const x = 0.5 * ((2 * r.x[i]) + (-r.x[i0] + r.x[i + 1]) * t + (2 * r.x[i0] - 5 * r.x[i] + 4 * r.x[i + 1] - r.x[i3]) * t2 + (-r.x[i0] + 3 * r.x[i] - 3 * r.x[i + 1] + r.x[i3]) * t3);
           const y = 0.5 * ((2 * r.y[i]) + (-r.y[i0] + r.y[i + 1]) * t + (2 * r.y[i0] - 5 * r.y[i] + 4 * r.y[i + 1] - r.y[i3]) * t2 + (-r.y[i0] + 3 * r.y[i] - 3 * r.y[i + 1] + r.y[i3]) * t3);
-          const ua = (i + (s - 1) / 2) / (NN - 1), ub = (i + s / 2) / (NN - 1);
-          const wa = w0 + (w1 - w0) * Math.pow(ua, 0.7), wb = w0 + (w1 - w0) * Math.pow(ub, 0.7);
-          Rn.addStroke(C, lx, ly, x, y, wa, wb, 0.55 + (tipGlow - 0.55) * ub);
-          lx = x; ly = y;
+          const u = (i + t) / (NN - 1);
+          const w = w1 + (wr - w1) * Math.pow(1 - u, pw);
+          Rn.addStroke(C, lx, ly, x, y, lw, w, 0.18 + (tipGlow - 0.18) * lu * lu);
+          lx = x; ly = y; lw = w; lu = u;
         }
       }
       // pearl at the tip (a thorn ends in a point instead)
-      if (!thorn) { const tx = r.x[NN - 1], ty = r.y[NN - 1]; const pw = w1 * (cilia ? 1.3 : 2.3) + (r.mode === RAY.CARRY ? 1.2 : 0); Rn.addStroke(C, tx - 0.1, ty, tx + 0.1, ty, pw, pw, tipGlow * 1.7); }
+      if (!thorn) { const pr = w1 * (cilia ? 1.25 : 1.75) + (r.mode === RAY.CARRY ? 1.3 : 0) + 0.6 * r.glow; Rn.addDot(C, r.x[NN - 1], r.y[NN - 1], pr * Math.min(1, r.len / 9), tipGlow * 1.5); }
     }
   }
 }

@@ -11,6 +11,7 @@ import { ENT } from './entities.js';
 import { PROF } from '../render/ink.js';
 import { rng, TAU } from '../core/util.js';
 import { Brain, SPECIES } from '../life/brains.js';
+import { growDecor } from './decor.js';
 
 const MAXP = 4096, MAXB = 512;
 let SHARED = null;      // one solver for the whole session (typed arrays are reused between rooms)
@@ -55,7 +56,7 @@ export class World {
     return this;
   }
   // what the backdrop painter needs
-  roomView() { const s = this.spec; return { W: s.W, H: s.H, sdf: this.sdf, seed: s.seed, pal: s.pal, lights: this.lights, wells: this.wells, decals: [ETCH(this), ...this.ents.filter(e => e.bake)] }; }
+  roomView() { const s = this.spec; if (!this._decor || this._decorFor !== s) { this._decor = growDecor(this, s.pal); this._decorFor = s; } return { W: s.W, H: s.H, sdf: this.sdf, seed: s.seed, pal: s.pal, lights: this.lights, wells: this.wells, decals: [ETCH(this), ...this._decor, ...this.ents.filter(e => e.bake)] }; }
 
   spawn(d) {
     const T = ENT[d.type]; if (!T) { console.warn('unknown entity', d.type); return null; }
@@ -344,7 +345,7 @@ export class World {
         const beat = 0.5 + 0.5 * Math.sin(this.time * (O.focused ? 2.5 : 1.4) + O.id);
         const hs = (O.focused ? 1.0 : 0.6) * (0.85 + 0.25 * beat) + 0.35 * Math.min(1, B.energy || 0) + 0.35 * O.gulp;
         const cl = R.addBody(P, B, { key: 'c' + C.group, look: R.lookFor(B.mat, B.tint), order: C === this.player ? 20 + (O.focused ? 1 : 0) : 10, veil: O.veil, glowBoost: 1 + 0.35 * (B.energy || 0), coarse: !C.isPlayer,
-          heart: O.dormant ? null : [B.cx, B.cy, B.r * 0.72 + 5, hs] });
+          heart: O.dormant ? null : [B.cx - O.facing.x * B.r * 0.08, B.cy - O.facing.y * B.r * 0.08, B.r * 0.34 + 5, hs * 0.85] });
         if (cl) { O.crown.draw(R, cl); if (O.heat < -0.05) { cl.hasMix = true; cl.frost = Math.max(cl.frost || 0, -O.heat); } if (O.heat > 0.05) cl.glowBoost += 0.6 * O.heat; }
       }
     }

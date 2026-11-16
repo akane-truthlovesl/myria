@@ -17,9 +17,9 @@ export const KR = 15;        // particle kernel radius (world units)
 export const ISO = 0.62;     // silhouette threshold
 const FREF = 2.1;            // field value where the rim bevel saturates
 const ISO_H = 0.30;          // the dome rises from a skirt just outside the visible edge → crisp, well-defined rim optics
-const A0 = 0.55, A2 = 0.6, A3 = 0.9;       // dome weights: rim bevel, mid blur, wide blur
+const A0 = 0.50, A2 = 0.55, A3 = 1.0;       // dome weights: rim bevel, mid blur, wide blur
 export const HMAX = A0 + A2 + A3;
-const S2 = 6, S3 = 15;       // blur std-devs (world units)
+const S2 = 7.5, S3 = 16;       // blur std-devs (world units)
 const KAPPA = 9;             // normal tilt per unit dome slope (world units)
 const R0 = 2.0, R1 = 9.0;    // refraction displacement: rim constant + per unit thickness (world units)
 const FOC = 2.4;             // lens focusing strength (world units per unit slope·height)
@@ -29,7 +29,7 @@ const LUTN = 256, MC = 128;
 export const PAD = 34;        // how far beyond the outermost particle the box reaches (silhouette + lightmap + halo)
 
 // tone curve: identity up to the knee (so untouched scene pixels stay bit-exact), soft shoulder above
-const KNEE = 176;
+const KNEE = 200;
 const TONE = new Uint8Array(2048);
 for (let v = 0; v < 2048; v++) TONE[v] = v <= KNEE ? v : Math.min(255, Math.round(KNEE + (255 - KNEE) * (1 - Math.exp(-(v - KNEE) / (255 - KNEE)))));
 const FRES = new Float32Array(257);
@@ -53,13 +53,25 @@ function blurExp(a, gw, gh, alpha, acc) {
   for (let j = gh - 1; j >= 0; j--) { const o = j * gw; for (let i = 0; i < gw; i++) { const v = acc[i] * alpha + a[o + i] * b + TINY; acc[i] = v; a[o + i] = v; } }
 }
 
-// ── sphere-mapped environment: what a wet dome mirrors under the specimen lamp ──
+// ── the studio: what a wet dome mirrors, and how lamp light gathers inside it ──
+// One map indexed by surface slope (L1 mapping), MCH channels per texel:
+//   0..2  the mirrored room (rgb, 0..255·k): a soft window, a strip light, a low kicker and a sky rim.
+//         Highlights are reflections of shaped lights — they slide and stretch with curvature, never painted dots.
+//   3     body gain — how much lamp light reaches the eye through the gel at this tilt (deeper on the lamp side)
+//   4     crescent  — the bright pool where the dome focuses light on its far side (what makes a bead read as glass)
+const MCH = 5;
+const AWAY = [0.55, 0.83];           // direction pointing away from the key lamp, on the plate
+function softBox(rx, ry, cx, cy, ang, hw, hh, soft) {
+  const ca = Math.cos(ang), sa = Math.sin(ang); const x = (rx - cx) * ca + (ry - cy) * sa, y = -(rx - cx) * sa + (ry - cy) * ca;
+  const dx = Math.abs(x) - hw, dy = Math.abs(y) - hh; const ox = dx > 0 ? dx : 0, oy = dy > 0 ? dy : 0;
+  const d = Math.sqrt(ox * ox + oy * oy) + Math.min(Math.max(dx, dy), 0);
+  return sat(0.5 - d / soft);
+}
 const matcapCache = new Map();
-export function matcap(f0, key = [1.0, 0.97, 0.92], sky = [0.50, 0.80, 0.98], warm = [1.0, 0.62, 0.40]) {
+export function matcap(f0, key = [1.0, 0.98, 0.94], sky = [0.62, 0.86, 1.0], warm = [1.0, 0.70, 0.46]) {
   const id = `${f0.toFixed(3)}|${key}|${sky}|${warm}`;
   let m = matcapCache.get(id); if (m) return m;
-  m = new Float32Array(MC * MC * 3);
-  const K = [-0.40, -0.60, 0.69], K2 = [0.52, 0.56, 0.64];
+  m = new Float32Array(MC * MC * MCH);
   const metal = sat((f0 - 0.1) / 0.6);
   for (let j = 0; j < MC; j++) for (let i = 0; i < MC; i++) {
     // texel → slope (L1 mapping: u = s / (1 + |sx| + |sy|)) → unit normal
@@ -70,49 +82,60 @@ export function matcap(f0, key = [1.0, 0.97, 0.92], sky = [0.50, 0.80, 0.98], wa
     else { const sx = ux / (1 - t), sy = uy / (1 - t); const l = 1 / Math.sqrt(sx * sx + sy * sy + 1); nx = sx * l; ny = sy * l; nz = l; }
     const rx = 2 * nz * nx, ry = 2 * nz * ny, rz = 2 * nz * nz - 1;
     const fres = f0 + (1 - f0) * Math.pow(1 - nz, 5);
-    const d1 = Math.max(0, rx * K[0] + ry * K[1] + rz * K[2]);
-    const d2 = Math.max(0, rx * K2[0] + ry * K2[1] + rz * K2[2]);
-    const soft = Math.pow(d1, 7) * 0.30;                 // broad softbox
-    const glint = Math.pow(d1, 150) * 2.6;               // the lamp itself — tiny, travels with curvature
-    const kick = Math.pow(d2, 40) * 0.22;                // faint bounce from below
-    // rim: sky wraps the grazing edge, strongest toward the lamp side
-    const nl = Math.sqrt(nx * nx + ny * ny); const az = nl > 1e-4 ? (nx * -0.55 + ny * -0.83) / nl : 0;
-    const rim = Math.pow(1 - nz, 2.6) * (0.34 + 0.50 * Math.max(0, az) + 0.10 * Math.max(0, -az));
+    const up = sat(rz * 5 + 0.15);                                            // lights hang above the plate
+    // the window: a rounded softbox up-left, a touch brighter toward its far corner, crossed by one slim mullion
+    let win = softBox(rx, ry, -0.40, -0.47, -0.62, 0.25, 0.115, 0.11);
+    win *= 0.80 + 0.45 * sat(0.5 - (rx + 0.40) * 1.2);
+    const strip = softBox(rx, ry, 0.50, -0.42, 0.95, 0.10, 0.03, 0.12) * 0.22;     // a faint hair light, up-right
+    const kick = softBox(rx, ry, 0.36, 0.52, 0.75, 0.22, 0.08, 0.14) * 0.16;       // warm bounce from below
+    const veilLight = Math.pow(sat(1 - Math.hypot(rx + 0.36, ry + 0.44) / 1.05), 2) * 0.10;   // the window's soft spill
+    // rim: sky wraps the grazing edge, strongest toward the lamp
+    const nl = Math.sqrt(nx * nx + ny * ny); const az = nl > 1e-4 ? (nx * -AWAY[0] + ny * -AWAY[1]) / nl : 0;
+    const rim = Math.pow(1 - nz, 2.5) * (0.30 + 0.62 * Math.max(0, az) + 0.16 * Math.max(0, -az));
     // metals mirror a whole room: horizon band + dark floor
-    const up = -ry; const horizon = Math.exp(-Math.pow((up - 0.05) * 5, 2));
-    const room = (0.16 + 0.5 * sat(up * 0.9 + 0.35) + 0.6 * horizon) * metal;
-    const o = (j * MC + i) * 3;
+    const upv = -ry; const horizon = Math.exp(-Math.pow((upv - 0.05) * 5, 2));
+    const room = (0.16 + 0.5 * sat(upv * 0.9 + 0.35) + 0.6 * horizon) * metal;
+    const o = (j * MC + i) * MCH;
+    const gk = 0.30 + fres * 2.4;
     for (let c = 0; c < 3; c++) {
-      const v = key[c] * (soft * (0.25 + fres * 2.2) + glint * (0.22 + fres) + room * fres)
-        + sky[c] * rim * (0.75 + metal)
-        + warm[c] * kick * (0.3 + fres);
+      const v = key[c] * ((win * 2.5 + strip * 2.0 + veilLight) * up * gk + room * fres)
+        + sky[c] * rim * (0.85 + metal)
+        + warm[c] * kick * up * gk * 2.0;
       m[o + c] = v * 255;
     }
+    const tt = nx * AWAY[0] + ny * AWAY[1];                                   // + = this facet looks away from the lamp
+    const far = sat(tt / 0.8), near = sat(-tt / 0.8);
+    m[o + 3] = 0.80 - 0.34 * near * near * (3 - 2 * near) + 0.22 * far;
+    const cq = sat((tt - 0.16) / 0.62); m[o + 4] = cq * cq * (3 - 2 * cq) * (1 - 0.35 * Math.pow(1 - nz, 3));
   }
   matcapCache.set(id, m);
   return m;
 }
 
-// ── a Look is a material's optics baked into lookup tables ───────────────────
-// absorb/emit: base pigment · absorbB/emitB: foreign pigment mixed in by the per-particle `mix`
+// ── a Look is a material's optics baked into lookup tables over dome thickness ──
+//   emit   body colour (what the gel scatters back) · absorb  what it removes from light passing through
+//   lit    the colour of light that has travelled through it (the crescent) · hot  its inner fire
+// absorbB/emitB: a foreign pigment mixed in by the per-particle `mix`
 export function makeLook(o) {
   const L = {
     absorb: o.absorb, emit: o.emit, glow: o.glow ?? 0.55, f0: o.f0 ?? 0.045, clarity: o.clarity ?? 1, bulge: o.bulge ?? 1, halo: o.halo ?? 0.5,
-    absorbB: o.absorbB || o.absorb, emitB: o.emitB || o.emit, scat: o.scat ?? 0.10, hot: o.hot || null,
+    absorbB: o.absorbB || o.absorb, emitB: o.emitB || o.emit, scat: o.scat ?? 0.10, hot: o.hot || null, lit: o.lit || null, dens: o.dens ?? 0.95,
   };
-  const hotOf = (em) => L.hot || [em[0] + (1.0 - em[0]) * 0.55, em[1] + (0.93 - em[1]) * 0.55, em[2] + (0.74 - em[2]) * 0.55];
-  L.TL = new Float32Array(LUTN * 3); L.AL = new Float32Array(LUTN * 3); L.GL = new Float32Array(LUTN * 3);
-  L.TLB = new Float32Array(LUTN * 3); L.ALB = new Float32Array(LUTN * 3); L.GLB = new Float32Array(LUTN * 3);
+  const hotOf = (em) => L.hot || [em[0] + (1.0 - em[0]) * 0.62, em[1] + (0.94 - em[1]) * 0.62, em[2] + (0.80 - em[2]) * 0.62];
+  const litOf = (em) => (L.lit && em === L.emit ? L.lit : [em[0] + (1.0 - em[0]) * 0.50, em[1] + (0.90 - em[1]) * 0.50, em[2] + (0.62 - em[2]) * 0.42]);
+  const N = LUTN * 3; const F = () => new Float32Array(N);
+  L.TL = F(); L.SL = F(); L.CL = F(); L.GL = F(); L.TLB = F(); L.SLB = F(); L.CLB = F(); L.GLB = F();
+  const bodyK = 0.42 + 0.78 * L.glow, cresK = 0.30 + 0.70 * L.glow;
   for (let t = 0; t < LUTN; t++) {
     const h = t / (LUTN - 1) * HMAX * 1.25;
-    const e = 1 - Math.exp(-h * 0.62);            // emission / in-scatter accumulates with depth…
-    const e2 = 1 - Math.exp(-h * 1.0);
+    const pig = 1 - Math.exp(-Math.pow(h * L.dens, 1.35));       // pigment gathers in the body; the skirt stays clear
+    const e2 = 1 - Math.exp(-h * 1.3);
     for (let c = 0; c < 3; c++) {
-      for (const [ab, em, T, A, G] of [[L.absorb, L.emit, L.TL, L.AL, L.GL], [L.absorbB, L.emitB, L.TLB, L.ALB, L.GLB]]) {
-        const self = Math.exp(-ab[c] * h * 0.30);  // …and is filtered by the pigment on the way out
-        T[t * 3 + c] = Math.exp(-ab[c] * h);
-        A[t * 3 + c] = em[c] * (L.glow * e * self + L.scat * e2) * 255 * 0.86;
-        G[t * 3 + c] = (em[c] + (hotOf(em)[c] - em[c]) * e2) * (0.50 + 0.50 * e2) * 255;
+      for (const [ab, em, T, S, C, G] of [[L.absorb, L.emit, L.TL, L.SL, L.CL, L.GL], [L.absorbB, L.emitB, L.TLB, L.SLB, L.CLB, L.GLB]]) {
+        T[t * 3 + c] = Math.exp(-ab[c] * h * 0.9);
+        S[t * 3 + c] = em[c] * (pig + 0.22 * (1 - pig) * (1 - Math.exp(-h * 5))) * Math.exp(-ab[c] * h * 0.20) * 255 * bodyK;       // deepens (and shifts hue) where thick
+        C[t * 3 + c] = litOf(em)[c] * (0.25 + 0.75 * pig) * (1 - Math.exp(-h * 2.2)) * 255 * cresK;
+        G[t * 3 + c] = hotOf(em)[c] * (0.30 + 0.70 * e2) * 255;        // inner fire shows even in a hair-thin tip
       }
     }
   }
@@ -122,9 +145,7 @@ export function makeLook(o) {
   return L;
 }
 
-// per-node shading vector layout (interleaved for cache locality)
 const now = () => (globalThis.__cpuNow ? globalThis.__cpuNow() : performance.now());
-const SV = 16, OX = 0, OY = 1, TR = 2, TG = 3, TB = 4, KR_ = 5, KG = 6, KB = 7, HL = 8, PS = 9, PC = 10, PH = 11, RK = 12;
 const HL0 = 42, HL1 = 2.1;        // halo: fog glow + light caught by rims and grid lines (reflectance map)
 
 // one kernel stamp into the density field (+ glow, + pigment)
@@ -141,13 +162,14 @@ function stamp(F, G, Mx, gw, gh, cx, cy, R, amp, gl, mx, hasMix) {
   }
 }
 
+const DBG = +(globalThis.process && globalThis.process.env && globalThis.process.env.FDBG || 0);
 export class Fluid {
   constructor() {
     this.cell = 2;            // field lattice pitch in framebuffer pixels (chosen per frame from the zoom)
     this.cellOverride = 0;
     this.ncap = 0; this.pcap = 0; this.wcap = 0; this.hcap = 0;
     this.stats = { px: 0, plate: 0, nodes: 0, clusters: 0, tSplat: 0, tDome: 0, tShade: 0 };
-    this.away = [0.55, 0.83];  // direction pointing away from the key lamp (on the plate)
+    this.away = AWAY;           // direction pointing away from the key lamp (on the plate)
     this.g = { X0: 0, Y0: 0, X1: 0, Y1: 0, rw: 0, rh: 0, gw: 0, gh: 0, nn: 0, c: 2, zc: 1, amin: 0, amax: 0, jmin: 0, jmax: 0, cx0: 0, cx1: 0, cy0: 0, cy1: 0, shaded: 0, plate: 0 };
   }
   setZoom(z) { this.cell = this.cellOverride || Math.max(1, Math.min(4, Math.round(KR * z / 6.5))); }
@@ -157,7 +179,7 @@ export class Fluid {
       const n = this.ncap = Math.ceil(nodes * 1.5);
       const F = () => new Float32Array(n);
       this.F = F(); this.G = F(); this.Mx = F(); this.D2 = F(); this.D3 = F(); this.Hh = F(); this.Hx = F(); this.Hy = F(); this.Lm = F(); this.Ha = F();
-      this.sv = new Float32Array(n * SV); this.cls = new Uint8Array(n); this.nmk = new Uint8Array(n);
+      this.Ps = F(); this.Pc = F(); this.cls = new Uint8Array(n); this.nmk = new Uint8Array(n);
     }
     if (pix > this.pcap) { this.pcap = Math.ceil(pix * 1.5); this.scn = new Uint32Array(this.pcap); }
     if (gw + 4 > this.wcap) { this.wcap = gw * 2 + 8; this.acc = new Float32Array(this.wcap); }
@@ -187,10 +209,10 @@ export class Fluid {
     this._dome(bulge, !!C.hasMix);
     this._light(L.halo * glowBoost * (1 - 0.95 * veil));
     if (!this._classify(L)) return;
-    this._nodes(L, z, veil, glowBoost, !!C.hasMix, C.frost || 0);
+    this._nodes(veil);
     const T2 = now();
     this._copy(fb, z, bulge);
-    this._shade(fb, L, z);
+    this._shade(fb, L, z, { veil, glowBoost, hasMix: !!C.hasMix, frost: C.frost || 0 });
     const T3 = now();
     const S = this.stats; S.px += g.shaded; S.plate += g.plate; S.nodes += g.nn; S.clusters++; S.tSplat += T1 - T0; S.tDome += T2 - T1; S.tShade += T3 - T2;
   }
@@ -235,7 +257,9 @@ export class Fluid {
     }
   }
 
-  // ── 2. dome: rim bevel straight from the field, body from two blurs of the coverage ──
+  // ── 2. dome: a crisp rim bevel straight from the field, a body from two wide blurs of the coverage.
+  //       Every term eases in with zero slope except at the true rim, so the surface has no creases
+  //       (creases would show as rings in every reflection). ──
   _dome(bulge, hasMix) {
     const g = this.g, { F, G, Mx, D2, D3, Hh, acc } = this; const nn = g.nn, gw = g.gw, gh = g.gh, zc = g.zc;
     const invRef = 1 / (FREF - ISO_H);
@@ -249,9 +273,9 @@ export class Fluid {
     blurExp(D3, gw, gh, alphaFor(Math.sqrt(S3 * S3 - S2 * S2) * zc), acc);
     for (let k = 0; k < nn; k++) {
       if (F[k] > ISO_H) {
-        let u2 = 2 * D2[k] - 0.72; u2 = u2 < 0 ? 0 : u2 > 1 ? 1 : u2;
-        let u3 = 2 * D3[k] - 0.72; u3 = u3 < 0 ? 0 : u3 > 1 ? 1 : u3;
-        Hh[k] = (Hh[k] + A2 * Math.sqrt(u2 * (2 - u2)) + A3 * Math.sqrt(u3 * (2 - u3))) * bulge;
+        let u2 = (D2[k] - 0.20) * 1.25; u2 = u2 < 0 ? 0 : u2 > 1 ? 1 : u2;
+        let u3 = (D3[k] - 0.22) * 1.2821; u3 = u3 < 0 ? 0 : u3 > 1 ? 1 : u3;
+        Hh[k] = (Hh[k] + A2 * u2 * u2 * (3 - 2 * u2) + A3 * u3 * u3 * (3 - 2 * u3)) * bulge;
       } else Hh[k] = 0;
     }
   }
@@ -317,48 +341,15 @@ export class Fluid {
     return jmin >= 0;
   }
 
-  // ── 5. shading vector per lattice node (interpolated per pixel afterwards) ──
-  _nodes(L, z, veil, glowBoost, hasMix, frostK) {
-    const g = this.g, { G, Mx, Hh, Hx, Hy, Lm, Ha, sv, nmk } = this; const gw = g.gw, gh = g.gh, invc = 1 / g.c;
-    const TL = L.TL, AL = L.AL, GL = L.GL, TLB = L.TLB, ALB = L.ALB, GLB = L.GLB;
-    const hs = (LUTN - 1) / (HMAX * 1.25);
-    const reflK = 1 - 0.85 * veil, glowK = glowBoost * (1 - 0.9 * veil), bodyK = 1 - 0.75 * veil;
-    const SHK = 0.55 * (1 - 0.6 * veil), CK = 44 * (1 - 0.8 * veil);
-    const car = L.caust[0], cag = L.caust[1], cab = L.caust[2];
-    const rz0 = R0 * z, rz1 = R1 * z, half = 0.5 * invc;
+  // ── 5. what the plate receives at each lattice node: shadow factor and caustic light ──
+  _nodes(veil) {
+    const g = this.g, { Lm, Ps, Pc, nmk } = this; const gw = g.gw;
+    const SHK = 0.50 * (1 - 0.6 * veil), CK = 40 * (1 - 0.8 * veil);
     for (let j = g.jmin; j <= g.jmax + 1; j++) {
       const o = j * gw;
       for (let i = g.amin; i <= g.amax + 1; i++) {
-        const k = o + i; const mk = nmk[k]; if (!mk) continue;
-        const q = k * SV; const lm = Lm[k];
-        sv[q + PS] = lm < 0 ? (lm < -1 ? 1 - SHK : 1 + lm * SHK) : 1; sv[q + PC] = lm > 0 ? (lm > 3 ? 3 : lm) * CK : 0; sv[q + PH] = Ha[k];
-        if (mk < 2) continue;
-        const hh = Hh[k], sx = Hx[k], sy = Hy[k];
-        const inv = 1 / Math.sqrt(sx * sx + sy * sy + 1);
-        const m = hh > 0 ? rz0 + rz1 * hh : 0;            // refraction: the dome magnifies — look toward the centre, more where thick
-        const ofx = -sx * inv * m, ofy = -sy * inv * m;
-        let lx = (i + ofx * invc + half) | 0, ly = (j + ofy * invc + half) | 0;      // where the bent ray lands on the plate
-        if (lx < 0) lx = 0; else if (lx > gw - 1) lx = gw - 1; if (ly < 0) ly = 0; else if (ly > gh - 1) ly = gh - 1;
-        const lk = ly * gw + lx; const lm2 = Lm[lk];
-        const s2 = lm2 < 0 ? (lm2 < -1 ? 1 - SHK : 1 + lm2 * SHK) : 1, c2 = lm2 > 0 ? (lm2 > 3 ? 3 : lm2) * CK : 0;
-        let ti = (hh * hs) | 0; if (ti > LUTN - 1) ti = LUTN - 1; ti *= 3;       // Beer–Lambert + volumetric emission
-        const gl = G[k] * glowK;
-        let tr = TL[ti], tg = TL[ti + 1], tb = TL[ti + 2];
-        let ar = AL[ti] * bodyK + GL[ti] * gl, ag = AL[ti + 1] * bodyK + GL[ti + 1] * gl, ab = AL[ti + 2] * bodyK + GL[ti + 2] * gl;
-        if (hasMix) {
-          let mxv = Mx[k]; if (mxv < frostK) mxv = frostK; mxv = mxv < 0 ? 0 : mxv > 1 ? 1 : mxv;
-          if (mxv > 0.01) {
-            tr += (TLB[ti] - tr) * mxv; tg += (TLB[ti + 1] - tg) * mxv; tb += (TLB[ti + 2] - tb) * mxv;
-            ar += (ALB[ti] * bodyK + GLB[ti] * gl - ar) * mxv; ag += (ALB[ti + 1] * bodyK + GLB[ti + 1] * gl - ag) * mxv; ab += (ALB[ti + 2] * bodyK + GLB[ti + 2] * gl - ab) * mxv;
-          }
-        }
-        const fr = 1 - FRES[(inv * 256) | 0] * 0.55;      // grazing rays reflect instead of transmitting
-        tr *= fr; tg *= fr; tb *= fr;
-        sv[q + OX] = ofx; sv[q + OY] = ofy;
-        sv[q + TR] = tr * s2; sv[q + TG] = tg * s2; sv[q + TB] = tb * s2;
-        sv[q + KR_] = car * c2 * tr + ar; sv[q + KG] = cag * c2 * tg + ag; sv[q + KB] = cab * c2 * tb + ab;
-        sv[q + HL] = Ha[lk];
-        let rk = 0.22 + hh * 1.5; if (rk > 1) rk = 1; sv[q + RK] = rk * reflK;
+        const k = o + i; if (!nmk[k]) continue; const lm = Lm[k];
+        Ps[k] = lm < 0 ? (lm < -1 ? 1 - SHK : 1 + lm * SHK) : 1; Pc[k] = lm > 0 ? (lm > 3 ? 3 : lm) * CK : 0;
       }
     }
   }
@@ -374,12 +365,18 @@ export class Fluid {
     g.cx0 = cx0; g.cx1 = cx1; g.cy0 = cy0; g.cy1 = cy1;
   }
 
-  // ── 7. per-pixel optics: shading vectors interpolated across each lattice cell ──
-  _shade(fb, L, z) {
-    const g = this.g, { F, Hx, Hy, sv, cls, scn, rmin, rmax } = this;
+  // ── 7. per-pixel optics. Six smooth quantities are interpolated across each lattice cell
+  //       (field, height, slope, inner glow, pigment); everything else is looked up per pixel:
+  //       refraction with dispersion → Beer–Lambert → in-scatter shaped by the studio → mirrored room. ──
+  _shade(fb, L, z, o) {
+    const g = this.g, { F, Hh, Hx, Hy, G, Mx, Ps, Pc, Ha, cls, scn, rmin, rmax } = this;
     const c = g.c, invc = 1 / c, gw = g.gw, rw = g.rw, rh = g.rh, X0 = g.X0, Y0 = g.Y0, W = fb.w;
     const fpx = fb.px, refl = fb.refl, mc = L.mc;
+    const TL = L.TL, SL = L.SL, CL = L.CL, GL = L.GL, TLB = L.TLB, SLB = L.SLB, CLB = L.CLB, GLB = L.GLB;
     const er = L.emit[0], eg = L.emit[1], eb = L.emit[2], car = L.caust[0], cag = L.caust[1], cab = L.caust[2];
+    const veil = o.veil, hasMix = o.hasMix, frostK = o.frost;
+    const reflK = 1 - 0.85 * veil, glowK = o.glowBoost * (1 - 0.9 * veil), bodyK = 1 - 0.80 * veil, clearK = 0.85 * veil;
+    const hs = (LUTN - 1) / (HMAX * 1.25), rz0 = R0 * z, rz1 = R1 * z;
     const frost = (1 - L.clarity) * 5 * z, mch = (MC - 1) * 0.5;
     const xlo = g.cx0, xhi = g.cx1 - 1, ylo = g.cy0, yhi = g.cy1 - 1;
     let shaded = 0, plate = 0;
@@ -389,10 +386,10 @@ export class Fluid {
       for (let i0 = rmin[j0], ie = rmax[j0]; i0 <= ie; i0++) {
         const k = ro + i0; const cl = cls[k]; if (cl === 0) continue;
         const xb = i0 * c, xe = xb + c < rw ? xb + c : rw;
-        const q00 = k * SV, q10 = q00 + SV, q01 = q00 + gw * SV, q11 = q01 + SV;
-        const s00 = sv[q00 + PS], s10 = sv[q10 + PS], s01 = sv[q01 + PS], s11 = sv[q11 + PS];
-        const c00 = sv[q00 + PC], c10 = sv[q10 + PC], c01 = sv[q01 + PC], c11 = sv[q11 + PC];
-        const a00 = sv[q00 + PH], a10 = sv[q10 + PH], a01 = sv[q01 + PH], a11 = sv[q11 + PH];
+        const k10 = k + 1, k01 = k + gw, k11 = k01 + 1;
+        const s00 = Ps[k], s10 = Ps[k10], s01 = Ps[k01], s11 = Ps[k11];
+        const c00 = Pc[k], c10 = Pc[k10], c01 = Pc[k01], c11 = Pc[k11];
+        const a00 = Ha[k], a10 = Ha[k10], a01 = Ha[k01], a11 = Ha[k11];
         if (cl === 1) {
           for (let y = yb; y < ye; y++) {
             const by = (y - yb) * invc; const so = y * rw, fo = (Y0 + y) * W + X0;
@@ -409,7 +406,7 @@ export class Fluid {
           plate += (ye - yb) * (xe - xb);
           continue;
         }
-        const f00 = F[k], f10 = F[k + 1], f01 = F[k + gw], f11 = F[k + gw + 1];
+        const f00 = F[k], f10 = F[k10], f01 = F[k01], f11 = F[k11];
         let fmin = f00, fmax = f00;
         if (f10 < fmin) fmin = f10; else if (f10 > fmax) fmax = f10;
         if (f01 < fmin) fmin = f01; else if (f01 > fmax) fmax = f01;
@@ -418,28 +415,23 @@ export class Fluid {
         // analytic edge: coverage from the field value over its (cell-constant) gradient
         const gfx = (f10 - f00 + f11 - f01) * 0.5 * invc, gfy = (f01 - f00 + f11 - f10) * 0.5 * invc;
         const icg = 1 / ((Math.sqrt(gfx * gfx + gfy * gfy) + 1e-5) * 1.5);
-        const hx00 = Hx[k], hx10 = Hx[k + 1], hx01 = Hx[k + gw], hx11 = Hx[k + gw + 1];
-        const hy00 = Hy[k], hy10 = Hy[k + 1], hy01 = Hy[k + gw], hy11 = Hy[k + gw + 1];
+        const h00 = Hh[k], h10 = Hh[k10], h01 = Hh[k01], h11 = Hh[k11];
+        const hx00 = Hx[k], hx10 = Hx[k10], hx01 = Hx[k01], hx11 = Hx[k11];
+        const hy00 = Hy[k], hy10 = Hy[k10], hy01 = Hy[k01], hy11 = Hy[k11];
+        const g00 = G[k], g10 = G[k10], g01 = G[k01], g11 = G[k11];
+        let m00 = 0, m10 = 0, m01 = 0, m11 = 0; if (hasMix) { m00 = Mx[k]; m10 = Mx[k10]; m01 = Mx[k01]; m11 = Mx[k11]; }
         for (let y = yb; y < ye; y++) {
           const by = (y - yb) * invc; const so = y * rw, fo = (Y0 + y) * W + X0;
-          let v;
-          v = sv[q00 + OX]; let ofx = v + (sv[q01 + OX] - v) * by; v = sv[q10 + OX]; const dox = (v + (sv[q11 + OX] - v) * by - ofx) * invc;
-          v = sv[q00 + OY]; let ofy = v + (sv[q01 + OY] - v) * by; v = sv[q10 + OY]; const doy = (v + (sv[q11 + OY] - v) * by - ofy) * invc;
-          v = sv[q00 + TR]; let tr = v + (sv[q01 + TR] - v) * by; v = sv[q10 + TR]; const dtr = (v + (sv[q11 + TR] - v) * by - tr) * invc;
-          v = sv[q00 + TG]; let tg = v + (sv[q01 + TG] - v) * by; v = sv[q10 + TG]; const dtg = (v + (sv[q11 + TG] - v) * by - tg) * invc;
-          v = sv[q00 + TB]; let tb = v + (sv[q01 + TB] - v) * by; v = sv[q10 + TB]; const dtb = (v + (sv[q11 + TB] - v) * by - tb) * invc;
-          v = sv[q00 + KR_]; let kr = v + (sv[q01 + KR_] - v) * by; v = sv[q10 + KR_]; const dkr = (v + (sv[q11 + KR_] - v) * by - kr) * invc;
-          v = sv[q00 + KG]; let kg = v + (sv[q01 + KG] - v) * by; v = sv[q10 + KG]; const dkg = (v + (sv[q11 + KG] - v) * by - kg) * invc;
-          v = sv[q00 + KB]; let kb = v + (sv[q01 + KB] - v) * by; v = sv[q10 + KB]; const dkb = (v + (sv[q11 + KB] - v) * by - kb) * invc;
-          v = sv[q00 + HL]; let h2 = v + (sv[q01 + HL] - v) * by; v = sv[q10 + HL]; const dh2 = (v + (sv[q11 + HL] - v) * by - h2) * invc;
-          v = sv[q00 + RK]; let rk = v + (sv[q01 + RK] - v) * by; v = sv[q10 + RK]; const drk = (v + (sv[q11 + RK] - v) * by - rk) * invc;
+          let f = f00 + (f01 - f00) * by; const df = (f10 + (f11 - f10) * by - f) * invc;
+          let h = h00 + (h01 - h00) * by; const dhh = (h10 + (h11 - h10) * by - h) * invc;
           let sx = hx00 + (hx01 - hx00) * by; const dsx = (hx10 + (hx11 - hx10) * by - sx) * invc;
           let sy = hy00 + (hy01 - hy00) * by; const dsy = (hy10 + (hy11 - hy10) * by - sy) * invc;
-          let f = f00 + (f01 - f00) * by; const df = (f10 + (f11 - f10) * by - f) * invc;
+          let gl = g00 + (g01 - g00) * by; const dgl = (g10 + (g11 - g10) * by - gl) * invc;
+          let mx = m00 + (m01 - m00) * by; const dmx = (m10 + (m11 - m10) * by - mx) * invc;
           let s = s00 + (s01 - s00) * by; const ds = (s10 + (s11 - s10) * by - s) * invc;
           let cc = c00 + (c01 - c00) * by; const dc = (c10 + (c11 - c10) * by - cc) * invc;
           let ha = a00 + (a01 - a00) * by; const dh = (a10 + (a11 - a10) * by - ha) * invc;
-          for (let x = xb; x < xe; x++, ofx += dox, ofy += doy, tr += dtr, tg += dtg, tb += dtb, kr += dkr, kg += dkg, kb += dkb, h2 += dh2, rk += drk, sx += dsx, sy += dsy, f += df, s += ds, cc += dc, ha += dh) {
+          for (let x = xb; x < xe; x++, f += df, h += dhh, sx += dsx, sy += dsy, gl += dgl, mx += dmx, s += ds, cc += dc, ha += dh) {
             let cov = 1;
             if (!interior) {
               cov = 0.5 + (f - ISO) * icg;
@@ -451,24 +443,42 @@ export class Fluid {
               }
               if (cov > 1) cov = 1;
             }
+            // refraction: the dome magnifies — look toward the centre, more where thick
+            const inv = 1 / Math.sqrt(sx * sx + sy * sy + 1);
+            const hh = h > 0 ? h : 0;
+            const m = (rz0 + rz1 * hh) * inv; const ofx = -sx * m, ofy = -sy * m;
             let fx = x + ofx + 0.5, fy = y + ofy + 0.5;
             if (frost > 0) { const hsh = (Math.imul(x + X0, 374761393) + Math.imul(y + Y0, 668265263)) >>> 0; fx += ((hsh & 255) / 255 - 0.5) * frost; fy += (((hsh >> 8) & 255) / 255 - 0.5) * frost; }
             let xs = fx | 0, ys = fy | 0;
             if (xs < xlo) xs = xlo; else if (xs > xhi) xs = xhi; if (ys < ylo) ys = ylo; else if (ys > yhi) ys = yhi;
             const ps = scn[ys * rw + xs];
             let r = ps & 255, gg = (ps >> 8) & 255, b = (ps >> 16) & 255;
-            if (ofx * ofx + ofy * ofy > 6) {          // chromatic dispersion where the bend is strong
-              let xr = (x + ofx * 0.86 + 0.5) | 0, yr = (y + ofy * 0.86 + 0.5) | 0, xq = (x + ofx * 1.16 + 0.5) | 0, yq = (y + ofy * 1.16 + 0.5) | 0;
+            if (ofx * ofx + ofy * ofy > 5) {          // chromatic dispersion where the bend is strong
+              let xr = (x + ofx * 0.84 + 0.5) | 0, yr = (y + ofy * 0.84 + 0.5) | 0, xq = (x + ofx * 1.18 + 0.5) | 0, yq = (y + ofy * 1.18 + 0.5) | 0;
               if (xr < xlo) xr = xlo; else if (xr > xhi) xr = xhi; if (yr < ylo) yr = ylo; else if (yr > yhi) yr = yhi;
               if (xq < xlo) xq = xlo; else if (xq > xhi) xq = xhi; if (yq < ylo) yq = ylo; else if (yq > yhi) yq = yhi;
               r = scn[yr * rw + xr] & 255; b = (scn[yq * rw + xq] >> 16) & 255;
             }
-            const hv = h2 * (HL0 + HL1 * refl[(Y0 + ys) * W + X0 + xs]);
-            r = (r + er * hv) * tr + kr; gg = (gg + eg * hv) * tg + kg; b = (b + eb * hv) * tb + kb;
-            // mirrored environment, indexed by the per-pixel slope (L1 map: one divide, no sqrt)
+            const hv = ha * (HL0 + HL1 * refl[(Y0 + ys) * W + X0 + xs]);
+            // the studio, indexed by slope (L1 map: one divide, no sqrt)
             const iu = mch / (1 + (sx < 0 ? -sx : sx) + (sy < 0 ? -sy : sy));
-            const mi = (((sy * iu + mch) | 0) * MC + ((sx * iu + mch) | 0)) * 3;
-            r += mc[mi] * rk; gg += mc[mi + 1] * rk; b += mc[mi + 2] * rk;
+            const mi = (((sy * iu + mch) | 0) * MC + ((sx * iu + mch) | 0)) * MCH;
+            let ti = (hh * hs) | 0; if (ti > LUTN - 1) ti = LUTN - 1; ti *= 3;
+            const fr = 1 - FRES[(inv * 256) | 0] * 0.55;              // grazing rays reflect instead of transmitting
+            const ga = mc[mi + 3] * bodyK, cq = mc[mi + 4] * bodyK, gk = gl * glowK;
+            let tr = TL[ti], tg = TL[ti + 1], tb = TL[ti + 2];
+            let ar = SL[ti] * ga + CL[ti] * cq + GL[ti] * gk, ag = SL[ti + 1] * ga + CL[ti + 1] * cq + GL[ti + 1] * gk, ab = SL[ti + 2] * ga + CL[ti + 2] * cq + GL[ti + 2] * gk;
+            if (hasMix) {
+              let mxv = mx < frostK ? frostK : mx; if (mxv > 1) mxv = 1;
+              if (mxv > 0.01) {
+                tr += (TLB[ti] - tr) * mxv; tg += (TLB[ti + 1] - tg) * mxv; tb += (TLB[ti + 2] - tb) * mxv;
+                ar += (SLB[ti] * ga + CLB[ti] * cq + GLB[ti] * gk - ar) * mxv; ag += (SLB[ti + 1] * ga + CLB[ti + 1] * cq + GLB[ti + 1] * gk - ag) * mxv; ab += (SLB[ti + 2] * ga + CLB[ti + 2] * cq + GLB[ti + 2] * gk - ab) * mxv;
+              }
+            }
+            if (clearK > 0) { tr += (1 - tr) * clearK; tg += (1 - tg) * clearK; tb += (1 - tb) * clearK; }
+            let rk = 0.10 + hh * 1.25; if (rk > 1) rk = 1; rk *= reflK;      // a hair-thin film mirrors little: tendrils stay gel, not chrome
+            r = (r + er * hv) * tr * fr + ar + mc[mi] * rk; gg = (gg + eg * hv) * tg * fr + ag + mc[mi + 1] * rk; b = (b + eb * hv) * tb * fr + ab + mc[mi + 2] * rk;
+            if (DBG) { if (DBG === 1) { r = gg = b = hh * 110; } else if (DBG === 2) { r = ar; gg = ag; b = ab; } else if (DBG === 3) { r = mc[mi] * rk; gg = mc[mi + 1] * rk; b = mc[mi + 2] * rk; } else if (DBG === 4) { r = (ps & 255) * tr * fr; gg = ((ps >> 8) & 255) * tg * fr; b = ((ps >> 16) & 255) * tb * fr; } else if (DBG === 5) { r = SL[ti] * ga; gg = CL[ti] * cq; b = GL[ti] * gk; } }
             if (cov < 1) {
               const p0 = scn[so + x]; const hv0 = ha * (HL0 + HL1 * refl[fo + x]);
               const br = (p0 & 255) * s + car * cc + er * hv0, bg = ((p0 >> 8) & 255) * s + cag * cc + eg * hv0, bb = ((p0 >> 16) & 255) * s + cab * cc + eb * hv0;

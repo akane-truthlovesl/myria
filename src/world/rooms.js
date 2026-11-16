@@ -7,7 +7,7 @@ import { SURF } from '../sim/materials.js';
 import { rng, TAU, clamp } from '../core/util.js';
 import { moteTrail, moteRing } from './entities.js';
 
-export const ROOM_AREA = 0.80e6;
+export const ROOM_AREA = 0.56e6;
 export function frame(aspect, area = ROOM_AREA) { const a = clamp(aspect, 0.56, 1.9); const W = Math.round(Math.sqrt(area * a)); return { W, H: Math.round(W / a), a }; }
 
 // the dish itself: a rounded basin carved from solid glass-stone, with an organically wobbling rim
