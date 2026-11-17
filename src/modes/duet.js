@@ -204,7 +204,8 @@ export class Duet {
     this.real = [W.player.tint, TINT2];
     const crowd = [];
     for (let k = 0; k < CROWD; k++) { const p = this.places[2 + k]; if (!p) break; const S = new Colony(W, 20 + k, { tint: MASK, crown: 'sun', isPlayer: true }); S.spawn(p.x, p.y, MASS_M); S.stranger = true; W.colonies.push(S); crowd.push({ C: S, g: new Gait() }); }
-    for (const C of W.colonies) { C.tint = MASK; for (const O of C.orgs) { O.B.tint = MASK; O.speedMul = PACE; O.dormant = true; } }
+    // (and everyone's feelers reach half as far: a light is eaten by walking to it, not by standing near where it fell)
+    for (const C of W.colonies) { C.tint = MASK; for (const O of C.orgs) { O.B.tint = MASK; O.speedMul = PACE; O.reachK = 0.5; O.dormant = true; } }
     this.st = { crowd, eats: [0, 0], strike: [null, null], shown: [0, 0], wrongs: [0, 0], why: '' };
   }
   // (the stick ring would point at you — but only another person could read it: against the machine it stays)
@@ -248,6 +249,7 @@ export class Duet {
     const W = this.app.world; if (this.over || !this.p2 || this.game.id !== 'masks') return;
     this.app.sound.mote(m.x / W.spec.W * 1.6 - 0.8, 0); for (const b of [this.brain, this.bot1]) if (b) b.saw('eat', O.colony, O);
     if (O.colony) O.colony.pearls = (O.colony.pearls || 0) + 1;          // (what anyone eats stays in them, a pearl for everyone to see)
+    const q = this.st.crowd.find(c => c.C === O.colony); if (q) q.g.sated = 6 + Math.random() * 8;          // a stranger rests after a meal (the one that keeps eating is no stranger)
     const k = O.colony === W.player ? 0 : O.colony === this.p2 ? 1 : -1; if (k < 0) return;
     if (++this.st.eats[k] >= FEED) { this.st.why = 'fed'; this.finish(k + 1); if (k === 0 && (this.ai || !this.app.bot)) this.unseen(); }
   }
@@ -379,7 +381,7 @@ function scatter(W, H, m, r, reeds, n) {
 //    gently curving line, stops there to look about, and goes on; a light within its appetite turns it aside; it keeps a little
 //    room from the others and from the rim, and now and then it starts at nothing ──
 class Gait {
-  constructor() { this.s = Math.random() < 0.55 ? 'pause' : 'walk'; this.t = Math.random() * 1.4; this.h = Math.random() * TAU; this.v = 0; this.vt = 0.7; this.ph = Math.random() * TAU; this.tw = 5 + Math.random() * 18; this.out = { x: 0, y: 0, dart: null }; this.app = 110 + Math.random() * 160; this.to = null; }      // (app: how far a light tempts this one — some are gluttons, some barely look)
+  constructor() { this.s = Math.random() < 0.55 ? 'pause' : 'walk'; this.t = Math.random() * 1.4; this.h = Math.random() * TAU; this.v = 0; this.vt = 0.7; this.ph = Math.random() * TAU; this.tw = 5 + Math.random() * 18; this.out = { x: 0, y: 0, dart: null }; this.app = 90 + Math.random() * 130; this.to = null; }      // (app: how far a light tempts this one — some are gluttons, some barely look)
   startle(B, from) { if (!from || !from.alive) return; this.h = Math.atan2(B.cy - from.B.cy, B.cx - from.B.cx); this.s = 'walk'; this.t = 1 + Math.random(); this.vt = 0.95; this.v = 0.9; this.to = { x: B.cx + Math.cos(this.h) * 220, y: B.cy + Math.sin(this.h) * 220 }; }
   // somewhere to stroll to: of three open places a few steps away, the one fewest others are near
   pick(W, B, others) {
@@ -393,7 +395,8 @@ class Gait {
   // goal: {x, y} to make for instead (the machine's errands) · hurry: walk like nobody is watching
   step(dt, W, F, others, goal, hurry = 0) {
     const B = F.B, o = this.out; o.dart = null; this.t -= dt; this.tw -= dt; this.ph += dt;
-    if (!goal) { let bd = this.app; for (const p of W.pickups) { if (!p.isMote || p.dead || p.held || p.spawnT < 0) continue; const d = Math.hypot(p.x - B.cx, p.y - B.cy); if (d < bd) { bd = d; goal = p; } } }
+    this.sated = Math.max(0, (this.sated || 0) - dt);
+    if (!goal) { let bd = this.sated > 0 ? 40 : this.app; for (const p of W.pickups) { if (!p.isMote || p.dead || p.held || p.spawnT < 0) continue; const d = Math.hypot(p.x - B.cx, p.y - B.cy); if (d < bd) { bd = d; goal = p; } } }
     if (goal) { if (this.s === 'pause') { this.s = 'walk'; this.vt = 0.6 + Math.random() * 0.35; } this.t = Math.max(this.t, 0.6); }
     else if (this.s === 'walk' && (!this.to || this.t <= 0 || Math.hypot(this.to.x - B.cx, this.to.y - B.cy) < 50)) { this.s = 'pause'; this.t = 0.5 + Math.random() * 2.2; this.to = null; }
     else if (this.s === 'pause' && this.t <= 0) { this.s = 'walk'; this.t = 7; this.vt = 0.55 + Math.random() * 0.42; this.pick(W, B, others); }
@@ -458,16 +461,19 @@ class Neighbour {
     this.watch(dt, W, me);
     let best = null, bs = 0, b2 = 0; for (const [C, v] of this.sus) { if (C === me || !C.focus || !C.focus.alive) continue; if (v > bs) { b2 = bs; bs = v; best = C; } else if (v > b2) b2 = v; }
     const shown = s.shown[1 - this.k] > 0 && them.focus && them.focus.alive; if (shown) { best = them; bs = 9; }
-    const T = best && bs > 1.0 ? best.focus.B : null; let goal = T ? { x: T.cx, y: T.cy } : this.light(W, B, s);
+    // it feeds, unless someone is clearly not a stranger — or a likely one is close by
+    const near = best ? Math.hypot(best.focus.B.cx - B.cx, best.focus.B.cy - B.cy) < 260 : false, stalk = best && (shown || (bs > 1.3 && bs > b2 * 1.3) || (bs > 1.0 && near));
+    const T = stalk ? best.focus.B : null; let goal = T ? { x: T.cx, y: T.cy } : this.light(W, B, s);
+    if (goal && !T && this.g.s === 'walk') this.g.vt = Math.max(this.g.vt, 0.86);          // (an errand: it walks a little briskly — a tell, for whoever is watching)
     const v = this.g.step(dt, W, F, this.m.crowdF || [], goal, shown ? 1 : 0);
     // the strike: sure enough, near enough — and a moment to make up its mind, as a player would
     if (T && bs > 1.5 && (bs > b2 * 1.4 || shown) && F.dartCD <= 0) { const d = Math.hypot(T.cx - B.cx, T.cy - B.cy) - T.r - B.r; if (d < 115 && d > -10) { this.re += dt; if (this.re > 0.3) { F.dart(T.cx - B.cx, T.cy - B.cy, 1); this.re = 0; this.sus.set(best, bs * 0.4); } } else this.re = 0; }
     else if (v.dart) F.dart(v.dart[0], v.dart[1], 0.9);          // a start at nothing, as the strangers do
     return { x: v.x, y: v.y };
   }
-  // a light worth walking to: near-ish, and nobody much nearer
+  // a light worth walking to: near-ish, and nobody right on top of it (it means to eat four before it is found)
   light(W, B, s) {
-    let best = null, bd = 430; for (const p of W.pickups) { if (!p.isMote || p.dead || p.held || p.spawnT < 0) continue; const d = Math.hypot(p.x - B.cx, p.y - B.cy); if (d >= bd) continue; if ((this.m.crowdF || []).some(Q => Q.B !== B && Q.alive && Math.hypot(Q.B.cx - p.x, Q.B.cy - p.y) < d * 0.6)) continue; bd = d; best = p; }
+    let best = null, bd = 480; for (const p of W.pickups) { if (!p.isMote || p.dead || p.held || p.spawnT < 0) continue; const d = Math.hypot(p.x - B.cx, p.y - B.cy); if (d >= bd) continue; if ((this.m.crowdF || []).some(Q => Q.B !== B && Q.alive && Math.hypot(Q.B.cx - p.x, Q.B.cy - p.y) < d * 0.35)) continue; bd = d; best = p; }
     return best ? { x: best.x, y: best.y } : null;
   }
   // what it saw someone do: eat (strangers eat too) · dart — at nothing (strangers start at nothing too), or at someone (nobody but a player does that)
@@ -481,7 +487,7 @@ class Neighbour {
   watch(dt, W, me) {
     const L = this.m.crowdF || []; let sp = []; for (const O of L) { const v = Math.hypot(O.B.vx, O.B.vy); if (v > 15) sp.push(v); } sp.sort((a, b) => a - b); const med = sp.length ? sp[sp.length >> 1] : 60;
     for (const O of L) {
-      const C = O.colony; if (!C || C === me) continue; let v = Math.max((this.sus.get(C) || 0) * (1 - dt * 0.03), (C.pearls || 0) * 0.26);
+      const C = O.colony; if (!C || C === me) continue; let v = Math.max((this.sus.get(C) || 0) * (1 - dt * 0.03), (C.pearls || 0) * 0.2);
       const vx = O.B.vx, vy = O.B.vy, sv = Math.hypot(vx, vy), q = this.seen.get(C) || { hx: vx, hy: vy, t: 0, cd: 0 };
       if (sv > med * 1.3 && sv > 50) v += dt * 0.3;
       q.t += dt; q.cd -= dt; if (q.t > 0.35) { const a = Math.hypot(q.hx, q.hy); if (a > 40 && sv > 40 && q.cd <= 0 && (q.hx * vx + q.hy * vy) / (a * sv) < -0.2) { v += 0.22; q.cd = 0.8; } q.hx = vx; q.hy = vy; q.t = 0; }

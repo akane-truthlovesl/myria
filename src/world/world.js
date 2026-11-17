@@ -227,7 +227,7 @@ export class World {
     if (idle > CHAIN_GAP && this.chain) { const was = this.chain; this.chain = 0; if (was >= 8) this.emit('chainEnd', was); }
     this.flow = Math.max(0, this.flow - dt * (idle > 1.1 ? 0.42 : 0.06));
     const pl = this.player; const f = this.flow; if (!pl) return;
-    for (const O of pl.orgs) O.reachK = 1 + 0.5 * f;
+    if (!this.masks) for (const O of pl.orgs) O.reachK = 1 + 0.5 * f;          // (in Masks every reach is the same short one)
     const F = pl.focus; if (!F || !F.alive || f < 0.2) return;
     // the bloom's pull: nearby motes lift off the plate and drift in
     const B = F.B; const reach = B.r + 34 + 76 * f, r2 = reach * reach; const P = this.phys;
