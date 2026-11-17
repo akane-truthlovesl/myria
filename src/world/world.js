@@ -48,6 +48,8 @@ export class World {
     P.gx = spec.gravity ? spec.gravity[0] : 0; P.gy = spec.gravity ? spec.gravity[1] : 0;
     P.drag = spec.drag ?? 1.5;                 // the medium: a thin film between two glass plates
     this.massCap = spec.cap || 420; this.dewReach = 200; this.moteBonus = 0; this.speedScale = 1; this.massCosts = true; this.dartSpeed = 600;
+    // (flags a mode sets for one room: Myriad's peace must not outlive it — it used to switch off every siphon for the rest of the session — nor Masks' crowd rules)
+    this.peace = false; this.masks = false;
     this.lights = (spec.lights || []).slice(); this.wells = (spec.wells || []).slice();
     for (const d of spec.ents || []) this.spawn(d);
     // no light is born inside stone: one that falls in a wall (or flush against it) is set down just outside; one buried too deep to find a way out is not born at all
@@ -244,7 +246,7 @@ export class World {
   _voice() {
     const s = this.sound; if (!s || !s.ready) return; const F = this.player && this.player.focus;
     if (s.conduct) s.conduct();
-    if (!F || !F.alive) { s.setGlide(0, 0); s.setTension(0); s.setDanger(0); if (s.beacon) s.beacon(0, 0, 0); return; }
+    if (!F || !F.alive || this.masks) { let v = 0, n = 0; if (this.masks) for (const C of this.colonies) { const Q = C.focus; if (Q && Q.alive) { v += Math.hypot(Q.B.vx, Q.B.vy); n++; } } s.setGlide(n ? v / n : 0, 0); s.setTension(0); s.setDanger(0); if (s.beacon) s.beacon(0, 0, 0); return; }
     const B = F.B; const sp = Math.hypot(B.vx, B.vy); const contact = Math.min(1, B.contact / Math.max(4, B.count * 0.08));
     s.setGlide(sp, contact);
     const stretch = Math.max(0, Math.min(1, (F.spread - 1.22) / 0.9));
@@ -264,7 +266,7 @@ export class World {
       child.home = null;
       const NO = C.onSplit(parent, child);
       if (C.kind && NO && !NO.brain && SPECIES[C.kind]) { NO.brain = new Brain(C.kind); if (parent.ctrl) NO.speedMul = parent.ctrl.speedMul; }        // a neighbour cut in two is two neighbours, each with its own mind
-      if (C === this.player) { this.stats.splits++; const cut = this.phys.events.cuts > 0; this.sound && (cut ? this.sound.cut() : this.sound.snap(0.5)); this.emit('split', parent, child, cut); }
+      if (C === this.player) { this.stats.splits++; const cut = this.phys.events.cuts > 0; this.sound && !this.masks && (cut ? this.sound.cut() : this.sound.snap(0.5)); this.emit('split', parent, child, cut); }
     }
   }
   _onMerge(keep, gone, n) {
@@ -283,7 +285,7 @@ export class World {
       C.onMerge(keep, gone);
       if ((gone.kind === 'dew' || gone.kind === 'spent') && n > 0) { this.sound && this.sound.pop(0.5); this.fx.ring(gone.cx, gone.cy, [1, 0.85, 0.7], 16, 0.3, { a: 0.6 }); }
       if (gone.kind === 'fragment' || gone.kind === 'player') {
-        if (C === this.player) { this.stats.fuses++; this.sound && this.sound.fuse(Math.min(1, n / 120)); this.host.haptics && this.host.haptics.fuse(); this.emit('fuse', keep, gone, n); }
+        if (C === this.player && !this.masks) { this.stats.fuses++; this.sound && this.sound.fuse(Math.min(1, n / 120)); this.host.haptics && this.host.haptics.fuse(); this.emit('fuse', keep, gone, n); }
         this.fx.ring(keep.cx, keep.cy, [1, 0.8, 0.6], keep.r * 2, 0.5);
         if (keep.ctrl) keep.ctrl.crown.joy();
       }
@@ -306,19 +308,20 @@ export class World {
   }
   onImpact(O, jolt, nx, ny) {
     const v = Math.min(1, jolt / 900);
-    if (O.colony === this.player) { this.sound && this.sound.splat(v); this.shake = Math.min(1, this.shake + v * 0.3); if (O.focused && this.host.haptics) this.host.haptics.thump(v); }
+    if (O.colony === this.player && !this.masks) { this.sound && this.sound.splat(v); this.shake = Math.min(1, this.shake + v * 0.3); if (O.focused && this.host.haptics) this.host.haptics.thump(v); }
     if (jolt > 420) this.fx.burst(O.B.cx - nx * O.B.r, O.B.cy - ny * O.B.r, Math.floor(3 + v * 7), [0.9, 0.96, 1], 130 * v, { size: 2.2, life: 0.45, type: 1 });
   }
   onPeel(O) { this.sound && this.sound.snap(0.3); }
   onDart(O, dx, dy, cost) {
-    if (O.colony === this.player) { this.stats.darts++; if (this.sound) { if (O.morph && O.morph.jet) this.sound.fizz(); else this.sound.dart(1); } this.host.haptics && this.host.haptics.dart(); }
+    if (this.masks) { if (this.sound) this.sound.dart(0.8); }
+    else if (O.colony === this.player) { this.stats.darts++; if (this.sound) { if (O.morph && O.morph.jet) this.sound.fizz(); else this.sound.dart(1); } this.host.haptics && this.host.haptics.dart(); }
     this.fx.ring(O.B.cx - dx * O.B.r * 0.8, O.B.cy - dy * O.B.r * 0.8, [0.95, 0.85, 0.75], 36, 0.3, { a: 0.5 });
     this.fx.sparks(O.B.cx - dx * O.B.r, O.B.cy - dy * O.B.r, 6, -dx, -dy, [1, 0.9, 0.85], 200, { life: 0.4, size: 2 });
     this.emit('dart', O, dx, dy, cost);
   }
   onBud(O, NB) { const C = O.colony; if (C) { const S = C.adopt(NB); S.phi = O.phi; S.budT = 1.2; if (C === this.player) this.stats.splits++; } this.sound && this.sound.bud(); this.emit('bud', O, NB); }
   onFocus(C, O) { if (O && O.B && C === this.player) { this.fx.ring(O.B.cx, O.B.cy, [1, 0.95, 0.85], O.B.r * 2.2, 0.45); this.sound && this.sound.ui(); } }
-  onGrab(O, item) { if (O.colony === this.player && this.sound) this.sound.pop(0.25); }
+  onGrab(O, item) { if ((O.colony === this.player || this.masks) && this.sound) this.sound.pop(0.25); }
 
   // ── one simulation tick ───────────────────────────────────────────────
   // ctl: { intent:{x,y}, aim:{x,y}|null, rally:bool, darts:[{x,y,power}], buds:[{x,y,frac}], cycle:±1, focusAt:{x,y} }
@@ -357,7 +360,7 @@ export class World {
     }
     if (this.callHome > 0) this.callHome -= dt;
     // (a second pilot — player two in Duet or a co-op dive — steers through its colony's own `pilot` vector)
-    for (const C of this.colonies) C.update(dt, C === pl ? ctl.intent : C.pilot || null, C === pl ? ctl.aim : null, C === pl ? !!ctl.rally || this.callHome > 0 : false);
+    for (const C of this.colonies) C.update(dt, C === pl ? ctl.intent : C.pilot || null, C === pl && !this.masks ? ctl.aim : null, C === pl ? !!ctl.rally || this.callHome > 0 : false);
     this._dewHoming(dt);
     P.step(dt);
     this._chemistry(dt); this._lances(dt); this._spores(dt);
@@ -519,7 +522,7 @@ export class World {
         const beat = 0.5 + 0.5 * Math.sin(this.time * (O.focused ? 2.5 : 1.4) + O.id);
         const fl = C === this.player ? this.flow : 0;
         const hs = (O.focused ? 1.0 : 0.6) * (0.85 + 0.25 * beat) + 0.35 * Math.min(1, B.energy || 0) + 0.35 * O.gulp + 0.45 * fl;
-        const cl = R.addBody(P, B, { key: 'c' + C.group, look: R.lookFor(B.mat, B.tint), order: C === this.player ? 20 + (O.focused ? 1 : 0) : 10, veil: O.veil, glowBoost: 1 + 0.35 * (B.energy || 0) + 0.2 * fl, coarse: !C.isPlayer,
+        const cl = R.addBody(P, B, { key: 'c' + C.group, look: R.lookFor(B.mat, B.tint), order: C === this.player && !this.masks ? 20 + (O.focused ? 1 : 0) : 10, veil: O.veil, glowBoost: 1 + 0.35 * (B.energy || 0) + 0.2 * fl, coarse: !C.isPlayer,
           heart: O.dormant ? null : [B.cx - O.facing.x * B.r * 0.08, B.cy - O.facing.y * B.r * 0.08, B.r * 0.34 + 5, hs * 0.85] });
         if (cl) { O.crown.draw(R, cl); if (O.heat < -0.05) { cl.hasMix = true; cl.frost = Math.max(cl.frost || 0, -O.heat); } if (O.heat > 0.05) cl.glowBoost += 0.6 * O.heat; }
       }

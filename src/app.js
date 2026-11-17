@@ -189,7 +189,7 @@ export class App {
       if (inp.charge > 0.22) { c.intent.x *= 0.15; c.intent.y *= 0.15; F.coil = Math.min(1, (inp.charge - 0.22) / 0.6); } else F.coil = 0;
     }
     c.swell = inp.swell && this.state === 'play';
-    if (this.bot && F && F.alive && this.state === 'play') this._bot(c, F);
+    if (this.bot && F && F.alive && this.state === 'play') { if (this.mode && this.mode.botCtl) this.mode.botCtl(c, F); else this._bot(c, F); }
     c.rally = (inp.rally || c.botRally) && this.state === 'play';
     c.darts = first && P.darts.length ? P.darts : null; c.buds = first && P.buds.length ? P.buds : null; c.cycle = first ? P.cycle : 0; c.focusAt = first ? P.focusAt : null;
     // hands on the gel (the Pool's kneading): fingers are hands, not a stick — the creature wills nothing while it is held

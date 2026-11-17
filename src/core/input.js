@@ -26,6 +26,8 @@ export class Input {
     this.stick = { active: false, ax: 0, ay: 0, kx: 0, ky: 0, id: -1, t0: 0 };
     // two on one glass: a mode with a second player sets split(x, y) → 1 | 2, and a touch that begins in player two's half wakes player two's stick
     this.split = null; this.stick2 = { active: false, ax: 0, ay: 0, kx: 0, ky: 0, id: -1, t0: 0 }; this.swell2 = false;
+    // two on one keyboard (a mode sets keysSplit): player one has the arrows and Enter (or / or the right Shift/Ctrl) to dart, player two W A S D and Space
+    this.keysSplit = false; this.keyT1 = 0;
     this.pointers = new Map();
     this.pinch0 = 0; this.rallyHeld = false; this.rallyPtr = false;
     this.keyMove = { x: 0, y: 0 }; this.padMove = { x: 0, y: 0 }; this.padPrev = []; this.padRally = false;
@@ -48,7 +50,7 @@ export class Input {
     el.addEventListener('wheel', e => { e.preventDefault(); this.events.push({ type: 'cycle', dir: Math.sign(e.deltaY) || 1 }); }, opt);
     window.addEventListener('keydown', e => this._key(e, true));
     window.addEventListener('keyup', e => this._key(e, false));
-    window.addEventListener('blur', () => { this.keyT0 = 0; this.padT0 = 0; this.rmb = 0; this.swellKey = false; this.keys.clear(); this.pointers.clear(); this.stick.active = false; this.stick2.active = false; this.rallyHeld = false; this.rallyPtr = false; this.mouse.down = false; this.mouse.inside = false; });
+    window.addEventListener('blur', () => { this.keyT0 = 0; this.keyT1 = 0; this.padT0 = 0; this.rmb = 0; this.swellKey = false; this.keys.clear(); this.pointers.clear(); this.stick.active = false; this.stick2.active = false; this.rallyHeld = false; this.rallyPtr = false; this.mouse.down = false; this.mouse.inside = false; });
   }
   _act() { this.lastActivity = performance.now(); this.any = true; }
 
@@ -145,7 +147,10 @@ export class Input {
       if (k === 'Escape' || k === 'KeyP') this.events.push({ type: 'pause' });
       if (k === 'Enter') this.events.push({ type: 'confirm' });
       if (!this.keysOff && ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(k)) { this.device = 'keyboard'; this.mouse.follow = false; }
+      if (this.keysSplit && k.startsWith('Arrow')) { this.device = 'keyboard'; this.mouse.follow = false; }
+      if (this.keysSplit && DART1.includes(k)) this.keyT1 = performance.now();
     }
+    if (!down && this.keysSplit && DART1.includes(k) && this.keyT1) { this.events.push({ type: 'dartKey', p1: true, hold: (performance.now() - this.keyT1) / 1000 }); this.keyT1 = 0; }
     if (!down && k === 'Space' && this.keyT0) { this.events.push({ type: 'dartKey', hold: (performance.now() - this.keyT0) / 1000 }); this.keyT0 = 0; }
     if (down) this.keys.add(k); else this.keys.delete(k);
     this.rallyHeld = this.keys.has('KeyQ') || this.keys.has('KeyR'); this.swellKey = this.keys.has('KeyF');
@@ -173,13 +178,14 @@ export class Input {
   poll(dt) {
     this._pad();
     const K = this.keys;
-    let kx = (K.has('KeyD') || K.has('ArrowRight') ? 1 : 0) - (K.has('KeyA') || K.has('ArrowLeft') ? 1 : 0);
-    let ky = (K.has('KeyS') || K.has('ArrowDown') ? 1 : 0) - (K.has('KeyW') || K.has('ArrowUp') ? 1 : 0);
+    const wasd = !this.keysSplit;
+    let kx = (wasd && K.has('KeyD') || K.has('ArrowRight') ? 1 : 0) - (wasd && K.has('KeyA') || K.has('ArrowLeft') ? 1 : 0);
+    let ky = (wasd && K.has('KeyS') || K.has('ArrowDown') ? 1 : 0) - (wasd && K.has('KeyW') || K.has('ArrowUp') ? 1 : 0);
     if (kx && ky) { kx *= Math.SQRT1_2; ky *= Math.SQRT1_2; }
     const ramp = Math.min(1, dt * 22);                 // keys ramp fast: analogue feel without sluggishness
     this.keyMove.x += (kx - this.keyMove.x) * ramp; this.keyMove.y += (ky - this.keyMove.y) * ramp;
     if (!kx && Math.abs(this.keyMove.x) < 0.02) this.keyMove.x = 0; if (!ky && Math.abs(this.keyMove.y) < 0.02) this.keyMove.y = 0;
-    const nowC = performance.now(); this.charge = Math.max(this.mouse.down ? (nowC - this.mouse.t0) / 1000 : 0, this.keyT0 ? (nowC - this.keyT0) / 1000 : 0, this.padT0 ? (nowC - this.padT0) / 1000 : 0);
+    const nowC = performance.now(); this.charge = Math.max(this.mouse.down ? (nowC - this.mouse.t0) / 1000 : 0, this.keyT0 && !this.keysOff ? (nowC - this.keyT0) / 1000 : 0, this.keyT1 ? (nowC - this.keyT1) / 1000 : 0, this.padT0 ? (nowC - this.padT0) / 1000 : 0);
     this.rally = this.rallyHeld || this.rallyPtr || this.padRally;
     const now = performance.now();
     this.swell2 = [...this.pointers.values()].some(p => p.role === 'second2' && now - p.t0 > 320);
@@ -211,7 +217,7 @@ export class Input {
   vector() {
     if (!this.enabled) return ZERO;
     if (Math.abs(this.padMove.x) + Math.abs(this.padMove.y) > 0.01) return this.padMove;
-    if (!this.keysOff && Math.abs(this.keyMove.x) + Math.abs(this.keyMove.y) > 0.01) return this.keyMove;
+    if ((!this.keysOff || this.keysSplit) && Math.abs(this.keyMove.x) + Math.abs(this.keyMove.y) > 0.01) return this.keyMove;
     const S = this.stick;
     if (S.active) {
       let dx = (S.kx - S.ax) / STICK_R, dy = (S.ky - S.ay) / STICK_R; const m = Math.hypot(dx, dy);
@@ -231,3 +237,4 @@ export class Input {
   get stickRadius() { return STICK_R; }
 }
 const ZERO = { x: 0, y: 0 }, V = { x: 0, y: 0 };
+const DART1 = ['Enter', 'NumpadEnter', 'Slash', 'ShiftRight', 'ControlRight'];

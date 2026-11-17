@@ -54,6 +54,7 @@ export class Mote extends Entity {
     W.feed(O.B, (this.value + (O.colony === W.player ? W.moteBonus || 0 : 0)) * (O.colony === W.player && W.ember ? 2 : 1), this.x, this.y, this.col);
     if (this.living) takenKind(this);
     if (this.d.pity) { if (O.colony === W.player) { W.sound && W.sound.heal(); } return; }                    // wept light feeds, but is not the room's light: it counts for nothing
+    if (W.masks) { W.emit('eaten', this, O); return; }                // (Masks: whoever eats, it looks and sounds the same — the mode keeps the count)
     if (O.colony === W.player || O.colony && O.colony.ally) { if (!this.d.gift) W.stats.motes++; const chain = W.chainUp(this, O); W.sound && W.sound.mote((this.x / W.spec.W) * 1.6 - 0.8, chain); W.host.haptics && W.host.haptics.tick(); W.emit('mote', this, O, chain); }
     else W.emit('moteLost', this, O);
   }

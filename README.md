@@ -72,10 +72,10 @@ wall where something is watching makes you a veil it cannot see.
   you went drawn across it in light — cool where you woke, warm where you went home, brightest where
   you lingered — every light you took a spark, every one you left a dim ring, the echo you raced a
   pale thread (a warden passed, or a chamber of your own sealed, keeps that picture in the Album).
-  Twenty-two named tricks (Thread the Needle,
+  Twenty-three named tricks (Thread the Needle,
   Surgical Shear, Ghost Wall, Paper Tiger, Cleave, Slingshot, Gravity Assist, Hole in One, Bank Shot,
   Go-Between, Trojan Swallow, Outrun, Comet, Phoenix, Immaculate, Net, Velvet, In Time, Harvest, Whole, Maker,
-  Neighbourly) are noticed when you find them; the Atrium keeps a
+  Neighbourly, Unseen) are noticed when you find them; the Atrium keeps a
   journal in which the ones you have not found yet are riddles. The stars you gather dye you: six
   **hues** (Coral · Honey · Rose · Jade · Pearl · Nebula) unlock as they add up — each a full optical
   recipe, chosen from the pause menu in the Atrium.
@@ -136,15 +136,26 @@ wall where something is watching makes you a veil it cannot see.
 - **Duet** — two players, one screen: pointer + W A S D / Space / F on a computer, and on a phone **two
   on one glass** — each half of the screen wakes its own stick (a tap in your half darts, a flick
   lances, a held second finger swells). **Together** is a co-op dive where touching shares mass between
-  you. **Versus** is a match of four little games, first to two: **Rain** (light rains into the dish;
+  you. **Versus** is a match of five little games, first to two: **Rain** (light rains into the dish;
   the larger membrane drinks the smaller), **Crown** (hold the crown alone and it fills with your
   colour — but it is shy: held three seconds straight, or fought over for two, it hops across the dish
   and the chase begins again), **Spark** (a touch passes it on; it burns, so whoever holds it runs hot;
   do not be holding it when time runs out) and **Race** (three courses — the Weir, the Gauntlet, the
-  Slings: touch the far light, then first one home). A card between rounds keeps the score and carries
-  the round's long exposure — both ways woven over the dish, Ember's warm and Tide's cool. Alone, play
+  Slings: touch the far light, then first one home) and **Masks** — ten strangers and the two of you,
+  everyone in the same moonlit opal, the same size, the same walk: dart into the other one, or eat four
+  lights unseen. Nothing on the glass says which one is you (no stick ring, no pointer feelers, no sound
+  of your own — the counts are a secret), so you find yourself by moving, and hide by moving as they
+  move: they stroll somewhere, stop to look about, drift toward a light they happen to be near, start
+  at nothing now and then. Every light eaten becomes a little moon circling whoever ate it — a glutton,
+  or someone one light from winning. Dart into a stranger and you are unmasked for three seconds; when
+  the round ends the masks fall and the strangers are only glass. On one keyboard Ember may take the
+  arrows and Enter, so the pointer does not give them away. A card between rounds keeps the score, says
+  how the round was won, and carries the round's long exposure — both ways woven over the dish, Ember's
+  warm and Tide's cool. Alone, play
   **Versus a neighbour**: the machine plays Tide, with a player's verbs, a player's speed and a
-  player's moment of reaction; the door keeps your record against it.
+  player's moment of reaction (in Masks it wears the strangers' walk and judges only what you could
+  see — who ate, who darted at someone, who moved like nobody else — and it is wrong sometimes); the
+  door keeps your record against it. `?mode=duet&ai&bot` lets the machine play both sides.
 - **Link** — the same two modes on **two devices, with no server**. One hosts, one joins; they find each
   other by handing over two lines of text (any messenger). The host's picture and sound stream to the
   guest, whose pointer or finger is player two (move · tap to dart, hold to lance · second finger to
@@ -272,7 +283,8 @@ node tools/browser/ftue.mjs 1280 720 0            # a brand-new save: seconds to
 node tools/browser/echotest.mjs                   # clear, replay against the ghost, round-trip the share code
 node tools/browser/modes.mjs                      # every mode opened and left running, plus the Atrium's menus
 node tools/browser/duettest.mjs                   # two players on one screen (Duet, co-op dive): both steer, both dart and lance; two thumbs on one phone
-node tools/browser/duetmatch.mjs                  # a Duet match against the machine: all four games, cards between, a panel at the end
+node tools/browser/duetmatch.mjs                  # a Duet match against the machine: all five games, cards between, a panel at the end
+node tools/browser/maskstest.mjs                  # Masks on one keyboard: all alike, split keys, unmasked by a stranger, a tag, four lights
 node tools/browser/linktest.mjs                   # two browsers paired by two lines of text: picture arrives, far pointer steers and darts player two
 node tools/browser/haunttest.mjs                  # a dive ends → its haunting is found, raised, laid to rest; a stranger's line is invited
 node tools/browser/dailytest.mjs                  # a year of the mutation calendar, the day's dive, the day's sprint, the Today panel
