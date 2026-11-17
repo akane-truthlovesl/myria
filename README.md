@@ -67,7 +67,11 @@ wall where something is watching makes you a veil it cannot see.
   on you rather than slicing — the gel is pushed aside — and for a moment as one ring closes and the
   other opens, a straight line runs to the heart. In on one breath, out on another). Three living
   stars per chamber: **Radiance** (all the light), **Grace** (lose almost nothing), **Swift** (under
-  par). The pore opens at 60 % — the rest is appetite.
+  par). The pore opens at 60 % — the rest is appetite. Between one chamber and the next the result
+  card carries a **long exposure** of the run: the chamber darkened like a plate left open, and the way
+  you went drawn across it in light — cool where you woke, warm where you went home, brightest where
+  you lingered — every light you took a spark, every one you left a dim ring, the echo you raced a
+  pale thread (a warden passed, or a chamber of your own sealed, keeps that picture in the Album).
   Twenty-one named tricks (Thread the Needle,
   Surgical Shear, Ghost Wall, Paper Tiger, Cleave, Slingshot, Gravity Assist, Hole in One, Bank Shot,
   Go-Between, Trojan Swallow, Outrun, Comet, Phoenix, Immaculate, Net, Velvet, In Time, Harvest, Whole, Maker) are noticed when you find them; the Atrium keeps a

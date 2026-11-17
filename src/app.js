@@ -117,12 +117,12 @@ export class App {
   // a moment worth keeping (a trick found for the first time, a warden passed, a new size, the last room): a small picture of the
   // glass a breath later — once the effect has bloomed — with a line under it. `once` keys a moment that is only ever kept once.
   // The Atrium shows them as an album (core/album.js)
-  moment(caption, sub = '', once = '') {
+  moment(caption, sub = '', once = '', pic = null) {
     if (once) { const seen = save.get('moments', []); if (seen.includes(once)) return; seen.push(once); save.set('moments', seen); }
     setTimeout(() => {
       try {
         if (typeof document === 'undefined' || document.hidden) return;
-        const c = this.R.canvas, k = Math.min(400 / c.width, 300 / c.height), w = Math.max(1, Math.round(c.width * k)), h = Math.max(1, Math.round(c.height * k));
+        const c = pic || this.R.canvas, k = Math.min(400 / c.width, 300 / c.height), w = Math.max(1, Math.round(c.width * k)), h = Math.max(1, Math.round(c.height * k));
         const o = document.createElement('canvas'); o.width = w; o.height = h; o.getContext('2d').drawImage(c, 0, 0, w, h);
         album.add({ src: o.toDataURL('image/jpeg', 0.76), caption, sub, t: Date.now() });
       } catch (_) { /* a locked-down browser: no picture, no harm */ }

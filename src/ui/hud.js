@@ -79,8 +79,9 @@ export class HUD {
   showResult(r) {
     const names = ['Radiance', 'Grace', 'Swift'];
     this.result.innerHTML = `<div class="r-name">${r.name}</div><div class="r-stars">${names.map((n, i) => `<div class="r-star" data-i="${i}"><i></i>${n}</div>`).join('')}</div>
-      <div class="r-stats">light <b>${r.light}</b> / ${r.total} &nbsp;·&nbsp; time <b>${r.time.toFixed(1)}s</b>${r.par ? ` <span>/ ${r.par}s</span>` : ''} &nbsp;·&nbsp; mass <b>${r.mass}</b>${r.chain >= 8 ? ` &nbsp;·&nbsp; chain <b>♪ ${r.chain}</b>` : ''}</div>
+      <div class="r-stats">${[`light <b>${r.light}</b> / ${r.total}`, `time <b>${r.time.toFixed(1)}s</b>${r.par ? ` <span>/ ${r.par}s</span>` : ''}`, `mass <b>${r.mass}</b>`, ...(r.chain >= 8 ? [`chain <b>♪ ${r.chain}</b>`] : [])].map(q => `<i>${q}</i>`).join(' · ')}</div>
       <div class="r-tricks">${(r.tricks || []).join(' &nbsp;·&nbsp; ')}</div><div class="r-next">${r.next || ''}</div>`;
+    if (r.shot) { const s = el('div', 'r-shot'); s.appendChild(r.shot); this.result.prepend(s); if (r.shot.develop) r.shot.develop(); }
     this.result.classList.add('on');
     r.stars.forEach((s, i) => { if (s) setTimeout(() => { const e = this.result.querySelector(`.r-star[data-i="${i}"]`); if (e) e.classList.add('on'); r.onStar && r.onStar(i); }, 260 + i * 240); });
     setTimeout(() => { const e = this.result.querySelector('.r-next'); if (e) e.classList.add('on'); }, 1100);

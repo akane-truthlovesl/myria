@@ -58,6 +58,8 @@ await page.evaluate(() => { const a = window.__app, W = a.world, m = a.mode; W.s
 await until(() => window.__app.state === 'play' && window.__app.mode && window.__app.mode.isBench, 25000); await sleep(500);
 R.sealed = await page.evaluate(() => { const m = window.__app.mode, s = m.sealed; return s ? { t: s.t, run: !!s.p, stat: document.querySelector('.ws-stat').textContent } : null; });
 R.maker = await page.evaluate(() => !!(window.__app.save.data.tricks || {}).Maker);
+// the result card carried the run as a long exposure (ui/exposure.js), and the Album kept it for the sealing
+R.shot = await page.evaluate(() => { const c = document.querySelector('.h-result .r-shot canvas'); return c ? [c.width, c.height] : null; });
 const code = await page.evaluate(() => { const m = window.__app.mode; return window.__ws.packChamber(m.D, m.sealed); });
 R.code = { len: code.length, head: code.slice(0, 22) };
 // the line, played as a stranger would play it
@@ -76,6 +78,6 @@ console.log(JSON.stringify(R));
 const ok = R.fresh === 'l' && R.light.kind === 'l' && R.light.n >= 4 && R.light.live >= 4 && R.wall.kind === 'w' && R.wall.pen === 1 && R.wall.rods >= 1 && R.wall.shapes >= 1
   && /bl/.test(R.after) && /D/.test(R.after) && R.door && R.door.shut && !/bl/.test(R.erased) && /bl/.test(R.undone) && !/bl/.test(R.erased2)
   && R.trial.sdfAtWall < 0 && R.trial.rods === 0 && R.trial.lights >= 10 && R.trial.need === Math.ceil(R.trial.lights * 0.6) && R.trial.rec >= 5
-  && R.sealed && R.sealed.run && R.maker && /^MYRIA-CHAMBER\./.test(code) && R.round && R.guest.rival && R.guest.gifts === 1 && R.guest.par > 0
+  && R.sealed && R.sealed.run && R.maker && R.shot && R.shot[0] > 40 && R.shot[1] > 20 && /^MYRIA-CHAMBER\./.test(code) && R.round && R.guest.rival && R.guest.gifts === 1 && R.guest.par > 0
   && R.moved[0] > 90 && Math.abs(R.moved[1]) < 30 && R.mirror.added === 'bl,bl,w,w' && R.mirror.sym && R.mirror.saved && R.mirror.on && R.mirror.live === 2 && R.mirror.spins === '1,-1' && R.mirror.toast !== false && R.mirrorOff && R.junk[0] === null && R.junk[1] === 1 && /^Knead,Workshop,Play,Back$/.test(R.panel) && R.list === 1 + 1 + R.starters + 1;
 const e = errs(logs); console.log(e || 'no console errors'); console.log(ok && !e ? 'WORKSHOP OK' : 'WORKSHOP FAILED'); await browser.close();

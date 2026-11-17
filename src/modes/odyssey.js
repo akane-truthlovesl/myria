@@ -6,6 +6,7 @@
 import { ROOMS, STRATA, stratumOf } from '../world/odyssey.js';
 import { packEcho, unpackEcho } from '../world/entities.js';
 import { hashStr } from '../core/util.js';
+import { exposure } from '../ui/exposure.js';
 
 const GRACE = 3;       // particles you may lose and still keep the Grace star
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX', 'XXI', 'XXII', 'XXIII', 'XXIV', 'XXV', 'XXVI', 'XXVII', 'XXVIII', 'XXIX', 'XXX'];
@@ -81,7 +82,7 @@ export class Odyssey {
       (spec) => ({ mass: this.startMass = this.massFor(spec) }), {
         minDark: fromPore ? 1.9 : 0.5,
         onDark: () => app.applyBudget(),
-        onLoad: (W) => { for (const e of W.ents) if (e.d.type === 'pore' && !e.need) e.need = Math.ceil(W.stats.motesTotal * (this.room.quota ?? this.spec.quota ?? 0.6)); if (this.sprint) this.sprint.m.apply(W); else this.wakeEcho(W); },
+        onLoad: (W) => { for (const e of W.ents) if (e.d.type === 'pore' && !e.need) e.need = Math.ceil(W.stats.motesTotal * (this.room.quota ?? this.spec.quota ?? 0.6)); this.lights0 = W.pickups.filter(p => p.isMote && !p.living); if (this.sprint) this.sprint.m.apply(W); else this.wakeEcho(W); },
         onReveal: () => { app.hud.hideResult(); app.hud.showTitle(this.numeral(), room.name, this.titleSub()); app.hud.setCorner(true, () => app.pause()); this.music(); },
       });
   }
@@ -169,16 +170,19 @@ export class Odyssey {
     if (beatOwn) this.trick('Outrun');
     if (this.room.id === 'iris' && this.hearted && !this.wasCut) this.trick('Whole');
     if (beatRival) app.hud.toast(`echo beaten by ${(this.rival.T - W.roomTime).toFixed(1)} s`, '◷'); else if (lostRival) app.hud.toast(`the echo was ${(W.roomTime - this.rival.T).toFixed(1)} s ahead`, '◷', 'cool');
+    // the long exposure, taken before the pore's flash: the room as it stands, the way you went drawn across it in light
+    const land = W.spec.W >= W.spec.H, ghost = (this.rival || this.echo || {}).pts;
+    this.shot = exposure(app.R, W.spec, this.rec ? [...this.rec, land ? [pore.x / W.spec.W, pore.y / W.spec.H] : [pore.y / W.spec.H, pore.x / W.spec.W]] : null, { lights: this.lights0, ghost, zoom: app.hud.k || 1 });
     const rec = this.record(stars, W);
     this.carryMass = W.player.mass;
     // celebration at the pore: the body pours in, the room exhales light
     const F = W.player.focus; if (F) { F.seek = { x: pore.x, y: pore.y, k: 1500 }; for (const O of W.player.orgs) O.rallyTo = F.B; }
     W.fx.ring(pore.x, pore.y, pore.col, 260, 0.9); W.fx.burst(pore.x, pore.y, 36, [1, 0.9, 0.7], 320, { life: 1.1, size: 3 }); W.flash = 1;
     app.sound.portal(); app.haptics.fuse();
-    if (this.room.boss && app.moment) app.moment(this.room.name, 'a warden passed', 'warden:' + this.room.id);
+    if (this.room.boss && app.moment) app.moment(this.room.name, 'a warden passed', 'warden:' + this.room.id, this.shot);
     app.hud.hint(''); app.hud.setTop(null); app.hud.setCorner(false);
     const last = this.isLast();
-    const result = { name: this.resultName(), stars, light: s.motes, total: s.motesTotal, time: W.roomTime, par: this.room.par, mass: W.player.mass, chain: s.bestChain || 0, tricks: this.tricks, next: last ? 'one more room' : rec.newBest && !rec.firstClear ? 'new best' : '', onStar: (k) => app.sound.star(k) };
+    const result = { name: this.resultName(), stars, light: s.motes, total: s.motesTotal, time: W.roomTime, par: this.room.par, mass: W.player.mass, chain: s.bestChain || 0, tricks: this.tricks, next: last ? 'one more room' : rec.newBest && !rec.firstClear ? 'new best' : '', onStar: (k) => app.sound.star(k), shot: this.shot };
     if (this.sprint) { const save = app.save, t = +W.roomTime.toFixed(2), prev = save.get('sprintDay', '') === this.sprint.day ? save.get('sprintBest', 0) : 0; if (!prev || t < prev) save.set('sprintBest', t); save.set('sprintDay', this.sprint.day); result.next = prev && t >= prev ? `sprint · today's best ${prev.toFixed(1)} s` : `sprint · ${t.toFixed(1)} s is today's best`; }
     setTimeout(() => { if (app.mode === this) this.after(result, pore, last); }, 650);
   }
@@ -203,7 +207,7 @@ export class Odyssey {
     app.travel((aspect) => { const s = room.build(aspect); s.name = room.name; s.no = this.i + 1; s.seed = s.seed || (this.i * 97 + 13); this.spec = s; return s; }, (spec) => ({ mass: this.startMass = this.massFor(spec) }), {
       from: { x: pore.x, y: pore.y }, minDark: 2.3,
       onDark: () => { app.applyBudget(); app.hud.showResult(result); },
-      onLoad: (W) => { for (const e of W.ents) if (e.d.type === 'pore' && !e.need) e.need = Math.ceil(W.stats.motesTotal * (this.room.quota ?? this.spec.quota ?? 0.6)); if (this.sprint) this.sprint.m.apply(W); else this.wakeEcho(W); },
+      onLoad: (W) => { for (const e of W.ents) if (e.d.type === 'pore' && !e.need) e.need = Math.ceil(W.stats.motesTotal * (this.room.quota ?? this.spec.quota ?? 0.6)); this.lights0 = W.pickups.filter(p => p.isMote && !p.living); if (this.sprint) this.sprint.m.apply(W); else this.wakeEcho(W); },
       onReveal: () => { app.hud.hideResult(); app.hud.showTitle(this.numeral(), room.name, this.titleSub()); app.hud.setCorner(true, () => app.pause()); this.music(); },
     });
   }

@@ -336,7 +336,7 @@ export class Trial extends Odyssey {
       const b = shelf.bench() || {}, seal = b.sealed && b.sealed.h === this.h ? b.sealed : null;
       if (!seal || t < seal.t - 0.01) { shelf.setBench({ ...b, design: b.design || this.D, sealed: { h: this.h, t, p: p || (seal && seal.p) || null } }); this.note = seal ? 'a new record for it' : 'sealed · ready to hand on';
         // a chamber of your own, sealed: the first ever is a trick found (and its picture); every one after keeps a picture of its own
-        if (!seal) { if ((this.app.save.data.tricks || {}).Maker) this.app.moment && this.app.moment(this.nameOf, 'a chamber of your own, sealed', 'sealed:' + this.h); this.trick('Maker'); } }
+        if (!seal) { if ((this.app.save.data.tricks || {}).Maker) this.app.moment && this.app.moment(this.nameOf, 'a chamber of your own, sealed', 'sealed:' + this.h, this.shot); this.trick('Maker'); } }
     } else {
       if (before && t < before.t - 0.01) this.note = `record beaten by ${(before.t - t).toFixed(1)} s`; else if (before) this.note = `the record is ${(t - before.t).toFixed(1)} s quicker`;
       shelf.addGift({ h: this.h, name: this.nameOf, code: packChamber(this.D, this.bestRun()) });
