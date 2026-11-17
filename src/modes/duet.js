@@ -21,13 +21,20 @@ import { TRICKS } from './odyssey.js';
 
 const TINT2 = { id: 'duet2', absorb: [0.95, 0.30, 0.08], emit: [0.35, 0.9, 1.0], glow: 0.62, halo: 0.5 };
 const EMBER = [1, 0.64, 0.38], TIDE = [0.42, 0.9, 1], NAMES = ['Ember', 'Tide'], CSS = ['#ffb48a', '#7fe6ff'];
-const PAL = { deep: [0.012, 0.022, 0.05], mid: [0.04, 0.07, 0.14], wall: [0.07, 0.10, 0.18], rim: [0.6, 0.8, 1] };
+// each game its own plate, every one dark enough for both creatures to burn on it: Rain's deep water, Crown's violet and gold, Spark's smoke
+const PALS = {
+  rain: { deep: [0.012, 0.03, 0.06], mid: [0.04, 0.10, 0.18], pool: [0.06, 0.16, 0.24], wall: [0.07, 0.13, 0.21], rim: [0.6, 0.85, 1] },
+  crown: { deep: [0.035, 0.018, 0.06], mid: [0.13, 0.07, 0.2], pool: [0.19, 0.11, 0.26], wall: [0.18, 0.11, 0.26], rim: [1, 0.84, 0.55], accent: [1, 0.8, 0.4] },
+  spark: { deep: [0.02, 0.018, 0.026], mid: [0.085, 0.07, 0.095], pool: [0.13, 0.1, 0.12], wall: [0.13, 0.11, 0.14], rim: [1, 0.76, 0.5], accent: [1, 0.86, 0.6] },
+};
 export const GAMES = [
   { id: 'rain', name: 'Rain', rule: 'drink the light · the larger drinks the smaller', len: 45 },
   { id: 'crown', name: 'Crown', rule: 'hold the crown alone · it fills with your colour, and it is shy', len: 60 },
   { id: 'spark', name: 'Spark', rule: 'a touch passes the spark · it burns: whoever holds it runs hot · do not be holding it at the end', len: 40 },
   { id: 'race', name: 'Race', rule: 'touch the far light, then first one home', len: 75 },
 ];
+// …and its own music: Rain the duet's own, the Crown a warden's clock, the Spark the Iris's ticking breath, the Race Bloom's quick one
+const MUSIC = { rain: 'duet', crown: 'warden', spark: 'iris', race: 'bloom' };
 const FILL = 10;              // seconds of holding the crown alone that win it
 const HOLD = 3, HOP = 0.7;    // the crown is shy: held three seconds straight (or fought over for two) it hops across the dish
 // the courses, written in the Workshop's own terms (world/workshop.js: along/across 0‥1000), so they run the long way in any window.
@@ -69,7 +76,7 @@ export class Duet {
       onDark: () => { app.applyBudget(); if (card) app.hud.showResult(card); },
       onLoad: (W) => this.begin(W),
       onReveal: () => {
-        app.hud.hideResult(); app.hud.showTitle(`round ${this.round}`, G.name, G.id === 'race' ? `${G.rule} · ${COURSES[this.courseNow].name}` : G.rule, 2.8); app.hud.setCorner(true, () => app.pause()); app.sound.ambience('duet');
+        app.hud.hideResult(); app.hud.showTitle(`round ${this.round}`, G.name, G.id === 'race' ? `${G.rule} · ${COURSES[this.courseNow].name}` : G.rule, 2.8); app.hud.setCorner(true, () => app.pause()); app.sound.ambience(MUSIC[G.id] || 'duet');
         if (this.round === 1 && !this.ai && app.input.device === 'touch') app.hud.toast('two on one glass · a half each', '◐', 'cool');
       },
     });
@@ -87,7 +94,7 @@ export class Duet {
     if (id === 'crown') for (const v of [0.2, 0.8]) geo.push({ op: 'add', t: 'circle', ...at(0.5, v), r: 34, mat: SURF.GLASS });
     if (id === 'spark') for (const [u, v] of [[0.38, 0.34], [0.62, 0.34], [0.5, 0.7]]) geo.push({ op: 'add', t: 'circle', ...at(u, v), r: 40 });
     const sp = this.spawns(W, H);
-    return { name: this.game.name, seed: 21 + this.round, W, H, geo, ents: [], spawn: { x: sp[0].x, y: sp[0].y, n: 40 }, pal: PAL };
+    return { name: this.game.name, seed: 21 + this.round, W, H, geo, ents: [], spawn: { x: sp[0].x, y: sp[0].y, n: 40 }, pal: PALS[id] || PALS.rain };
   }
   begin(W) {
     const G = this.game, sp = G.id === 'race' ? [W.spec.spawn, this.start2] : this.spawns(W.spec.W, W.spec.H);
