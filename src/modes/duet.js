@@ -93,6 +93,8 @@ export class Duet {
     const G = this.game, sp = G.id === 'race' ? [W.spec.spawn, this.start2] : this.spawns(W.spec.W, W.spec.H);
     const C = this.p2 = new Colony(W, 7, { tint: TINT2, crown: 'sun', isPlayer: true }); C.spawn(sp[1].x, sp[1].y, G.id === 'rain' ? 40 : 50); W.colonies.push(C); W.massCosts = true; this.two.attach(C);
     this.brain = this.ai ? new Neighbour(this) : null; this.over = false; this.t = G.len; this.rain = 0; this.recs = [[], []]; this.recT = 0;
+    // ready…: both asleep while the round's name is read, then woken together (the machine reads no faster than you do)
+    this.hold = 1.7; for (const Q of [W.player, C]) for (const O of Q.orgs) O.dormant = true;
     if (G.id === 'crown') this.st = { x: W.spec.W / 2, y: W.spec.H / 2, hx: W.spec.W / 2, hy: W.spec.H / 2, r: 74, fill: [0, 0], beat: [0, 0], who: 0, tt: 0, streak: 0, contest: 0, hop: 0, from: null, to: null };
     else if (G.id === 'spark') { const [a, b] = this.score; this.st = { holder: a > b ? 1 : b > a ? 2 : 1 + Math.floor(Math.random() * 2), immune: 1.5, tick: 0 }; }
     else if (G.id === 'race') { this.races++; this.st = { pore: W.ents.find(e => e.d.type === 'pore'), far: this.far, touched: [false, false] }; }
@@ -104,8 +106,13 @@ export class Duet {
   // ── the round, frame by frame ──
   update(dt, W) {
     if (!this.p2) return;
-    this.two.update(dt, this.brain ? this.brain.step(dt, W, this.p2, W.player) : null);
+    this.two.update(dt, this.brain && this.hold <= 0 ? this.brain.step(dt, W, this.p2, W.player) : null);
     if (this.over) return;
+    if (this.hold > 0) {
+      this.hold -= dt; if (this.hold > 0) return;
+      for (const [Q, col] of [[W.player, EMBER], [this.p2, TIDE]]) for (const O of Q.orgs) { O.dormant = false; if (O.alive) W.fx.ring(O.B.cx, O.B.cy, col, 90, 0.8); }
+      this.app.sound.chime(7, 0); this.app.haptics.tick();
+    }
     const G = this.game; this.t -= dt;
     // both paths, ten times a second, for the round's long exposure
     if ((this.recT += dt) >= 0.1 && this.recs[0].length < 900) { this.recT -= 0.1; const sp = W.spec, land = sp.W >= sp.H; [W.player, this.p2].forEach((C, k) => { const F = C.focus; if (F && F.alive) this.recs[k].push(land ? [F.B.cx / sp.W, F.B.cy / sp.H] : [F.B.cy / sp.H, F.B.cx / sp.W]); }); }

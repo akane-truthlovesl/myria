@@ -7,13 +7,16 @@ const [w = 1280, h = 720] = process.argv.slice(2).map(Number);
 const { browser, page, logs } = await open(`/index.html?mode=duet&ai&round=crown&maxpx=700000`, { w, h });
 const until = async (fn, ms = 30000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await page.evaluate(fn)) return true; await sleep(150); } return false; };
 await sleep(600); await page.mouse.click(w / 2, h / 2);
+// (Ember follows the pointer: left in the middle, it would walk into the crown and fight the machine for it — park it on Ember's own side)
+await page.mouse.move(w * 0.12, h * 0.5);
 const seen = {}, cards = [], why = []; let ok = true;
 for (let r = 1; r <= 5; r++) {
-  await until(() => window.__app.state === 'play' && !!window.__app.mode.p2 && !!window.__app.mode.p2.focus && !window.__app.mode.over, 40000);
+  await until(() => window.__app.state === 'play' && !!window.__app.mode.p2 && !!window.__app.mode.p2.focus && !window.__app.mode.over && !(window.__app.mode.hold > 0), 40000);
   // (in Spark the machine is handed the spark: with it, it should hunt Ember down — without it and nobody near, keeping still in open water is right)
   await page.evaluate(() => { const m = window.__app.mode; if (m.game.id === 'spark') { m.st.holder = 2; m.st.immune = 0.3; } });
-  const a = await page.evaluate(() => { const m = window.__app.mode, F = m.p2.focus, s = m.st; const far = s.far ? Math.hypot(F.B.cx - s.far.x, F.B.cy - s.far.y) : 0; return { round: m.round, game: m.game.id, p: [F.B.cx, F.B.cy], far, mass: m.p2.mass, d1: Math.hypot(F.B.cx - window.__app.world.player.focus.B.cx, F.B.cy - window.__app.world.player.focus.B.cy) }; });
-  await sleep(3500);
+  const a = await page.evaluate(() => { const m = window.__app.mode, F = m.p2.focus, s = m.st; const far = s.far ? Math.hypot(F.B.cx - s.far.x, F.B.cy - s.far.y) : 0; return { rt: window.__app.world.roomTime, round: m.round, game: m.game.id, p: [F.B.cx, F.B.cy], far, mass: m.p2.mass, d1: Math.hypot(F.B.cx - window.__app.world.player.focus.B.cx, F.B.cy - window.__app.world.player.focus.B.cy) }; });
+  // three and a half seconds of the game's own time (the first seconds after a page loads can run slow while the picture is calibrated)
+  await page.waitForFunction((t) => window.__app.world.roomTime >= t || window.__app.mode.over, { timeout: 20000, polling: 100 }, a.rt + 3.5).catch(() => {});
   const b = await page.evaluate(() => { const m = window.__app.mode, F = m.p2.focus, s = m.st; const far = s.far ? Math.hypot(F.B.cx - s.far.x, F.B.cy - s.far.y) : 0; return { p: [F.B.cx, F.B.cy], far, mass: m.p2.mass, fill: s.fill ? s.fill[1] : 0, holder: s.holder || 0, touched: s.touched ? s.touched[1] : false, over: m.over, d1: Math.hypot(F.B.cx - window.__app.world.player.focus.B.cx, F.B.cy - window.__app.world.player.focus.B.cy) }; });
   const moved = Math.hypot(b.p[0] - a.p[0], b.p[1] - a.p[1]);
   // what the machine went for, by game
