@@ -65,6 +65,30 @@ export class Hub {
     });
   }
   exit() { this.app.hud.setLabels([]); }
+  // every open door shows, in a few points of light, what lies through it
+  overlay(ov) {
+    const W = this.app.world; if (!W || !this.dests) return; const t = W.time;
+    for (const e of W.ents) {
+      if (e.d.type !== 'pore' || !e.d.dest) continue; const d = this.dests.find(q => q.id === e.d.dest); if (!d || !d.open) continue;
+      const x = e.x, y = e.y, r = e.r * 0.46, c = e.col, a = 0.72;
+      if (e.d.dest === 'odyssey') {                 // a winding way, and a bead walking it
+        const P = (u) => [x + (u - 0.5) * 2 * r, y + Math.sin(u * Math.PI * 2) * r * 0.45];
+        for (let k = 0; k <= 6; k++) { const [px, py] = P(k / 6); ov.glow(px, py, 3.2, c, a * 0.6); }
+        const [bx, by] = P((t * 0.22) % 1); ov.glow(bx, by, 7.5, [1, 0.86, 0.6], 0.95);
+      } else if (e.d.dest === 'abyss') {            // down and round: lights sinking on a narrowing spiral
+        for (let k = 0; k < 4; k++) { const f = (t * 0.16 + k / 4) % 1, rr = r * (1 - f), q = f * 8 + k * 1.6; ov.glow(x + Math.cos(q) * rr, y + Math.sin(q) * rr * 0.55 + f * r * 0.45, 1.4 + 4.2 * (1 - f), c, a * (1 - f * 0.8)); }
+      } else if (e.d.dest === 'daily') {            // the day turns: a star of eight rays
+        for (let k = 0; k < 8; k++) { const q = t * 0.35 + k * Math.PI / 4, l = k % 2 ? r * 0.55 : r; ov.line(x, y, x + Math.cos(q) * l, y + Math.sin(q) * l, 1.4, c, a * 0.65); }
+        ov.glow(x, y, 5, [1, 1, 0.9], 0.8);
+      } else if (e.d.dest === 'bloom') {            // a minute of rain
+        for (let k = 0; k < 5; k++) { const f = (t * 0.7 + k * 0.37) % 1; ov.glow(x + (k - 2) * r * 0.42, y - r + f * 2 * r, 3.6, c, a * Math.sin(f * Math.PI)); }
+      } else if (e.d.dest === 'pool') {             // a drop falls, and the water rings
+        const f = (t * 0.45) % 1; if (f < 0.5) ov.glow(x, y - r + f * 2 * r, 5, c, a); else { const g = (f - 0.5) * 2; ov.ring(x, y, r * (0.15 + 0.85 * g), 1.6, c, a * (1 - g)); }
+      } else if (e.d.dest === 'duet') {             // two of you, round and round each other
+        const q = t * 1.5; ov.glow(x + Math.cos(q) * r * 0.6, y + Math.sin(q) * r * 0.6, 6, [1, 0.62, 0.36], 0.85); ov.glow(x - Math.cos(q) * r * 0.6, y - Math.sin(q) * r * 0.6, 6, [0.42, 0.9, 1], 0.85);
+      }
+    }
+  }
   pauseItems() { const app = this.app; const found = TRICKS.filter(t => (app.save.data.tricks || {})[t[0]]).length, kept = album.count(); return [{ label: 'Chambers', fn: () => this.chambers() }, { label: `Tricks · ${found} / ${TRICKS.length}`, fn: () => this.journal() }, ...(kept ? [{ label: `Album · ${kept}`, fn: () => this.albumPanel() }] : []), { label: this.hueLabel(), fn: (b) => { this.nextHue(); b.innerHTML = this.hueLabel(); } }, { label: 'Race an echo', fn: () => this.raceEcho() }, { label: this.hauntLabel(), fn: () => this.inviteHaunt() }, ...(app.save.get('awake', 0) ? [{ label: 'Myriad', fn: () => { app.resume(); app.toEpilogue({}); } }] : [])]; }
   hueLabel() { const save = this.app.save; const cur = skinFor(save); const nx = SKINS.find(s => s.need > save.stars()); return `Hue · ${cur.name}${nx ? ` <small style="opacity:.55;letter-spacing:.1em;text-transform:none">&nbsp; next: ${nx.name} at ${nx.need} ✦</small>` : ''}`; }
   nextHue() {
