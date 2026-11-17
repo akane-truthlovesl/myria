@@ -68,7 +68,7 @@ const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math
 export class Duet {
   // o.ai: the machine plays Tide · o.first: the game to open with
   constructor(app, o = {}) {
-    this.app = app; this.o = o; this.ai = !!o.ai; this.score = [0, 0]; this.round = 0; this.p2 = null; this.two = new Second(app); this.over = true; this.t = 0; this.st = {}; this.races = 0;
+    this.app = app; this.o = o; this.ai = !!o.ai; this.score = [0, 0]; this.round = 0; this.history = []; this.p2 = null; this.two = new Second(app); this.over = true; this.t = 0; this.st = {}; this.races = 0;
     const ids = shuffle(GAMES.map(g => g.id)); if (o.first && ids.includes(o.first)) { ids.splice(ids.indexOf(o.first), 1); ids.unshift(o.first); if (o.only) ids.length = 1; }
     this.deck = ids; this.course = Math.floor(Math.random() * COURSES.length);
   }
@@ -269,14 +269,15 @@ export class Duet {
   // a trick: Ember ate its fill among strangers who all looked like it — and nobody knew
   unseen() { const app = this.app; if (!app.save.trick('Unseen')) return; app.hud.toast('Unseen', '✦'); app.sound.trick(); const T = TRICKS.find(q => q[0] === 'Unseen'); if (app.moment) app.moment('Unseen', T ? T[1] : '', 'trick:Unseen', this.shot); }
   // the line under who took it: how
-  how(w) {
+  how(w) { const line = this.howLine(w); return line ? `<div class="d-how">${line}</div>` : ''; }
+  howLine(w) {
     const G = this.game, s = this.st, W = this.app.world; let line = '';
     if (G.id === 'masks') line = s.why === 'tag' ? `${NAMES[w - 1]} found ${NAMES[2 - w]} among ten strangers` : s.why === 'fed' ? `${NAMES[w - 1]} ate ${FEED} lights unseen` : `lights eaten · ${NAMES[0]} ${s.eats[0]} · ${s.eats[1]} ${NAMES[1]}`;
     else if (G.id === 'rain' && W.player && this.p2) line = `${NAMES[0]} ${W.player.mass} grains · ${this.p2.mass} ${NAMES[1]}`;
     else if (G.id === 'crown' && s.fill) line = `held alone · ${NAMES[0]} ${s.fill[0].toFixed(1)} s · ${s.fill[1].toFixed(1)} s ${NAMES[1]}`;
     else if (G.id === 'spark' && s.holder) line = `${NAMES[s.holder - 1]} was left holding the spark`;
     else if (G.id === 'race') line = `${COURSES[this.courseNow].name} · ${s.home ? NAMES[s.home - 1] + ' home first' : w ? NAMES[w - 1] + ' nearer home at the bell' : 'nobody home in time'}`;
-    return line ? `<div class="d-how">${line}</div>` : '';
+    return line;
   }
   // time is up: who has it
   verdict(W) {
@@ -294,6 +295,7 @@ export class Duet {
     const F = w === 1 ? W.player.focus : w === 2 ? this.p2.focus : null;
     // the round in one picture, taken before the celebration: Ember's way warm, Tide's cool, woven over the dish
     this.shot = exposure(app.R, W.spec, null, { zoom: app.hud.k || 1, runs: [{ rec: this.recs[0], from: [1, 0.5, 0.26], to: [1, 0.8, 0.52], home: w === 1 }, { rec: this.recs[1], from: [0.24, 0.62, 1], to: [0.6, 0.95, 1], home: w === 2 }] });
+    this.history.push({ name: this.game.name, w, how: this.howLine(w) });
     if (this.game.id === 'masks') this.unmask(W);
     if (F && F.alive) { W.fx.ring(F.B.cx, F.B.cy, w === 1 ? EMBER : TIDE, 240, 0.9); W.fx.burst(F.B.cx, F.B.cy, 30, w === 1 ? EMBER : TIDE, 300, { life: 1, size: 3 }); }
     app.sound.portal(); app.haptics.fuse(); app.hud.setTop(null);
@@ -310,12 +312,17 @@ export class Duet {
   end(w) {
     const app = this.app, [a, b] = this.score;
     // against the machine: a record kept (and the first match won is a trick, with the last round's picture in the Album)
+    // (a trick found at the end is said in the panel itself — a toast would only show through it)
+    let found = '';
     if (this.ai && a !== b) { const rec = app.save.get('duetAI', { w: 0, l: 0 }); if (a > b) rec.w++; else rec.l++; app.save.set('duetAI', rec);
-      if (a > b && app.save.trick('Neighbourly')) { app.hud.toast('Neighbourly', '✦'); app.sound.trick(); const T = TRICKS.find(q => q[0] === 'Neighbourly'); if (app.moment) app.moment('Neighbourly', T ? T[1] : '', 'trick:Neighbourly', this.shot); } }
+      if (a > b && app.save.trick('Neighbourly')) { app.sound.trick(); const T = TRICKS.find(q => q[0] === 'Neighbourly'); found = `<div class="d-trick">✦ Neighbourly <span>${T ? T[1] : ''}</span></div>`; if (app.moment) app.moment('Neighbourly', T ? T[1] : '', 'trick:Neighbourly', this.shot); } }
     app.hud.panel(a === b ? 'A perfect tie' : `${NAMES[a > b ? 0 : 1]} takes the match`, `${a} · ${b}${this.ai ? ' · against the machine' : ''}`, [
       { label: 'Again', cls: 'pri', fn: () => { app.hud.closePanel(); app.setMode(new Duet(app, { ai: this.ai, ...(this.o.only ? { first: this.o.first, only: true } : {}) })); } },
       { label: 'Atrium', fn: () => { app.hud.closePanel(); app.toHub({ awake: true }); } }],
-      `<div class="d-score" style="margin:6px 0 4px">${this.pips(0)}<i>${NAMES[0]}</i><b>·</b><i>${NAMES[1]}</i>${this.pips(1)}</div>${this.ai ? (() => { const r = app.save.get('duetAI', { w: 0, l: 0 }); return `<div class="sub" style="margin-top:8px;opacity:.75">you ${r.w} · the machine ${r.l}</div>`; })() : ''}`);
+      `${(() => { try { return this.shot ? `<img class="d-shot" alt="" src="${this.shot.toDataURL('image/jpeg', 0.86)}" style="width:${this.shot.style.width}">` : ''; } catch (_) { return ''; } })()}`
+      + `<div class="d-score" style="margin:6px 0 4px">${this.pips(0)}<i>${NAMES[0]}</i><b>·</b><i>${NAMES[1]}</i>${this.pips(1)}</div>`
+      + found + `<div class="d-rounds">${this.history.map((h, i) => `<div><b>${i + 1} · ${h.name}</b><i style="color:${h.w ? CSS[h.w - 1] : '#dff8ff'}">${h.w ? NAMES[h.w - 1] : 'a draw'}</i><span>${h.how}</span></div>`).join('')}</div>`
+      + `${this.ai ? (() => { const r = app.save.get('duetAI', { w: 0, l: 0 }); return `<div class="sub" style="margin-top:8px;opacity:.75">you ${r.w} · the machine ${r.l}</div>`; })() : ''}`);
   }
   onEvent(e) { if (this.app.state !== 'play') return false; return this.two.onEvent(e); }
   post(dt, W) {
