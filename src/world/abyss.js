@@ -38,7 +38,7 @@ export function dailyAxioms(day) {
   return [a, b];
 }
 
-export function abyssRoom(aspect, depth, seed, axiom, mass = 60) {
+export function abyssRoom(aspect, depth, seed, axiom, mass = 60, o = {}) {
   const { W, H } = frame(aspect); const R = rng(seed + depth * 7919);
   const geo = dish(W, H, { r: Math.min(W, H) * R.range(0.16, 0.3) });
   const ents = [], rivals = []; const taken = [];
@@ -48,6 +48,13 @@ export function abyssRoom(aspect, depth, seed, axiom, mass = 60) {
   const place = (r, tries = 60) => { for (let k = 0; k < tries; k++) { const x = R.range(80, W - 80), y = R.range(80, H - 80); if (free(x, y, r)) { taken.push([x, y, r]); return { x, y }; } } return null; };
   const spawn = { x: W * 0.5, y: H * 0.5, n: 40 }; taken.push([spawn.x, spawn.y, 90]);
   const arena = depth % 5 === 0;
+  // together: a door for two — two pads as far apart as the chamber allows, one warm and one cool, to be held at once before the way on opens
+  let twin = null;
+  if (o.coop && !arena && depth >= 2 && depth % 2 === 0) {
+    let A = null, Bq = null, bd = 0;
+    for (let k = 0; k < 60; k++) { const x1 = R.range(80, W - 80), y1 = R.range(80, H - 80), x2 = R.range(80, W - 80), y2 = R.range(80, H - 80); if (!free(x1, y1, 70) || !free(x2, y2, 70)) continue; const d = Math.hypot(x1 - x2, y1 - y2); if (d > bd) { bd = d; A = { x: x1, y: y1 }; Bq = { x: x2, y: y2 }; } }
+    if (A && bd > Math.min(W, H) * 0.7) { taken.push([A.x, A.y, 70], [Bq.x, Bq.y, 70]); twin = [{ type: 'pad', id: 'twinA', ...A, r: 40, need: 14, groups: [0, 7], col: [1, 0.72, 0.46] }, { type: 'pad', id: 'twinB', ...Bq, r: 40, need: 14, groups: [0, 7], col: [0.46, 0.88, 1] }]; ents.push(...twin); }
+  }
   // architecture: organic islands of different stuff
   const nIs = arena ? 2 : R.int(2, 4);
   for (let k = 0; k < nIs; k++) {
@@ -57,7 +64,7 @@ export function abyssRoom(aspect, depth, seed, axiom, mass = 60) {
     else { const a = R.range(0, TAU), l = r * R.range(0.9, 1.6); geo.push({ op: 'add', t: 'cap', ax: p.x - Math.cos(a) * l, ay: p.y - Math.sin(a) * l, bx: p.x + Math.cos(a) * l, by: p.y + Math.sin(a) * l, r: r * 0.42, mat }); }
     if (!arena && R.chance(0.75)) ents.push(...moteRing(p.x, p.y, r + 34, R.int(5, 8), 2, { a0: R.range(0, 6) }));
   }
-  const spec = { W, H, geo, ents, rivals, spawn, pal: PALS[(Math.floor((depth - 1) / 3)) % PALS.length], seed: seed + depth, moteMul: 1, rivalMul: 1, arena };
+  const spec = { W, H, geo, ents, rivals, spawn, pal: PALS[(Math.floor((depth - 1) / 3)) % PALS.length], seed: seed + depth, moteMul: 1, rivalMul: 1, arena, twin: !!twin };
   // machines, by depth
   const haz = Math.min(4, Math.floor((depth + 1) / 2)) - (arena ? 1 : 0);
   for (let k = 0; k < haz; k++) {

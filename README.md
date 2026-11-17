@@ -136,7 +136,9 @@ wall where something is watching makes you a veil it cannot see.
 - **Duet** — two players, one screen: pointer + W A S D / Space / F on a computer, and on a phone **two
   on one glass** — each half of the screen wakes its own stick (a tap in your half darts, a flick
   lances, a held second finger swells). **Together** is a co-op dive where touching shares mass between
-  you. **Versus** is a match of five little games, first to two: **Rain** (light rains into the dish;
+  you, and from the second depth some chambers carry **a door for two**: a warm pad and a cool one, as
+  far apart as the chamber allows, joined by a faint thread — the way on wears their seal until both
+  are held at once for a breath (the thread lights from each end that is held, then fills). **Versus** is a match of five little games, first to two: **Rain** (light rains into the dish;
   the larger membrane drinks the smaller), **Crown** (hold the crown alone and it fills with your
   colour — but it is shy: held three seconds straight, or fought over for two, it hops across the dish
   and the chase begins again), **Spark** (a touch passes it on; it burns, so whoever holds it runs hot;
@@ -155,7 +157,8 @@ wall where something is watching makes you a veil it cannot see.
   **Versus a neighbour**: the machine plays Tide, with a player's verbs, a player's speed and a
   player's moment of reaction (in Masks it wears the strangers' walk and judges only what you could
   see — who ate, who darted at someone, who moved like nobody else — and it is wrong sometimes); the
-  door keeps your record against it. `?mode=duet&ai&bot` lets the machine play both sides.
+  door keeps your record against it. Masks also has a door of its own: **two of you**, or **alone** — a
+  match of finding the machine among ten strangers. `?mode=duet&ai&bot` lets the machine play both sides.
 - **Link** — the same two modes on **two devices, with no server**. One hosts, one joins; they find each
   other by handing over two lines of text (any messenger). The host's picture and sound stream to the
   guest, whose pointer or finger is player two (move · tap to dart, hold to lance · second finger to
@@ -285,6 +288,7 @@ node tools/browser/modes.mjs                      # every mode opened and left r
 node tools/browser/duettest.mjs                   # two players on one screen (Duet, co-op dive): both steer, both dart and lance; two thumbs on one phone
 node tools/browser/duetmatch.mjs                  # a Duet match against the machine: all five games, cards between, a panel at the end
 node tools/browser/maskstest.mjs                  # Masks on one keyboard: all alike, split keys, unmasked by a stranger, a tag, four lights
+node tools/browser/twintest.mjs                   # a door for two in the dive together: sealed until both pads are held at once; solo rooms unchanged
 node tools/browser/linktest.mjs                   # two browsers paired by two lines of text: picture arrives, far pointer steers and darts player two
 node tools/browser/haunttest.mjs                  # a dive ends → its haunting is found, raised, laid to rest; a stranger's line is invited
 node tools/browser/dailytest.mjs                  # a year of the mutation calendar, the day's dive, the day's sprint, the Today panel

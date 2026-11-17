@@ -207,7 +207,8 @@ export class Duet {
     for (const C of W.colonies) { C.tint = MASK; for (const O of C.orgs) { O.B.tint = MASK; O.speedMul = PACE; O.dormant = true; } }
     this.st = { crowd, eats: [0, 0], strike: [null, null], shown: [0, 0], wrongs: [0, 0], why: '' };
   }
-  get noStick() { return !!this.p2 && !this.over && this.game.id === 'masks'; }
+  // (the stick ring would point at you — but only another person could read it: against the machine it stays)
+  get noStick() { return !!this.p2 && !this.over && this.game.id === 'masks' && !this.ai; }
   masked(dt, W) {
     const s = this.st; this.crowdF = W.colonies.map(C => C.focus).filter(O => O && O.alive);
     // the strangers stroll, stop, look about, drift toward light, start at nothing now and then
@@ -240,7 +241,7 @@ export class Duet {
   unmask(W) {
     for (let k = 0; k < 2; k++) { const C = k ? this.p2 : W.player; C.tint = this.real[k]; for (const O of C.orgs) if (O.alive) O.B.tint = this.real[k]; }
     for (const q of this.st.crowd) { q.C.pilot = null; q.C.tint = ASLEEP; for (const O of q.C.orgs) if (O.alive) { O.dormant = true; O.B.tint = ASLEEP; } }
-    this.app.sound.chime(0, 0); this.app.sound.chime(7, 0);
+    const s = this.app.sound; if (s.bloom) s.bloom(); else s.chime(0, 0);          // (two chimes at once would be one: they are rate-limited)
   }
   // (world events) whoever ate, it looked and sounded the same; only the mode keeps count
   eaten(m, O) {
@@ -310,7 +311,7 @@ export class Duet {
     if (this.ai && a !== b) { const rec = app.save.get('duetAI', { w: 0, l: 0 }); if (a > b) rec.w++; else rec.l++; app.save.set('duetAI', rec);
       if (a > b && app.save.trick('Neighbourly')) { app.hud.toast('Neighbourly', '✦'); app.sound.trick(); const T = TRICKS.find(q => q[0] === 'Neighbourly'); if (app.moment) app.moment('Neighbourly', T ? T[1] : '', 'trick:Neighbourly', this.shot); } }
     app.hud.panel(a === b ? 'A perfect tie' : `${NAMES[a > b ? 0 : 1]} takes the match`, `${a} · ${b}${this.ai ? ' · against the machine' : ''}`, [
-      { label: 'Again', cls: 'pri', fn: () => { app.hud.closePanel(); app.setMode(new Duet(app, { ai: this.ai })); } },
+      { label: 'Again', cls: 'pri', fn: () => { app.hud.closePanel(); app.setMode(new Duet(app, { ai: this.ai, ...(this.o.only ? { first: this.o.first, only: true } : {}) })); } },
       { label: 'Atrium', fn: () => { app.hud.closePanel(); app.toHub({ awake: true }); } }],
       `<div class="d-score" style="margin:6px 0 4px">${this.pips(0)}<i>${NAMES[0]}</i><b>·</b><i>${NAMES[1]}</i>${this.pips(1)}</div>${this.ai ? (() => { const r = app.save.get('duetAI', { w: 0, l: 0 }); return `<div class="sub" style="margin-top:8px;opacity:.75">you ${r.w} · the machine ${r.l}</div>`; })() : ''}`);
   }

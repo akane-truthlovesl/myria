@@ -16,9 +16,11 @@ for (let r = 1; r <= 6; r++) {
   await page.evaluate(() => { const m = window.__app.mode; if (m.game.id === 'spark') { m.st.holder = 2; m.st.immune = 0.3; } });
   const a = await page.evaluate(() => { const m = window.__app.mode, F = m.p2.focus, s = m.st; const far = s.far ? Math.hypot(F.B.cx - s.far.x, F.B.cy - s.far.y) : 0; return { rt: window.__app.world.roomTime, round: m.round, game: m.game.id, p: [F.B.cx, F.B.cy], far, mass: m.p2.mass, d1: Math.hypot(F.B.cx - window.__app.world.player.focus.B.cx, F.B.cy - window.__app.world.player.focus.B.cy) }; });
   // three and a half seconds of the game's own time (the first seconds after a page loads can run slow while the picture is calibrated) — six in Masks, where a stroller may stop to look about
-  await page.waitForFunction((t) => window.__app.world.roomTime >= t || window.__app.mode.over, { timeout: 20000, polling: 100 }, a.rt + (a.game === 'masks' ? 6 : 3.5)).catch(() => {});
+  // (the way it went, sampled along the window — a stroller that stops to look about and turns back has still been walking)
+  let path = 0, last = a.p; const tEnd = a.rt + (a.game === 'masks' ? 6 : 3.5), w0 = Date.now();
+  while (Date.now() - w0 < 20000) { const q = await page.evaluate(() => { const m = window.__app.mode, F = m.p2 && m.p2.focus; return { rt: window.__app.world.roomTime, over: m.over, p: F ? [F.B.cx, F.B.cy] : null }; }); if (q.p) { path += Math.hypot(q.p[0] - last[0], q.p[1] - last[1]); last = q.p; } if (q.over || q.rt >= tEnd) break; await sleep(200); }
   const b = await page.evaluate(() => { const m = window.__app.mode, F = m.p2.focus, s = m.st; const far = s.far ? Math.hypot(F.B.cx - s.far.x, F.B.cy - s.far.y) : 0; return { p: [F.B.cx, F.B.cy], far, mass: m.p2.mass, fill: s.fill ? s.fill[1] : 0, holder: s.holder || 0, touched: s.touched ? s.touched[1] : false, over: m.over, crowd: s.crowd ? s.crowd.length : 0, alike: window.__app.world.colonies.every(C => !C.focus || !!(C.focus.B.tint && C.focus.B.tint.id === 'mask')), d1: Math.hypot(F.B.cx - window.__app.world.player.focus.B.cx, F.B.cy - window.__app.world.player.focus.B.cy) }; });
-  const moved = Math.hypot(b.p[0] - a.p[0], b.p[1] - a.p[1]);
+  const moved = Math.max(path, Math.hypot(b.p[0] - a.p[0], b.p[1] - a.p[1]));
   // what the machine went for, by game
   // (in Masks: ten strangers, everyone in the same mask — the machine among them, walking as they walk)
   const purpose = a.game === 'crown' ? b.fill > 0.3 : a.game === 'race' ? (b.touched || b.far < a.far - 150 || b.over) : a.game === 'rain' ? b.mass > a.mass || moved > 80 : a.game === 'spark' ? b.holder === 1 || b.d1 < a.d1 - 60 : a.game === 'masks' ? (b.crowd >= 10 && b.alike) || b.over : false;

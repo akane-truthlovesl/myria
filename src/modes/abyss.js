@@ -11,6 +11,7 @@ import { Colony } from '../life/colony.js';
 import { Second } from '../core/second.js';
 
 const TINT2 = { id: 'duet2', absorb: [0.95, 0.30, 0.08], emit: [0.35, 0.9, 1.0], glow: 0.62, halo: 0.5 };
+const TWIN = 0.8;          // seconds both pads of a door for two must be held together
 
 export const TRAITS = [
   { id: 'reach', name: 'Long Reach', sub: 'feelers stretch far further', on: (m) => { m.T.reachK = (m.T.reachK || 1) * 1.6; } },
@@ -35,7 +36,7 @@ export class Abyss {
     this.seed = this.daily ? hashStr('myria' + day) : (Math.random() * 1e9) | 0;
     // the day's dive is bent by the day's mutation of the world — two of them at once on a weekend (world/abyss.js dailyAxioms)
     this.axioms = this.daily ? dailyAxioms(day) : [AXIOMS[0]]; this.axiom = this.axioms.length > 1 ? { id: this.axioms.map(a => a.id).join('+'), name: this.axioms.map(a => a.name).join(' + '), sub: this.axioms.map(a => a.sub).join(' · ') } : this.axioms[0];
-    this.depth = 1; this.embers = 3; this.T = {}; this.traits = []; this.light = 0; this.devoured = 0; this.mass = Math.max(40, o.mass || 40);
+    this.depth = Math.max(1, o.depth | 0 || 1); this.embers = 3; this.T = {}; this.traits = []; this.light = 0; this.devoured = 0; this.mass = Math.max(40, o.mass || 40);
     this.R = rng(this.seed ^ 0x5bd1e995); this.over = false; this.pausable = true;
     this.runId = ((Math.random() * 0x7fffffff) | 0) + 1; this.marks = []; this.rested = 0;
   }
@@ -43,13 +44,31 @@ export class Abyss {
   enter() { if (this.coop) { this.two = new Second(this.app); this.two.enter(); } this.load(null); }
   exit() { this.app.hud.hint(''); if (this.two) this.two.exit(); }
   onEvent(e) { if (!this.coop || this.app.state !== 'play' || !this.two) return false; return this.two.onEvent(e); }
-  update(dt, W) { if (this.coop && this.p2 && this.two) { if (this.two.C !== this.p2) this.two.attach(this.p2); this.two.update(dt); } }
-  overlay(ov, R) { if (this.two) this.two.overlay(ov, R); }
+  update(dt, W) { if (this.coop && this.p2 && this.two) { if (this.two.C !== this.p2) this.two.attach(this.p2); this.two.update(dt); } if (this.spec && this.spec.twin) this.twins(dt, W); }
+  // a door for two: both pads held at once, for a breath, and the seal on the way on breaks for good
+  twins(dt, W) {
+    if (this.twinOpen) { this.twinT = Math.max(0, this.twinT - dt * 0.6); return; }
+    const A = W.entity('twinA'), B = W.entity('twinB'); if (!A || !B) return; this.tw = [A, B];
+    if (!this.twinSaid && (A.fill > 0.3 || B.fill > 0.3)) { this.twinSaid = true; if (!this.app.save.get('twinSeen', 0)) { this.app.save.set('twinSeen', 1); this.app.hud.toast('a door for two · hold both at once', '◐', 'cool'); } }
+    if (A.on && B.on) { this.twinT = (this.twinT || 0) + dt; if (this.twinT >= TWIN) { this.twinOpen = true; this.twinT = 1.5; const s = this.app.sound; s.open && s.open(); s.chime && (s.chime(4, -0.5), s.chime(11, 0.5)); this.app.haptics.fuse(); for (const P of [A, B]) { W.fx.ring(P.x, P.y, P.col, 160, 0.9); W.fx.burst(P.x, P.y, 18, P.col, 240, { life: 0.8, size: 2.6 }); } for (let k = 1; k < 10; k++) { const t = k / 10; W.fx.burst(A.x + (B.x - A.x) * t, A.y + (B.y - A.y) * t, 3, [1, 0.95, 0.85], 120, { life: 0.6, size: 2 }); } } }
+    else this.twinT = Math.max(0, (this.twinT || 0) - dt * 2);
+  }
+  overlay(ov, R) {
+    if (this.two) this.two.overlay(ov, R);
+    // the thread between the two pads: faint while it waits, lit from each end that is held, filling as both are, gone once it has opened the way
+    const T = this.spec && this.spec.twin && this.tw; if (!T) return; const [A, B] = T, t = performance.now() / 1000;
+    if (this.twinOpen) { if (this.twinT > 0) ov.line(A.x, A.y, B.x, B.y, 2.4, [1, 0.95, 0.85], 0.5 * this.twinT); return; }
+    const dx = B.x - A.x, dy = B.y - A.y, L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L, x0 = A.x + ux * A.r, y0 = A.y + uy * A.r, span = L - A.r - B.r, n = Math.max(6, Math.floor(span / 26));
+    for (let k = 0; k < n; k++) { const a = k / n, b = (k + 0.5) / n, mid = (a + b) / 2, lit = (A.on && mid < 0.5) || (B.on && mid >= 0.5), fill = (this.twinT || 0) / TWIN, hot = Math.abs(mid - 0.5) * 2 > 1 - fill;
+      const col = hot ? [1, 0.95, 0.85] : mid < 0.5 ? A.col : B.col; ov.line(x0 + ux * span * a, y0 + uy * span * a, x0 + ux * span * b, y0 + uy * span * b, hot ? 2.6 : 1.4, col, hot ? 0.95 : lit ? 0.7 : 0.18 + 0.1 * Math.sin(t * 2 + k * 0.5)); }
+    // …and the way on wears a seal until then
+    const P = this.app.world.ents.find(e => e.d.type === 'pore'); if (P) for (let k = 0; k < 2; k++) ov.ring(P.x, P.y, P.r + 10 + k * 7, 1.6, k ? B.col : A.col, 0.5, t * (k ? -0.8 : 0.8), t * (k ? -0.8 : 0.8) + Math.PI * 1.2);
+  }
   pauseSub() { return `${this.daily ? 'Daily Abyss · ' + this.axiom.name : this.coop ? 'Abyss together · pointer + W A S D / Space / F' : 'Abyss'} · depth ${this.depth}`; }
 
   load(from) {
     const app = this.app; this.finished = false; this.roomLight = 0;
-    app.travel((aspect) => (this.spec = abyssRoom(aspect, this.depth, this.seed, this.axioms, Math.min(260, this.mass))), () => ({ mass: Math.min(260, this.mass), mat: this.T.mat ?? MAT.LUMEN, crown: this.T.crown || 'sun' }), {
+    app.travel((aspect) => (this.spec = abyssRoom(aspect, this.depth, this.seed, this.axioms, Math.min(260, this.mass), { coop: this.coop })), () => ({ mass: Math.min(260, this.mass), mat: this.T.mat ?? MAT.LUMEN, crown: this.T.crown || 'sun' }), {
       from, minDark: from ? 0.6 : 0.4, hold: () => !this.choosing,
       onDark: () => { app.applyBudget(); if (from && this.depth % 2 === 1 && this.depth > 1) this.choose(); },
       onLoad: (W) => {
@@ -58,6 +77,7 @@ export class Abyss {
         W.player.orgOpts = { speedMul: this.T.speed || 1 };
         for (const e of W.ents) if (e.d.type === 'pore') e.need = this.spec.arena ? 0 : Math.ceil(W.stats.motesTotal * 0.55);
         if (this.coop) { const C = this.p2 = new Colony(W, 7, { tint: TINT2, crown: 'sun', isPlayer: true }); C.spawn(W.spec.spawn.x + 80, W.spec.spawn.y, Math.min(260, Math.max(40, this.mass2))); W.colonies.push(C); C.ally = W.player.ally = true; }
+        this.twinOpen = false; this.twinT = 0; this.tw = null; this.twinSaid = false;
         this.marks = []; this.lostSeen = 0; this.layHaunt(W);
       },
       onReveal: () => { if (this.coop && this.depth === 1) app.hud.toast('touch to share mass · pointer + W A S D', '◌', 'cool'); if (this.haunting) { app.hud.toast(this.haunting.guest ? `a stranger ended here · ${hauntName(this.haunting.id)}` : `you ended here once · ${hauntName(this.haunting.id)}`, '☍', 'cool'); } app.hud.showTitle(this.daily ? this.axiom.name : '', this.spec.arena ? 'Predator Dish' : `Depth ${this.depth}`, this.spec.arena ? 'devour them all' : (this.depth === 1 && this.daily ? this.axiom.sub : ''), 2.4); app.hud.setCorner(true, () => app.pause()); this.music(); },
@@ -97,7 +117,7 @@ export class Abyss {
   // ── world listener ────────────────────────────────────────────────────
   rivalsAlive(W) { return W.colonies.filter(C => C.kind && C.kind !== 'oil' && C.kind !== 'thorn' && C.orgs.some(o => o.alive && o.B.count >= 14)).length; }
   moteLost() { for (const e of this.app.world.ents) if (e.d.type === 'pore' && e.need > 0) e.need--; }      // light a neighbour drank can no longer be asked of you (as in the Odyssey)
-  poreReady(p) { const W = this.app.world; if (!this.spec) return false; if (this.spec.arena) return this.rivalsAlive(W) === 0; return W.stats.motes >= p.need || W.pickups.filter(q => q.isMote && !q.dead).length === 0; }
+  poreReady(p) { const W = this.app.world; if (!this.spec) return false; if (this.spec.arena) return this.rivalsAlive(W) === 0; if (this.spec.twin && !this.twinOpen) return false; return W.stats.motes >= p.need || W.pickups.filter(q => q.isMote && !q.dead).length === 0; }
   poreProgress(p) { const W = this.app.world; if (!this.spec || this.spec.arena) return 0; return p.need ? Math.min(1, W.stats.motes / p.need) : 1; }
   tier(name) { this.app.hud.toast(name, '✺'); }
   ember(on) { this.app.hud.toast(on ? 'ember — nothing can drink you · light counts double' : 'whole again', '✺', on ? '' : 'cool'); }

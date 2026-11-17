@@ -141,17 +141,17 @@ function spriteFor(e, R, S, o) { const z = R.view.z; if (!e._sp || e._sp.z !== z
 
 // ── Pad: a pressure bloom etched in the plate. Enough of you resting on it wakes it. ──
 export class Pad extends Entity {
-  constructor(W, d) { super(W, d); this.r = d.r ?? 46; this.need = d.need ?? 24; this.fill = 0; this.active = false; this.latch = !!d.latch; this.col = d.col || COL.cyan; this.count = 0; this.curious = true; }
+  constructor(W, d) { super(W, d); this.r = d.r ?? 46; this.need = d.need ?? 24; this.fill = 0; this.active = false; this.latch = !!d.latch; this.col = d.col || COL.cyan; this.count = 0; this.curious = true; this.groups = d.groups || [0]; }      // (groups: whose weight counts — yours, or in a dive together either of you)
   get on() { return this.active; }
   post(dt) {
     const W = this.W, P = W.phys; let n = 0; const r2 = this.r * this.r;
-    P.forEachNear(this.x, this.y, this.r, (i, dx, dy) => { if (dx * dx + dy * dy < r2 && P.bodies[P.body[i]].group === 0) n++; });
+    const G = this.groups; P.forEachNear(this.x, this.y, this.r, (i, dx, dy) => { if (dx * dx + dy * dy < r2 && G.includes(P.bodies[P.body[i]].group)) n++; });
     this.count = n; const f = Math.min(1, n / this.need);
     this.fill += (f - this.fill) * Math.min(1, dt * 8);
     const was = this.active; this.active = this.latch ? this.active || n >= this.need : n >= this.need;
     if (this.active !== was) { W.sound && W.sound.plate(this.active); W.fx.ring(this.x, this.y, this.active ? COL.green : this.col, this.r * 1.9, 0.5); W.emit('pad', this); }
     // precision cradle: any body idling near a pad is drawn onto it and settles — holding a switch is never a fight
-    if (W.player) for (const O of W.player.orgs) {
+    for (const C of W.colonies) if (this.groups.includes(C.group)) for (const O of C.orgs) {
       if (!O.alive) continue; const dx = this.x - O.B.cx, dy = this.y - O.B.cy, d = Math.hypot(dx, dy);
       if (d < this.r * 1.6 && Math.abs(O.intent.x) + Math.abs(O.intent.y) < 0.25) O.cradle = { ax: dx * 7, ay: dy * 7, damp: 3 };
     }

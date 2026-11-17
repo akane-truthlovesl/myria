@@ -69,6 +69,8 @@ function duetPanel(a) {
     { label: 'Together — dive the abyss as two', cls: 'pri', fn: () => { a.hud.closePanel(); a.setMode(new Abyss(a, { coop: true })); } },
     { label: 'Versus — a match of five little games', fn: () => { a.hud.closePanel(); a.setMode(new Duet(a)); } },
     { label: `Versus a neighbour — the machine plays Tide${(() => { const r = a.save.get('duetAI', null); return r ? ` · you ${r.w}, it ${r.l}` : ''; })()}`, fn: () => { a.hud.closePanel(); a.setMode(new Duet(a, { ai: true })); } },
+    // (Masks on its own: the party game of the five — or, alone, a game of finding the machine among strangers)
+    [{ label: 'Masks · two of you', fn: () => { a.hud.closePanel(); a.setMode(new Duet(a, { first: 'masks', only: true })); } }, { label: 'Masks · alone', fn: () => { a.hud.closePanel(); a.setMode(new Duet(a, { first: 'masks', only: true, ai: true })); } }],
     ...(L.available ? (L.live ? [{ label: 'Unlink', fn: () => { L.close(); duetPanel(a); } }] : [[{ label: 'Link · host', fn: () => linkHost(a) }, { label: 'Link · join', fn: () => linkJoin(a) }]]) : []),
     { label: 'Back', fn: back }],
     L.available && !L.live ? '<div class="sub" style="opacity:.7;max-width:30em;margin:6px auto 0">Link: play across two devices on the same network. No server — you hand each other two lines of text.</div>' : '');
@@ -100,7 +102,7 @@ app.extraModes = [
 window.__app = app; window.__R = app.R; window.__rooms = ROOMS.length; window.__haunt = { packHaunt, unpackHaunt, hauntName }; window.__daily = { dailyAxioms, dailySprint, dailyPanel }; window.__ws = { packChamber, unpackChamber, chamberHash, chamberName, shelf, poolPanel, chambersPanel, Workshop, Trial, STARTERS }; window.__duet = { duetPanel, linkHost, linkJoin };
 const m = params.get('mode');
 if (params.has('room')) app.start(new Odyssey(app, +params.get('room') || 0, { mass: +(params.get('mass') || 0) }));
-else if (m === 'abyss' || m === 'daily') app.start(new Abyss(app, { daily: m === 'daily' }));
+else if (m === 'abyss' || m === 'daily') app.start(new Abyss(app, { daily: m === 'daily', depth: +params.get('depth') || 1 }));
 else if (m === 'sprint') { const sp = dailySprint(params.get('day') || today()); app.start(new Odyssey(app, sp.i, { single: true, sprint: sp })); }
 else if (m === 'pool') app.start(new Pool(app));
 else if (m === 'workshop') app.start(new Workshop(app));
@@ -108,5 +110,5 @@ else if (params.has('chamber') && unpackChamber(params.get('chamber'))) { const 
 else if (m === 'bloom') app.start(new Bloom(app));
 else if (m === 'myriad') app.start(new Epilogue(app));
 else if (m === 'duet') app.start(new Duet(app, { ai: params.has('ai'), first: params.get('round') || '', only: params.has('only') }));
-else if (m === 'coop') app.start(new Abyss(app, { coop: true }));
+else if (m === 'coop') app.start(new Abyss(app, { coop: true, depth: +params.get('depth') || 1 }));
 else app.start(new Hub(app, { awake: params.has('awake') }));
