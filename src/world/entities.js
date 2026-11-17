@@ -805,7 +805,7 @@ const smoothstep = (x) => x * x * (3 - 2 * x);
 export class Louvres extends Entity {
   constructor(W, d) {
     super(W, d); this.n = d.n ?? 8; this.R = d.R ?? 110; this.w = d.w ?? 7; this.col = d.col || [1, 0.62, 0.5];
-    this.period = d.period ?? 5; this.at = d.at ?? 0; this.openFor = d.openFor ?? 0.4; this.spin = d.spin ?? 0; this.ang = d.a ?? 0;
+    this.period = d.period ?? 5; this.at = d.at ?? 0; this.openFor = d.openFor ?? 0.4; this.ease = d.ease ?? 0.08; this.spin = d.spin ?? 0; this.ang = d.a ?? 0;
     this.phase = d.phase0 ?? 0.6; this.open = 0; this.warn = 0;
     this.hl = this.R * Math.sin(Math.PI / this.n) + this.w * 0.6;          // flat, neighbours just overlap: a closed ring
     this.blades = [];
@@ -813,14 +813,18 @@ export class Louvres extends Entity {
     this.open = this.openness(this.phase); this._place(1 / 60);
   }
   // 0 → shut (blades along the ring) · 1 → open (blades across it)
-  openness(p) { const q = ((p - this.at) % 1 + 1) % 1, o = this.openFor, e = 0.08; return q < e ? smoothstep(q / e) : q < o ? 1 : q < o + e ? 1 - smoothstep((q - o) / e) : 0; }
+  openness(p) { const q = ((p - this.at) % 1 + 1) % 1, o = this.openFor, e = this.ease; return q < e ? smoothstep(q / e) : q < o ? 1 : q < o + e ? 1 - smoothstep((q - o) / e) : 0; }
   _place(dt) { const tw = this.open * Math.PI / 2; for (const S of this.blades) { const a = this.ang + S._k / this.n * TAU; moveShape(S, this.x + Math.cos(a) * this.R, this.y + Math.sin(a) * this.R, a + Math.PI / 2 + tw, dt); } }
   update(dt) {
     const W = this.W; this.t += dt;
     const pu = W.sound && W.sound.pulse ? W.sound.pulse(this.period) : null;
     this.phase += dt / (pu ? pu[1] : this.period); if (pu) { let e = pu[0] - this.phase; e -= Math.round(e); this.phase += e * Math.min(1, dt * 0.8); }
     this.phase -= Math.floor(this.phase);
-    const was = this.open; this.open = this.openness(this.phase); this.ang += this.spin * dt;
+    // the blades press, they do not chop: a ring closing on a body slows to a fifth and leans on it — the gel is pushed to one
+    // side or the other — then catches up at its own pace (never a snap). The body sings under it like anything wound up
+    const was = this.open, want = this.openness(this.phase), rate = 1 / (this.ease * this.period); let k = 1;
+    if (want < was && W.player) for (const O of W.player.orgs) { if (!O.alive) continue; const B = O.B; if (Math.abs(Math.hypot(B.cx - this.x, B.cy - this.y) - this.R) < B.r * 0.9 + this.w) { k = 0.2; W.tug = Math.max(W.tug || 0, 0.55); break; } }
+    this.open = was + Math.max(-rate * k * dt, Math.min(rate * dt, want - was)); this.ang += this.spin * dt;
     const q = ((this.phase - this.at) % 1 + 1) % 1, lead = 0.1;
     this.warn = q > 1 - lead || (q > this.openFor - lead && q < this.openFor) ? 1 : Math.max(0, this.warn - dt * 3);
     if ((was < 0.5) !== (this.open < 0.5)) { W.sound && W.sound.louvre && W.sound.louvre(this.open >= 0.5); W.emit('louvres', this, this.open >= 0.5); }

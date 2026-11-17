@@ -18,6 +18,7 @@ function mtof(m) { return 440 * Math.pow(2, (m - 69) / 12); }
 // sounding *now*, so a streak of light is an arpeggio of the harmony under it, and a firefly's flash is in tune with it.
 const ch = (pad, mel) => ({ pad, mel });
 const PENT = [0, 2, 4, 7, 9];
+const WARD = [ch([0, 7, 14, 15], [0, 2, 3, 7, 10]), ch([8, 12, 15, 19], [0, 3, 7, 8, 10]), ch([10, 14, 17, 22], [0, 2, 5, 7, 10]), ch([7, 12, 14, 17], [0, 2, 5, 7, 10])];
 const DEEP = [ch([0, 7, 14, 15], [0, 2, 3, 7, 10]), ch([-4, 7, 12, 15], [0, 3, 7, 8, 10]), ch([-2, 7, 10, 15], [0, 3, 5, 7, 10]), ch([7, 12, 14, 19], [0, 2, 5, 7, 10])];
 export const THEMES = {
   // the Atrium: home — a slow lydian sway in D (I · II/I · vi · IV)
@@ -33,7 +34,9 @@ export const THEMES = {
   // the Heart: the same water, with a heartbeat under it
   heart: { root: 48, bpm: 62, bars: 2, arp: 'deep', base: 0.06, pulse: 'heart', prog: DEEP },
   // a warden: its stratum's key turned minor, a chord a bar, the bass on every beat
-  warden: { root: 50, bpm: 96, bars: 1, arp: 'clock', base: 0.12, pulse: 'beat', prog: [ch([0, 7, 14, 15], [0, 2, 3, 7, 10]), ch([8, 12, 15, 19], [0, 3, 7, 8, 10]), ch([10, 14, 17, 22], [0, 2, 5, 7, 10]), ch([7, 12, 14, 17], [0, 2, 5, 7, 10])] },
+  warden: { root: 50, bpm: 96, bars: 1, arp: 'clock', base: 0.12, pulse: 'beat', prog: WARD },
+  // the Iris: the Abyss's warden breathes slower — eight beats to a breath, six seconds, and its louvres keep them
+  iris: { root: 48, bpm: 80, bars: 1, arp: 'clock', base: 0.1, pulse: 'beat', prog: WARD },
   // Bloom: keep the chain alive — E, quick, a chord a bar (I · V/7 · vi · IV)
   bloom: { root: 52, bpm: 104, bars: 1, arp: 'pop', base: 0.14, prog: [ch([0, 7, 11, 16], PENT), ch([-1, 7, 14, 19], [2, 4, 7, 9, 11]), ch([-3, 7, 12, 16], PENT), ch([5, 12, 19, 21], [0, 2, 5, 7, 9])] },
   // Duet: two of you — A, playful

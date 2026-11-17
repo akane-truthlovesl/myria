@@ -83,7 +83,7 @@ export class Odyssey {
   }
   // the music of a chamber: its stratum's piece (one piece across all the stratum's chambers, a cadence at every pore);
   // a warden's own, in the stratum's key; the Heart's, with a heartbeat under it
-  music() { const s = this.app.sound, name = ['dew', 'glass', 'chem', 'abyss'][stratumOf(this.i)] || 'dew'; if (this.room.id === 'heart') s.ambience('heart'); else if (this.room.boss) s.ambience('warden', s.keyOf(name)); else s.ambience(name); }
+  music() { const s = this.app.sound, name = ['dew', 'glass', 'chem', 'abyss'][stratumOf(this.i)] || 'dew'; if (this.room.id === 'heart') s.ambience('heart'); else if (this.room.id === 'iris') s.ambience('iris'); else if (this.room.boss) s.ambience('warden', s.keyOf(name)); else s.ambience(name); }
   // ── echo: on a chamber you have already cleared, your best run comes back as a pale bead to race; a friend's echo (a pasted code) races beside it ──
   wakeEcho(W) {
     this.rec = []; this.recT = 0; this.echo = null; this.rival = null; this.air = 0; this.groundT = 0;

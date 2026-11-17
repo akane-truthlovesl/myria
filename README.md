@@ -58,9 +58,11 @@ wall where something is watching makes you a veil it cannot see.
   not cross it, you ride it) and **Twin Cores** (two electromagnets circling one another inside a ring
   of gears: as iron you are drawn in, the pole flickers, leans, and throws you — to its twin, unless
   you lean elsewhere; coat both long enough and the pair falls together and pays out) and **The Iris**
-  (two rings of glass louvres round a heart of light that breathe in turn — the outer on one bar of its
-  music, the inner on the next: turned across, every gap is a doorway; laid flat, a wall; a beat before
-  they move, the blades flash. In on one breath, out on another). Three living
+  (two rings of glass louvres round a heart of light that breathe in turn, eight beats of its own
+  music to a breath — the outer ring first, the inner a half-breath later: turned across, every gap is
+  a doorway; laid flat, a wall; a beat before they move, the blades flash. A ring closing on you leans
+  on you rather than slicing — the gel is pushed aside — and for a moment as one ring closes and the
+  other opens, a straight line runs to the heart. In on one breath, out on another). Three living
   stars per chamber: **Radiance** (all the light), **Grace** (lose almost nothing), **Swift** (under
   par). The pore opens at 60 % — the rest is appetite. Twenty named tricks (Thread the Needle,
   Surgical Shear, Ghost Wall, Paper Tiger, Cleave, Slingshot, Gravity Assist, Hole in One, Bank Shot,
