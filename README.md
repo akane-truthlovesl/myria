@@ -72,10 +72,10 @@ wall where something is watching makes you a veil it cannot see.
   you went drawn across it in light — cool where you woke, warm where you went home, brightest where
   you lingered — every light you took a spark, every one you left a dim ring, the echo you raced a
   pale thread (a warden passed, or a chamber of your own sealed, keeps that picture in the Album).
-  Twenty-four named tricks (Thread the Needle,
+  Twenty-five named tricks (Thread the Needle,
   Surgical Shear, Ghost Wall, Paper Tiger, Cleave, Slingshot, Gravity Assist, Hole in One, Bank Shot,
   Go-Between, Trojan Swallow, Outrun, Comet, Phoenix, Immaculate, Net, Velvet, In Time, Harvest, Whole, Maker,
-  Neighbourly, Unseen, Garden) are noticed when you find them; the Atrium keeps a
+  Neighbourly, Unseen, Garden, Lighthouse) are noticed when you find them; the Atrium keeps a
   journal in which the ones you have not found yet are riddles. The stars you gather dye you: six
   **hues** (Coral · Honey · Rose · Jade · Pearl · Nebula) unlock as they add up — each a full optical
   recipe, chosen from the pause menu in the Atrium.
@@ -114,6 +114,24 @@ wall where something is watching makes you a veil it cannot see.
   The run ends on its garden: every figure drawn, in its colour, grown again on the card, the figures
   tallied as glyphs (╱ ∿ ◠ ◉ @ ✚ ✿ — the same line goes into *Copy result*). Draw all seven kinds in one
   shower for the trick **Garden**. Four medals: Dew · Pearl · Bloom · Prism.
+- **Vigil** — the dish is dying, and you are the last light in it. Your light burns down a grain at a
+  time (a little faster with every omen seen, and faster the brighter you burn), so it has to be fed —
+  and while an omen rages, light falls only where that omen is worst. Six omens, each announced a
+  breath before it lands (its name, a line of warning, its colour breathing at the rim): **The
+  Drought** (the pools shrink and the floor cracks; the light falls in one pool at a time, the next
+  glimmering first, and dry ground steams you away), **The Frost** (the cold creeps in from the rim and
+  the one warm spring wanders; the light lies out in the cold, and a body frozen through flakes until a
+  dart cracks the ice), **Glass Rain** (a red seam shows each shard's path; the glass follows it edge-on
+  and leaves light in its wake), **The Quake** (chevrons show the way the ground will heave — lean
+  against them; every jolt shakes light loose at the rim it throws you toward, where gears grind),
+  **The Maelstrom** (the water turns round a dark heart that eats whatever touches it; light spirals
+  in, richer the nearer it gets) and **The Eclipse** (the dish goes dark but for your own glow; eyes
+  sweep from the rim and burn whatever moves in their sight — be still against the wall and they pass
+  over you). A lull of light follows each; after the first six they come in pairs. At ten grains you
+  are an ember, and an ember that eats nothing for eight seconds goes out. The run ends on the long
+  exposure of where you kept your light and the story of every omen you saw through (◌✓ ❄✓ ╲✗ — the
+  same line goes into *Copy result*). See all six through in one vigil for the trick **Lighthouse**.
+  Four medals for how long the light lasted: Spark · Lantern · Beacon · Sun.
 - **Abyss** — an endless generated descent with grazers, lancers, thornbacks and oil for neighbours,
   each measured against your own size; from the fourth depth on one of them is an apex that only wit
   (a lance, a held breath) will answer. Vaults — rings of glass turning around a hoard — are worth the
@@ -302,6 +320,7 @@ node tools/browser/duettest.mjs                   # two players on one screen (D
 node tools/browser/duetmatch.mjs                  # a Duet match against the machine: all five games, cards between, a panel at the end
 node tools/browser/maskstest.mjs                  # Masks on one keyboard: all alike, split keys, unmasked by a stranger, a tag, four lights
 node tools/browser/bloomtest.mjs                  # Bloom: figures on threads, drawn and etched, the multiplier's steps, a quiet chain, a blade's cut, the garden
+node tools/browser/vigiltest.mjs                  # Vigil: an omen announced and landing, each of the six doing what it warns of, the light burning down, an ember going out, the story
 node tools/browser/twintest.mjs                   # a door for two in the dive together: sealed until both pads are held at once; solo rooms unchanged
 node tools/browser/linktest.mjs                   # two browsers paired by two lines of text: picture arrives, far pointer steers and darts player two
 node tools/browser/haunttest.mjs                  # a dive ends → its haunting is found, raised, laid to rest; a stranger's line is invited
@@ -316,5 +335,5 @@ node tools/browser/tilttest.mjs                   # the optional gyro, driven by
 ```
 
 `dev.html` loads the ES modules directly (it must be served over http). URL switches: `?room=N`,
-`?mode=abyss|daily|sprint|bloom|rain|pool|duet|coop|myriad` (`&day=YYYY-MM-DD` for a given day's sprint or rain), `?all` (unlock everything), `?bot` (autopilot), `?maxpx=N` (fix the
+`?mode=abyss|daily|sprint|bloom|rain|vigil|pool|duet|coop|myriad` (`&day=YYYY-MM-DD` for a given day's sprint or rain), `?all` (unlock everything), `?bot` (autopilot), `?maxpx=N` (fix the
 internal pixel budget). The first WebGL prototype is kept in `legacy/`.

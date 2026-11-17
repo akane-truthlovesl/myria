@@ -26,6 +26,11 @@ canvas#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block;
 .d-rounds b { font-weight: 400; color: var(--dim); text-transform: uppercase; letter-spacing: .2em; font-size: 10.5px; }
 .d-rounds i { font-style: normal; }
 .d-rounds span { color: var(--dim); }
+.v-story { margin: 10px auto 4px; display: grid; gap: 4px; max-width: 26em; text-align: left; }
+.v-story div { display: grid; grid-template-columns: 3.4em 2.6em 1fr; gap: 8px; align-items: baseline; font-size: 12px; letter-spacing: .06em; }
+.v-story i { font-style: normal; color: var(--dim); }
+.v-story b { font-weight: 400; letter-spacing: .1em; }
+.v-early { margin: 10px auto -4px; max-width: 26em; font-size: 13px; letter-spacing: .22em; color: var(--dim); line-height: 1.7; }
 .b-garden { display: flex; justify-content: center; margin: 4px auto 8px; }
 .b-garden canvas { border-radius: 12px; box-shadow: 0 0 0 1px rgba(200,170,255,.22), 0 14px 44px rgba(0,0,0,.55), 0 0 70px rgba(190,140,255,.10); }
 .b-glyphs { font-size: 19px; letter-spacing: .32em; margin: 2px 0 0; }

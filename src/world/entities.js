@@ -578,7 +578,8 @@ export class Well extends Entity {
   }
   post(dt) {
     const W = this.W, P = W.phys; this.acc += dt; if (this.acc < 0.05) return; this.acc = 0; let who = null, n = 0;
-    P.forEachNear(this.x, this.y, this.r + 4, (i) => { const B = P.bodies[P.body[i]]; if (B.group === 0) { who = B; n++; } P.kill(i); });
+    // (d.bite: at most this many of the player's grains a tick — Vigil's maelstrom is a slip you can survive, not a drain)
+    const cap = this.d.bite ?? 1e9; P.forEachNear(this.x, this.y, this.r + 4, (i) => { const B = P.bodies[P.body[i]]; if (B.group === 0) { if (n >= cap) return; who = B; n++; } P.kill(i); });
     if (n) { W.stats.lost += n; W.fx.sparks(this.x, this.y, Math.min(6, n), 0, -1, [0.8, 0.6, 1], 120, { spread: 6.3, life: 0.4 }); W.hurt(who, n, this.x, this.y, true); }
     // light that drifts into the dark is gone (and no longer asked of you)
     for (const p of W.pickups) if (p.isMote && !p.dead && !p.held && p.free && p.spawnT > 0 && Math.hypot(p.x - this.x, p.y - this.y) < this.r + 4) { p.dead = true; W.fx.ring(this.x, this.y, p.col, this.r * 2, 0.4, { a: 0.6 }); W.emit('moteLost', p, null); }
@@ -631,7 +632,7 @@ export class Watcher extends Entity {
       seen = O; break;
     }
     this.seen = seen; this.alert = clamp(this.alert + (seen ? dt * 3.0 : -dt * 1.2), 0, 1);
-    if (seen && this.alert >= 1) { this.acc += dt; if (this.acc > 0.06) { this.acc = 0; const B = seen.B; if (B.count > 8) { const i = P.bodyIdx[B.start + ((Math.random() * B.len) | 0)]; if (P.alive[i] && P.body[i] === B.id) { W.shed(i, this.x, this.y, [1, 0.45, 0.3], 5); W.hurt(B, 1, this.x, this.y); } } } }
+    if (seen && this.alert >= 1) { this.acc += dt; if (this.acc > (this.d.burn ?? 0.06)) { this.acc = 0; const B = seen.B; if (B.count > 8) { const i = P.bodyIdx[B.start + ((Math.random() * B.len) | 0)]; if (P.alive[i] && P.body[i] === B.id) { W.shed(i, this.x, this.y, [1, 0.45, 0.3], 5); W.hurt(B, 1, this.x, this.y); } } } }
   }
   bake(ink) { ink.ring(this.x, this.y, 13, 1.4, 0.3, 0.5, 0.6, 0.8, 3); ink.disc(this.x, this.y, 9, 0.03, 0.05, 0.07, 1); }
   over(ov) {

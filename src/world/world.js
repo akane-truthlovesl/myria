@@ -40,6 +40,7 @@ export class World {
     P.clear(); this.fx.clear();
     this.ents = []; this.pickups = []; this.colonies = []; this.player = null; this._nextGroup = 0; this.schools = new Map(); this.fireflies = []; this._reb = [];
     this.chainGap = CHAIN_GAP;   // (a mode may give a streak longer to breathe: Bloom does)
+    this.noMercy = false;
     this.etches = [];            // marks a mode leaves on the plate for good (Bloom's garden): laid again whenever the plate is developed anew
     this.spec = spec; this.rand = rng(spec.seed || 1);
     const m = 40;
@@ -352,7 +353,7 @@ export class World {
       // itself weeps a little light near it — a clutch way back, never a dead end
       // …and the same mercy, more slowly, for a body worn well below its beginnings while something bigger still hunts the room
       let lean = false; if (!this.ember && m > 0 && m < 0.6 * (this.spec.spawn.n || 40)) for (const C of this.colonies) { if (C === pl || C.ally || C.kind !== 'hunter') continue; for (const O of C.orgs) if (O.alive && O.B.count > m) { lean = true; break; } if (lean) break; }
-      if ((this.ember || lean) && pl.focus && pl.focus.alive) {
+      if ((this.ember || lean) && pl.focus && pl.focus.alive && !this.noMercy) {          // (noMercy: a mode whose whole point is that the light can go out — Vigil)
         this.pityT = (this.pityT || 0) + dt;
         if (this.pityT > (this.ember ? 2.2 : 3.2)) {
           this.pityT = 0; const B = pl.focus.B; let near = 0; for (const p of this.pickups) if (p.isMote && !p.dead && Math.hypot(p.x - B.cx, p.y - B.cy) < 260) near++;

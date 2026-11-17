@@ -11,6 +11,7 @@ import { Pool } from './modes/pool.js';
 import { Duet } from './modes/duet.js';
 import { Epilogue } from './modes/epilogue.js';
 import { Bloom } from './modes/bloom.js';
+import { Vigil } from './modes/vigil.js';
 import { ROOMS } from './world/odyssey.js';
 import { Workshop, Trial } from './modes/workshop.js';
 import { packChamber, unpackChamber, chamberHash, chamberName } from './world/workshop.js';
@@ -97,6 +98,7 @@ app.extraModes = [
   { id: 'abyss', name: 'Abyss', col: [0.86, 0.6, 1.0], get sub() { const b = app.save.get('abyssBest', 0); return b ? `endless · best ${b}` : 'endless descent'; }, lock: 'light a chamber first', unlock: (n) => all || n >= 1, start: (a, o) => a.setMode(new Abyss(a, o)) },
   { id: 'daily', name: 'Daily', col: [0.5, 1.0, 0.7], get sub() { const ax = dailyAxioms(today()); return app.save.get('dailyDay', '') === today() ? `today · ${app.save.get('dailyBest', 0)} ✦` : ax.map(a => a.name).join(' + '); }, lock: 'light a chamber first', unlock: (n) => all || n >= 1, start: (a) => dailyPanel(a) },
   { id: 'bloom', name: 'Bloom', col: [1.0, 0.82, 0.42], get sub() { const b = app.save.get('bloomBest', 0); return b ? `best ${b}` : 'a minute of rain'; }, unlock: (n) => all || n >= 1, start: (a, o) => a.setMode(new Bloom(a, o)) },
+  { id: 'vigil', name: 'Vigil', col: [1.0, 0.55, 0.4], get sub() { const b = app.save.get('vigilBest', 0); return b ? `longest ${Math.floor(b / 60)}:${String(b % 60).padStart(2, '0')}` : 'the dish is dying'; }, unlock: (n) => all || n >= 1, start: (a) => a.setMode(new Vigil(a)) },
   { id: 'pool', name: 'Pool', col: [0.8, 0.72, 1.0], sub: 'knead · pour · make', unlock: (n) => all || n >= 1, start: (a) => poolPanel(a) },
   { id: 'duet', name: 'Duet', col: [1.0, 0.6, 0.75], get sub() { return app.link.live ? 'linked · two devices' : 'two players · one screen, or two'; }, unlock: (n) => all || n >= 1, start: (a) => duetPanel(a) },
 ];
@@ -107,6 +109,7 @@ else if (m === 'abyss' || m === 'daily') app.start(new Abyss(app, { daily: m ===
 else if (m === 'rain') app.start(new Bloom(app, { daily: params.get('day') || today() }));
 else if (m === 'sprint') { const sp = dailySprint(params.get('day') || today()); app.start(new Odyssey(app, sp.i, { single: true, sprint: sp })); }
 else if (m === 'pool') app.start(new Pool(app));
+else if (m === 'vigil') app.start(new Vigil(app));
 else if (m === 'workshop') app.start(new Workshop(app));
 else if (params.has('chamber') && unpackChamber(params.get('chamber'))) { const c = unpackChamber(params.get('chamber')); app.start(new Trial(app, { design: c.design, run: c.run })); }      // a chamber as a link: index.html?chamber=MYRIA-CHAMBER.…
 else if (m === 'bloom') app.start(new Bloom(app));

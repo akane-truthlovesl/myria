@@ -85,6 +85,10 @@ export class Hub {
         for (let k = 0; k < Math.floor(n); k++) { const [px, py] = P(k); ov.line(x, y, px, py, 1.3, c, a * 0.7 * hold); }
         for (let k = 0; k < 6; k++) { const [px, py] = P(k); ov.glow(px, py, k < n ? 4 : 2.8, c, a * (k < n ? 0.95 * hold + 0.15 : 0.35)); }
         ov.glow(x, y, 5.5, [1, 0.86, 0.5], a * 0.9);
+      } else if (e.d.dest === 'vigil') {            // a small flame keeping on, its sparks going up into the dark
+        const f = 0.78 + 0.22 * Math.sin(t * 7.3) * Math.sin(t * 3.1 + 1);
+        ov.glow(x, y + r * 0.12, r * 0.6 * f, [1, 0.45, 0.22], a * 0.55, 1); ov.glow(x, y, 6.5 * f, [1, 0.86, 0.62], a);
+        for (let k = 0; k < 4; k++) { const u = (t * 0.45 + k / 4) % 1; ov.glow(x + Math.sin(t * 2.2 + k * 1.7) * 5 * u, y - u * r * 0.95, 2.8 * (1 - u) + 0.6, [1, 0.7, 0.4], a * (1 - u)); }
       } else if (e.d.dest === 'pool') {             // a drop falls, and the water rings
         const f = (t * 0.45) % 1; if (f < 0.5) ov.glow(x, y - r + f * 2 * r, 5, c, a); else { const g = (f - 0.5) * 2; ov.ring(x, y, r * (0.15 + 0.85 * g), 1.6, c, a * (1 - g)); }
       } else if (e.d.dest === 'duet') {             // two of you, round and round each other

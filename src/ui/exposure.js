@@ -33,7 +33,7 @@ function plate(R, spec, o) {
 }
 
 export function exposure(R, spec, rec, o = {}) {
-  const runs = (o.runs || [{ rec, from: COOL, to: WARM, home: true }]).filter(q => q.rec && q.rec.length >= 3);
+  const runs = (o.runs || [{ rec, from: COOL, to: WARM, home: true, cols: o.cols }]).filter(q => q.rec && q.rec.length >= 3);
   if (typeof document === 'undefined' || !R || !R.canvas || !spec || !runs.length) return null;
   try {
     const F = plate(R, spec, o); if (!F) return null; const { w, h, mk, P, base, gb } = F;
@@ -54,9 +54,11 @@ export function exposure(R, spec, rec, o = {}) {
     for (const r of runs) { const [x, y] = r.pts[0]; gb.strokeStyle = rgba(r.from, 0.8); gb.lineWidth = 1.2; gb.beginPath(); gb.arc(x, y, 4.5, 0, Math.PI * 2); gb.stroke(); }
 
     // the run: a curve through the midpoints, each little piece as bright as the creature was slow there (light adds, so order does not matter)
+    // (a long run — minutes of it — would add up to white: the longer the run, the fainter each pass, so the picture stays a drawing)
+    const dk = n > 900 ? Math.max(0.3, Math.sqrt(900 / n)) : 1;
     for (const r of runs) {
       const p = r.pts, m = p.length, mid = (i) => [(p[i][0] + p[i + 1][0]) / 2, (p[i][1] + p[i + 1][1]) / 2]; r.segs = [];
-      for (let i = 1; i < m - 1; i++) { const a = i === 1 ? p[0] : mid(i - 1), b = i === m - 2 ? p[m - 1] : mid(i), L = Math.hypot(b[0] - a[0], b[1] - a[1]); r.segs.push({ a, b, q: p[i], glow: Math.min(1, Math.max(0.16, 2.4 / (L + 0.7))), col: mix(r.from, r.to, i / (m - 1)) }); }
+      for (let i = 1; i < m - 1; i++) { const a = i === 1 ? p[0] : mid(i - 1), b = i === m - 2 ? p[m - 1] : mid(i), L = Math.hypot(b[0] - a[0], b[1] - a[1]); r.segs.push({ a, b, q: p[i], glow: dk * Math.min(1, Math.max(0.16, 2.4 / (L + 0.7))), col: r.cols && r.cols[i] ? r.cols[i] : mix(r.from, r.to, i / (m - 1)) }); }
     }
     const segs = runs[0].segs, most = Math.max(...runs.map(r => r.segs.length));
     const seg = (g, s) => { for (const [lw, a0] of LAYERS) { g.lineWidth = lw; g.strokeStyle = rgba(lw < 2 ? mix(s.col, [1, 1, 1], 0.45) : s.col, a0 * s.glow); g.beginPath(); g.moveTo(s.a[0], s.a[1]); g.quadraticCurveTo(s.q[0], s.q[1], s.b[0], s.b[1]); g.stroke(); } };

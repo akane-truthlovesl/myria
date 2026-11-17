@@ -20,8 +20,9 @@ const p2 = () => H.page.evaluate(() => { const a = window.__app, F = a.mode.p2.f
 await H.page.evaluate(() => { const a = window.__app, F = a.mode.p2.focus; window.__darts = 0; const d0 = F.dart.bind(F); F.dart = (...q) => { window.__darts++; return d0(...q); }; });
 const a0 = await p2(); const target = a0.u > 0.5 ? [0.22, 0.3] : [0.78, 0.7];
 const gb = await G.page.evaluate(() => { const v = window.__app.link.video, b = v.getBoundingClientRect(), k = Math.min(b.width / v.videoWidth, b.height / v.videoHeight), w = v.videoWidth * k, h = v.videoHeight * k; return [b.left + (b.width - w) / 2, b.top + (b.height - h) / 2, w, h]; });
-await G.page.mouse.move(gb[0] + gb[2] * target[0], gb[1] + gb[3] * target[1], { steps: 8 }); await sleep(2600); const a1 = await p2();
-const d0 = Math.hypot(a0.u - target[0], a0.v - target[1]), d1 = Math.hypot(a1.u - target[0], a1.v - target[1]);
+await G.page.mouse.move(gb[0] + gb[2] * target[0], gb[1] + gb[3] * target[1], { steps: 8 });
+// (give it up to eight seconds: under a full battery the host can run at a third of its frame rate — what matters is that it goes there)
+const d0 = Math.hypot(a0.u - target[0], a0.v - target[1]); let a1 = null, d1 = 1; for (const t0 = Date.now(); Date.now() - t0 < 8000;) { await sleep(400); a1 = await p2(); d1 = Math.hypot(a1.u - target[0], a1.v - target[1]); if (Date.now() - t0 > 2600 && d1 < d0 * 0.35) break; }
 console.log(`guest points at (${target}) · player two on the host: (${a0.u}, ${a0.v}) → (${a1.u}, ${a1.v}) · distance to the pointer ${d0.toFixed(2)} → ${d1.toFixed(2)} · inputs received ${a1.got}`);
 await G.page.mouse.move(gb[0] + gb[2] * 0.5, gb[1] + gb[3] * 0.5, { steps: 4 }); await sleep(300); await G.page.mouse.down(); await sleep(80); await G.page.mouse.up(); await sleep(700);
 const darts = await H.page.evaluate(() => window.__darts); console.log('guest taps · darts thrown by player two on the host:', darts);

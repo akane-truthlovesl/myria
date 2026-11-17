@@ -3,7 +3,7 @@
 // exactly that long, freezes it again and writes a frame + a few numbers. Whoever is playing looks at the frame and decides.
 //   node hands.mjs <dir> "<url path>" [w] [h]          (session; file IPC only — no listener)
 //   node hands.mjs <dir> turn <n> '<json acts>'         (one turn: writes cmd_n.json, waits for state_n.json, prints it)
-// acts: [{ "to":[x,y], "ms":400, "click":true | "right":true | "hold":600 | "rhold":600 | "mid":600 | "key":"Space" | "keys":["KeyD"], "keyms":300 }]
+// acts: [{ "to":[x,y], "ms":400, "click":true | "right":true | "hold":600 | "rhold":600 | "mid":600 | "key":"Space" | "keys":["KeyD"], "keyms":300, "eval":"js" }]
 import { open, sleep, errs } from './lib.mjs';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
@@ -27,6 +27,7 @@ for (let n = 1; n < 400; n++) {
   if (!existsSync(f)) break; let acts; try { acts = JSON.parse(readFileSync(f, 'utf8')); } catch (e) { acts = []; } if (acts === 'quit' || acts.quit) break;
   await freeze(false);
   for (const A of acts) {
+    if (A.eval) await page.evaluate(A.eval);      // (a tester's hand on the world: set a scene up, jump the clock — not a player's)
     if (A.to) { const [tx, ty] = A.to; const steps = 6; for (let k = 1; k <= steps; k++) { await page.mouse.move(mx + (tx - mx) * k / steps, my + (ty - my) * k / steps); await sleep(18); } mx = tx; my = ty; }      // a hand does not teleport
     if (A.keys) for (const k of A.keys) await page.keyboard.down(k);
     if (A.click) await page.mouse.click(mx, my);
