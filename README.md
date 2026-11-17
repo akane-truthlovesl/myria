@@ -140,8 +140,12 @@ wall where something is watching makes you a veil it cannot see.
   Tide, Glass Water, Long Winter, Rapids, Slingshot, Famine, Giants, Champagne, Firefly Night) — two at once on
   weekends, never a pair that cancels out. **The day's sprint** is one Odyssey chamber in mutated water
   (faster, thicker, frictionless, or "every light or no door"), against the clock, drawn only from the
-  100 chamber × mutation pairs the autopilot finishes in both orientations. *Copy today* makes a result
-  line to compare with anyone's.
+  100 chamber × mutation pairs the autopilot finishes in both orientations. **The day's rain** is a
+  Bloom whose figures fall in the same order and in the same places for everyone on a screen of the
+  same shape (the rain never
+  leans toward where you happen to be, and every draw of its dice is taken whatever you do — only how
+  fast the figures come still answers how fast you eat). *Copy today* makes a result line to compare
+  with anyone's.
 - **Duet** — two players, one screen: pointer + W A S D / Space / F on a computer, and on a phone **two
   on one glass** — each half of the screen wakes its own stick (a tap in your half darts, a flick
   lances, a held second finger swells). **Together** is a co-op dive where touching shares mass between
@@ -301,7 +305,7 @@ node tools/browser/bloomtest.mjs                  # Bloom: figures on threads, d
 node tools/browser/twintest.mjs                   # a door for two in the dive together: sealed until both pads are held at once; solo rooms unchanged
 node tools/browser/linktest.mjs                   # two browsers paired by two lines of text: picture arrives, far pointer steers and darts player two
 node tools/browser/haunttest.mjs                  # a dive ends → its haunting is found, raised, laid to rest; a stranger's line is invited
-node tools/browser/dailytest.mjs                  # a year of the mutation calendar, the day's dive, the day's sprint, the Today panel
+node tools/browser/dailytest.mjs                  # a year of the mutation calendar, the day's dive, the day's sprint, the day's rain (the same for everyone), the Today panel
 node tools/browser/sandbox.mjs                    # emulated fingers: a strand between two of them, bubbles, a down, pouring, dropping
 node tools/browser/workshoptest.mjs [shot]        # the bench with a real mouse (paint, draw, set down, erase, undo), play, seal, copy, replay as a stranger
 node tools/chambers.mjs 1280 720 3                # the autopilot plays the chambers left on the bench through the real Trial mode (STAMP=1 also prints each line with its best run as a record)
@@ -312,5 +316,5 @@ node tools/browser/tilttest.mjs                   # the optional gyro, driven by
 ```
 
 `dev.html` loads the ES modules directly (it must be served over http). URL switches: `?room=N`,
-`?mode=abyss|daily|sprint|bloom|pool|duet|coop|myriad`, `?all` (unlock everything), `?bot` (autopilot), `?maxpx=N` (fix the
+`?mode=abyss|daily|sprint|bloom|rain|pool|duet|coop|myriad` (`&day=YYYY-MM-DD` for a given day's sprint or rain), `?all` (unlock everything), `?bot` (autopilot), `?maxpx=N` (fix the
 internal pixel budget). The first WebGL prototype is kept in `legacy/`.

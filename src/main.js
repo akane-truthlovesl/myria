@@ -27,17 +27,18 @@ app.startOdyssey = (i, o) => app.setMode(new Odyssey(app, i, o));
 app.toEpilogue = (o) => app.setMode(new Epilogue(app, o));
 const all = params.has('all');
 const today = () => new Date().toISOString().slice(0, 10);
-// Today: the day's dive (one mutation of the world; two at once on a weekend) and the day's sprint (one chamber, one mutation of its water, against the clock).
-// Both are the same for everyone, made from the date alone — so a result can be compared with anyone's.
+// Today: the day's dive (one mutation of the world; two at once on a weekend), the day's sprint (one chamber, one mutation of its water, against the clock)
+// and the day's rain (a Bloom whose figures fall in the same order and the same places for everyone). All are the same for everyone, made from the date alone — so a result can be compared with anyone's.
 function dailyPanel(a) {
-  const day = today(), ax = dailyAxioms(day), sp = dailySprint(day), save = a.save; const dove = save.get('dailyDay', '') === day, ran = save.get('sprintDay', '') === day;
-  const line = () => `MYRIA · ${day}\nDive — ${ax.map(q => q.name).join(' + ')}${dove ? ': ✦ ' + save.get('dailyBest', 0) : ''}\nSprint — ${ROOMS[sp.i].name} · ${sp.m.name}${ran ? ': ' + save.get('sprintBest', 0).toFixed(1) + ' s' : ''}`;
+  const day = today(), ax = dailyAxioms(day), sp = dailySprint(day), save = a.save; const dove = save.get('dailyDay', '') === day, ran = save.get('sprintDay', '') === day, rained = save.get('rainDay', '') === day;
+  const line = () => `MYRIA · ${day}\nDive — ${ax.map(q => q.name).join(' + ')}${dove ? ': ✦ ' + save.get('dailyBest', 0) : ''}\nSprint — ${ROOMS[sp.i].name} · ${sp.m.name}${ran ? ': ' + save.get('sprintBest', 0).toFixed(1) + ' s' : ''}\nRain — the day's Bloom${rained ? ': ✦ ' + save.get('rainBest', 0) + ' · ' + save.get('rainFigs', 0) + ' figures' : ''}`;
   a.hud.panel('Today', day, [
     { label: `Dive — ${ax.map(q => q.name).join(' + ')}${dove ? ` <small style="opacity:.6">&nbsp; ✦ ${save.get('dailyBest', 0)}</small>` : ''}`, cls: 'pri', fn: () => { a.hud.closePanel(); a.setMode(new Abyss(a, { daily: true })); } },
     { label: `Sprint — ${ROOMS[sp.i].name} · ${sp.m.name}${ran ? ` <small style="opacity:.6">&nbsp; ${save.get('sprintBest', 0).toFixed(1)} s</small>` : ''}`, fn: () => { a.hud.closePanel(); a.setMode(new Odyssey(a, sp.i, { single: true, sprint: sp })); } },
-    ...(dove || ran ? [{ label: 'Copy today', fn: (b) => { a.copyText(line()); b.textContent = 'Copied ✓'; } }] : []),
+    { label: `Rain — the day's Bloom${rained ? ` <small style="opacity:.6">&nbsp; ✦ ${save.get('rainBest', 0)}</small>` : ''}`, fn: () => { a.hud.closePanel(); a.setMode(new Bloom(a, { daily: day })); } },
+    ...(dove || ran || rained ? [{ label: 'Copy today', fn: (b) => { a.copyText(line()); b.textContent = 'Copied ✓'; } }] : []),
     { label: 'Back', fn: () => { a.hud.closePanel(); a.toHub({ awake: true }); } }],
-    `<div class="sub" style="line-height:1.7">${ax.map(q => q.sub).join(' · ')}<br>${sp.m.sub}</div>`);
+    `<div class="sub" style="line-height:1.7">${ax.map(q => q.sub).join(' · ')}<br>${sp.m.sub}<br>the rain falls in the same figures, in the same places, for everyone</div>`);
 }
 // The Pool's door: the kneading pool itself — or the Workshop: make a chamber, play it through, and hand it to anyone as a line of text;
 // or play one someone handed you (its record comes with it, as a blue bead to race)
@@ -103,6 +104,7 @@ window.__app = app; window.__R = app.R; window.__rooms = ROOMS.length; window.__
 const m = params.get('mode');
 if (params.has('room')) app.start(new Odyssey(app, +params.get('room') || 0, { mass: +(params.get('mass') || 0) }));
 else if (m === 'abyss' || m === 'daily') app.start(new Abyss(app, { daily: m === 'daily', depth: +params.get('depth') || 1 }));
+else if (m === 'rain') app.start(new Bloom(app, { daily: params.get('day') || today() }));
 else if (m === 'sprint') { const sp = dailySprint(params.get('day') || today()); app.start(new Odyssey(app, sp.i, { single: true, sprint: sp })); }
 else if (m === 'pool') app.start(new Pool(app));
 else if (m === 'workshop') app.start(new Workshop(app));

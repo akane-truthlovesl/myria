@@ -11,7 +11,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { frame, dish } from '../world/rooms.js';
 import { SURF } from '../sim/materials.js';
-import { TAU, rng } from '../core/util.js';
+import { TAU, rng, hashStr } from '../core/util.js';
 import { PAL } from '../world/odyssey.js';
 import { TRICKS } from './odyssey.js';
 import { shoalOf, fireflyCloud } from '../world/plankton.js';
@@ -36,7 +36,7 @@ const KINDS = Object.keys(FIGS);
 
 export class Bloom {
   constructor(app, o = {}) {
-    this.app = app; this.t = LEN; this.el = 0; this.score = 0; this.bestChain = 0; this.over = false; this.rain = 1.0; this.R = rng(((Math.random() * 1e9) | 0) ^ 0x9e3779b9); this.phase = 0; this.eaten = 0; this.startMass = Math.min(60, Math.max(40, o.mass || 40)); this.pausable = true;
+    this.app = app; this.t = LEN; this.el = 0; this.score = 0; this.bestChain = 0; this.over = false; this.rain = 1.0; this.daily = o.daily || null; this.R = rng(this.daily ? hashStr('rain:' + this.daily) : ((Math.random() * 1e9) | 0) ^ 0x9e3779b9); this.calls = 0; this.seq = []; this.phase = 0; this.eaten = 0; this.startMass = Math.min(60, Math.max(40, o.mass || 40)); this.pausable = true;
     this.figs = []; this.drawnList = []; this.tally = {}; this.lvl = 0; this.bestMult = 1; this.cuts = 0; this.quiet = 0; this.tearT = -9; this.pour = false; this.said = {}; this.tickS = 0;
   }
   enter() {
@@ -49,11 +49,11 @@ export class Bloom {
     }, null, {
       onDark: () => app.applyBudget(),
       onLoad: (W) => { W.massCosts = false; W.chainGap = 2.4; },          // (a little longer for a streak to breathe than elsewhere: the rain, not the player, decides when the next figure falls)
-      onReveal: () => { app.hud.showTitle('', 'Bloom', 'take every star of a figure', 2.8); app.hud.setCorner(true, () => app.pause()); app.sound.ready && app.sound.ambience('bloom'); },
+      onReveal: () => { app.hud.showTitle(this.daily ? this.daily : '', this.daily ? 'Today\'s rain' : 'Bloom', 'take every star of a figure', 2.8); app.hud.setCorner(true, () => app.pause()); app.sound.ready && app.sound.ambience('bloom'); },
     });
   }
-  restart() { this.app.setMode(new Bloom(this.app)); }
-  pauseSub() { return `Bloom · ${this.score}`; }
+  restart() { this.app.setMode(new Bloom(this.app, { daily: this.daily })); }
+  pauseSub() { return `${this.daily ? 'Today\'s rain' : 'Bloom'} · ${this.score}`; }
   mult() { let k = 1; for (const q of STEPS) if (this.lvl >= q) k++; return k; }
   // how far the chain is toward the next step: [drawn, needed] since the last one (null at ×8)
   toNext() { const mu = this.mult(); if (mu > STEPS.length) return null; const a = STEPS[mu - 2] || 0; return [this.lvl - a, STEPS[mu - 1] - a]; }
@@ -75,11 +75,13 @@ export class Bloom {
   }
   figure(W) {
     const R = this.R, sw = W.spec.W, sh = W.spec.H; const P = W.player.focus; const fx = P && P.alive ? P.B.cx : sw / 2, fy = P && P.alive ? P.B.cy : sh / 2;
-    const hard = Math.min(1, this.el / 55); const kind = R.pick(['line', 'line', 'wave', 'arc', 'ring', 'spiral', 'cross', 'flower']);
+    const hard = Math.min(1, this.el / 55); const kind = R.pick(['line', 'line', 'wave', 'arc', 'ring', 'spiral', 'cross', 'flower']); const n = ++this.calls;
+    // (every draw is taken whatever happens, and visits are counted in figures, not seconds: the day's rain is the same sequence for everyone, however fast they eat)
+    const v = R(), v2 = R();
     // now and then the rain brings visitors: a school that crosses the dish (it scatters — worth the chase), or fireflies (only a lit one can be taken: eat to their beat)
-    if (this.el > 10 && R() < 0.15) { this.visit(W, this.el < 24 || R() < 0.5 ? 'school' : 'fireflies'); return; }
+    if (n > 5 && v < 0.15) { const vk = n < 12 || v2 < 0.5 ? 'school' : 'fireflies'; this.visit(W, vk); if (this.seq.length < 64) this.seq.push(vk); return; }
     // figures begin within reach of where you are, and lead away: the rain invites, it never ambushes… at first. Later it falls where it likes, and the chain must be carried there
-    const a0 = R.range(0, TAU); const near = R() < 0.55 - 0.25 * hard;
+    const a0 = R.range(0, TAU); const near = R() < 0.55 - 0.25 * hard && !this.daily;            // (the day's rain never leans toward wherever you happen to be)
     const sx = near ? fx + Math.cos(a0) * R.range(70, 150) : R.range(sw * 0.2, sw * 0.8), sy = near ? fy + Math.sin(a0) * R.range(70, 150) : R.range(sh * 0.2, sh * 0.8);
     const cx = R.range(sw * 0.24, sw * 0.76), cy = R.range(sh * 0.27, sh * 0.73); const pts = [], segs = []; const run = (a, b) => { for (let k = a; k < b; k++) segs.push([k, k + 1]); };
     if (kind === 'line') { const a = a0 + R.range(-0.9, 0.9), L = R.range(230, 380), n = 9; for (let k = 0; k < n; k++) pts.push([sx + Math.cos(a) * L * k / (n - 1), sy + Math.sin(a) * L * k / (n - 1), k === n - 1]); run(0, n - 1); }
@@ -89,7 +91,7 @@ export class Bloom {
     else if (kind === 'spiral') { const n = 13, dir = R.sign(), qx = R.range(sw * 0.32, sw * 0.68), qy = R.range(sh * 0.32, sh * 0.68); for (let k = 0; k < n; k++) { const u = k / (n - 1), b = a0 + dir * u * 7.2, r = 120 * (1 - u * 0.86); pts.push([qx + Math.cos(b) * r, qy + Math.sin(b) * r, k === n - 1]); } run(0, n - 1); }
     else if (kind === 'cross') { const a = R.range(0, TAU); for (let q = 0; q < 2; q++) for (let k = -3; k <= 3; k++) { if (q && !k) continue; const b = a + q * Math.PI / 2; pts.push([cx + Math.cos(b) * k * 30, cy + Math.sin(b) * k * 30, !q && !k]); } run(0, 6); segs.push([7, 8], [8, 9], [9, 3], [3, 10], [10, 11], [11, 12]); }
     else { const qx = sx + Math.cos(a0) * 60, qy = sy + Math.sin(a0) * 60, b0 = R.range(0, TAU); pts.push([qx, qy, true]); for (let k = 1; k <= 7; k++) { const b = b0 + k * 2.4, r = 20 + k * 6.5; pts.push([qx + Math.cos(b) * r, qy + Math.sin(b) * r, false]); segs.push([0, k]); } }
-    const put = this._put(W, kind, pts, segs, { ttl: 10 - 3 * hard });
+    const put = this._put(W, kind, pts, segs, { ttl: 10 - 3 * hard }); if (this.seq.length < 64) this.seq.push(`${kind}@${Math.round(pts[0][0])},${Math.round(pts[0][1])}`);      // (the rain as it fell: the day's rain must read the same for everyone)
     if (put < 4) this.rain = 0.2;       // the figure fell on glass: try again at once
   }
   visit(W, kind) {
@@ -215,6 +217,9 @@ export class Bloom {
     this.over = true; const app = this.app, save = app.save, W = app.world; const prev = save.get('bloomBest', 0); const best = this.score > prev; if (best) save.set('bloomBest', this.score);
     if (this.bestChain > save.get('bloomChain', 0)) save.set('bloomChain', this.bestChain);
     const nf = this.drawnList.length; if (nf > save.get('bloomFigs', 0)) save.set('bloomFigs', nf);
+    // the day's rain keeps the day's best (it counts as a Bloom too)
+    const day = this.daily, dayWas = day && save.get('rainDay', '') === day ? save.get('rainBest', 0) : 0, dayBest = !!day && this.score > dayWas;
+    if (day) { save.set('rainDay', day); if (dayBest) { save.set('rainBest', this.score); save.set('rainFigs', nf); } }
     let medal = ''; for (const [s, n] of MEDALS) if (this.score >= s) medal = n; const next = MEDALS.find(([s]) => this.score < s);
     app.sound.portal(); app.hud.setTop(null);
     const F = W.player.focus; if (F && F.alive) { F.crown.joy(); W.fx.ring(F.B.cx, F.B.cy, GOLD, 300, 1.2); W.fx.burst(F.B.cx, F.B.cy, 40, GOLD, 320, { life: 1.2, size: 3 }); }
@@ -225,11 +230,11 @@ export class Bloom {
     if (medal && app.moment) app.moment(medal, `Bloom · ${this.score} · ${nf} figure${nf === 1 ? '' : 's'} drawn`, 'bloom:' + medal, still);
     // every figure the rain knows, drawn in one shower
     let found = ''; if (kinds.length === KINDS.length && save.trick('Garden')) { app.sound.trick(); const T = TRICKS.find(q => q[0] === 'Garden'); found = `<div class="d-trick">✦ Garden <span>${T ? T[1] : ''}</span></div>`; if (app.moment) app.moment('Garden', T ? T[1] : '', 'trick:Garden', still); }
-    app.hud.panel(medal ? `${medal}` : 'The rain passes', `${nf} figure${nf === 1 ? '' : 's'} drawn · longest chain ${this.bestChain} · best ×${this.bestMult}`, [
-      { label: 'Again', cls: 'pri', fn: () => { app.hud.closePanel(); app.setMode(new Bloom(app)); } },
-      { label: 'Copy result', fn: (b) => { app.copyText(`MYRIA · Bloom\n✦ ${this.score}${medal ? ' · ' + medal : ''}\n${line || '·'}\n${nf} figures · chain ${this.bestChain} · ×${this.bestMult}`); b.textContent = 'Copied ✓'; } },
+    app.hud.panel(medal ? `${medal}` : 'The rain passes', `${day ? 'today\'s rain · ' : ''}${nf} figure${nf === 1 ? '' : 's'} drawn · longest chain ${this.bestChain} · best ×${this.bestMult}`, [
+      { label: 'Again', cls: 'pri', fn: () => { app.hud.closePanel(); app.setMode(new Bloom(app, { daily: day })); } },
+      { label: 'Copy result', fn: (b) => { app.copyText(`MYRIA · Bloom${day ? ' · ' + day : ''}\n✦ ${this.score}${medal ? ' · ' + medal : ''}\n${line || '·'}\n${nf} figures · chain ${this.bestChain} · ×${this.bestMult}`); b.textContent = 'Copied ✓'; } },
       { label: 'Atrium', fn: () => { app.hud.closePanel(); app.toHub({ awake: true }); } }],
-      `<div class="b-garden"></div>${kinds.length ? `<div class="b-glyphs">${glyphs}</div>` : ''}<div style="font-size:52px;font-weight:200;letter-spacing:.08em;margin:6px 0 2px">${this.score}</div><div class="sub">${best ? 'a new brightest bloom' : 'best ' + prev}${next ? ` &nbsp;·&nbsp; ${next[1]} at ${next[0]}` : ''}</div>${found}
+      `<div class="b-garden"></div>${kinds.length ? `<div class="b-glyphs">${glyphs}</div>` : ''}<div style="font-size:52px;font-weight:200;letter-spacing:.08em;margin:6px 0 2px">${this.score}</div><div class="sub">${day ? (dayBest ? (dayWas ? 'a new best today' : 'today\'s first rain') : 'today\'s best ' + dayWas) : best ? 'a new brightest bloom' : 'best ' + prev}${next ? ` &nbsp;·&nbsp; ${next[1]} at ${next[0]}` : ''}</div>${found}
        <div class="medals">${MEDALS.map(([s, n]) => `<span class="${this.score >= s ? 'on' : ''}"><i></i>${n}</span>`).join('')}</div>`);
     const slot = app.hud.veil.querySelector('.b-garden'); if (slot && pic) { slot.appendChild(pic); if (pic.develop) pic.develop(); }
   }

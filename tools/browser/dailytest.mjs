@@ -1,4 +1,4 @@
-// The day's challenges: the mutation calendar, the day's dive, the day's sprint, the Today panel.   node dailytest.mjs
+// The day's challenges: the mutation calendar, the day's dive, the day's sprint, the day's rain, the Today panel.   node dailytest.mjs
 import { open, sleep, errs } from './lib.mjs';
 const { browser, page, logs } = await open('/index.html?all', { w: 1100, h: 700 });
 const play = async (pred = 'true') => { for (let k = 0; k < 120; k++) { const ok = await page.evaluate((pred) => { const a = window.__app; return !!a && a.state === 'play' && a.world.listener === a.mode && a.world.roomTime > 0.8 && !!eval(pred); }, pred); if (ok) return true; await sleep(250); } return false; };
@@ -11,7 +11,7 @@ console.log(`calendar 2026: ${cal.kinds} different mutations of the world all tu
 console.log(`  weekends double up: ${cal.doubles} two-mutation days, ${cal.weekdaysDouble} of them on weekdays, ${cal.clash} self-cancelling pairs · e.g. Mon 16 Nov: ${cal.mon.join(' + ')} · Sat 21 Nov: ${cal.sat.join(' + ')}`);
 console.log(`  sprints: ${cal.rooms} different chambers over the year, mutations ${JSON.stringify(cal.sprint)}`);
 // 2 · the Today panel, from the Atrium
-const panel = await page.evaluate(() => { const a = window.__app; window.__daily.dailyPanel(a); return [...document.querySelectorAll('.h-panel button, .panel button, button')].map(b => b.textContent.trim()).filter(t => /Dive|Sprint|Back|Copy/.test(t)); });
+const panel = await page.evaluate(() => { const a = window.__app; window.__daily.dailyPanel(a); return [...document.querySelectorAll('.h-panel button, .panel button, button')].map(b => b.textContent.trim()).filter(t => /Dive|Sprint|Rain|Back|Copy/.test(t)); });
 console.log('Today panel offers:', JSON.stringify(panel)); await page.evaluate(() => window.__app.hud.closePanel());
 // 3 · the day's dive really is bent
 await page.evaluate(() => { const a = window.__app; a.extraModes.find(m => m.id === 'abyss').start(a, { daily: true }); }); await play('a.mode.axioms');
@@ -23,7 +23,17 @@ const s0 = await page.evaluate(() => { const a = window.__app, m = a.mode, W = a
 console.log('the day\'s sprint (16 Nov):', JSON.stringify(s0));
 let done = null; for (let k = 0; k < 400; k++) { done = await page.evaluate(() => { const a = window.__app; return a.save.get('sprintDay', '') === '2026-11-16' ? { best: a.save.get('sprintBest', 0), mode: a.mode.constructor.name, rooms: JSON.stringify(a.save.data.rooms || {}) } : null; }); if (done) break; await sleep(250); }
 console.log('finished:', JSON.stringify(done && { best: done.best, back_in: done.mode, chamber_record_untouched: done.rooms === '{}' }));
+// 5 · the day's rain: the same figures, in the same order and the same places, whoever plays it and however — the autopilot eating everything, or nobody at all
+const rainSeq = async (day, bot) => {
+  await page.goto(`http://myria.test/index.html?mode=rain&day=${day}&turbo=3${bot ? '&bot' : ''}`, { waitUntil: 'load' }); await sleep(500); await page.mouse.click(550, 350); await page.mouse.move(1090, 690); await play('a.mode.daily');
+  for (let k = 0; k < 240; k++) { const q = await page.evaluate(() => { const m = window.__app.mode; return m.seq.length >= 8 ? { seq: m.seq.slice(0, 8), daily: m.daily, eaten: m.eaten } : null; }); if (q) return q; await sleep(250); }
+  return null;
+};
+const rA = await rainSeq('2026-11-16', true), rB = await rainSeq('2026-11-16', false), rC = await rainSeq('2026-11-17', true);
+console.log('the day\'s rain (16 Nov), autopilot:', JSON.stringify(rA)); console.log('the day\'s rain (16 Nov), nobody playing:', JSON.stringify(rB)); console.log('the next day\'s rain:', JSON.stringify(rC && rC.seq.slice(0, 3)));
+const rainOk = !!(rA && rB && rC) && rA.daily === '2026-11-16' && rA.eaten > rB.eaten && JSON.stringify(rA.seq) === JSON.stringify(rB.seq) && JSON.stringify(rA.seq) !== JSON.stringify(rC.seq);
+console.log('the same rain for everyone:', rainOk);
 const mutOk = s0.mut === 'swift' ? s0.speed > 1.2 : s0.mut === 'thick' ? s0.drag > 2 : s0.mut === 'glide' ? s0.drag < 1 : s0.need === s0.total;
-const ok = cal.kinds === 15 && cal.clash === 0 && cal.weekdaysDouble === 0 && cal.doubles >= 100 && cal.same && cal.mon.length === 1 && cal.sat.length === 2 && cal.rooms >= 15 && panel.some(t => /^Dive/.test(t)) && panel.some(t => /^Sprint/.test(t))
+const ok = cal.kinds === 15 && cal.clash === 0 && cal.weekdaysDouble === 0 && cal.doubles >= 100 && cal.same && cal.mon.length === 1 && cal.sat.length === 2 && cal.rooms >= 15 && panel.some(t => /^Dive/.test(t)) && panel.some(t => /^Sprint/.test(t)) && panel.some(t => /^Rain/.test(t)) && rainOk
   && dive.daily && JSON.stringify(dive.is) === JSON.stringify(dive.want) && !dive.haunting && mutOk && done && done.best > 1 && done.rooms === '{}';
 const e = errs(logs); console.log(e || 'no console errors'); console.log(ok && !e ? 'DAILY OK' : 'DAILY FAILED'); await browser.close();
