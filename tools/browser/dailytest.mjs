@@ -24,6 +24,6 @@ console.log('the day\'s sprint (16 Nov):', JSON.stringify(s0));
 let done = null; for (let k = 0; k < 400; k++) { done = await page.evaluate(() => { const a = window.__app; return a.save.get('sprintDay', '') === '2026-11-16' ? { best: a.save.get('sprintBest', 0), mode: a.mode.constructor.name, rooms: JSON.stringify(a.save.data.rooms || {}) } : null; }); if (done) break; await sleep(250); }
 console.log('finished:', JSON.stringify(done && { best: done.best, back_in: done.mode, chamber_record_untouched: done.rooms === '{}' }));
 const mutOk = s0.mut === 'swift' ? s0.speed > 1.2 : s0.mut === 'thick' ? s0.drag > 2 : s0.mut === 'glide' ? s0.drag < 1 : s0.need === s0.total;
-const ok = cal.kinds === 14 && cal.clash === 0 && cal.weekdaysDouble === 0 && cal.doubles >= 100 && cal.same && cal.mon.length === 1 && cal.sat.length === 2 && cal.rooms >= 15 && panel.some(t => /^Dive/.test(t)) && panel.some(t => /^Sprint/.test(t))
+const ok = cal.kinds === 15 && cal.clash === 0 && cal.weekdaysDouble === 0 && cal.doubles >= 100 && cal.same && cal.mon.length === 1 && cal.sat.length === 2 && cal.rooms >= 15 && panel.some(t => /^Dive/.test(t)) && panel.some(t => /^Sprint/.test(t))
   && dive.daily && JSON.stringify(dive.is) === JSON.stringify(dive.want) && !dive.haunting && mutOk && done && done.best > 1 && done.rooms === '{}';
 const e = errs(logs); console.log(e || 'no console errors'); console.log(ok && !e ? 'DAILY OK' : 'DAILY FAILED'); await browser.close();

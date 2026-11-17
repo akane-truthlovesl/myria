@@ -126,7 +126,7 @@ function shy(m, dt) {
 }
 function startle(m, W, ux, uy) {
   if (m.baked) W.release(m); m.free = true; const e = escape(W, m.hx, m.hy, ux, uy), s = 360 + Math.random() * 90; m.vx = e[0] * s; m.vy = e[1] * s; m.alarm = 1;
-  if (m.claim) m.claim = null;
+  if (m.claim) m.claim = null; m.fled = (m.fled || 0) + 1;
   W.fx.ring(m.hx, m.hy, m.col, 30, 0.32, { a: 0.75, w: 1.6 }); W.fx.sparks(m.hx, m.hy, 3, -e[0], -e[1], m.col, 120, { life: 0.28, size: 2 });
   if (W.sound && W.sound.skitter && (m.W.player && W.isPlayerNear(m.hx, m.hy, 320))) W.sound.skitter(m.hx / W.spec.W * 1.6 - 0.8);
   W.emit('startle', m);
@@ -259,7 +259,7 @@ export class Pod {
   burst(fx, fy) {
     const W = this.W; this.open = true; const base = Math.atan2(this.ay, this.ax);
     this.seeds.forEach((m, k) => { if (m.dead) return; const a = base + (k / Math.max(1, this.seeds.length - 1) - 0.5) * 2.4 + (Math.random() - 0.5) * 0.3, s = 150 + Math.random() * 120;
-      m.hx = m.x = this.x + Math.cos(a) * 6; m.hy = m.y = this.y + Math.sin(a) * 6; m.vx = Math.cos(a) * s; m.vy = Math.sin(a) * s; m.kick = 0.55; m.spawnT = 0.0001; m.pod = null; });
+      m.hx = m.x = this.x + Math.cos(a) * 6; m.hy = m.y = this.y + Math.sin(a) * 6; m.vx = Math.cos(a) * s; m.vy = Math.sin(a) * s; m.kick = 0.55; m.spawnT = 0.0001; m.pod = null; m.from = this; m.burstT = W.time; });
     W.fx.ring(this.x, this.y, this.col, this.r * 4, 0.5, { a: 0.8 }); W.fx.burst(this.x, this.y, 10, this.col, 160, { life: 0.6, size: 2.2 });
     if (W.sound && W.sound.podPop) W.sound.podPop(this.x / W.spec.W * 1.6 - 0.8);
     W.emit('podBurst', this);

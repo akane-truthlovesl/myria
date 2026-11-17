@@ -9,9 +9,9 @@ import { Bot } from '../src/core/bot.js';
 import { save } from '../src/core/save.js';
 const [d0 = new Date().toISOString().slice(0, 10), days = '14', depths = '4', w = '1280', h = '720', cap = '100'] = process.argv.slice(2);
 const noop = new Proxy(function () {}, { get: (t, k) => (k === 'ready' ? false : k === 'muted' ? false : noop), apply: () => 0 });
-const hud = new Proxy({ panel(t, s, opts) { opts[(Math.random() * opts.length) | 0].fn(); } }, { get: (t, k) => t[k] || noop });      // "what will you become": take one, like a player would
+const hud = new Proxy({ panel(t, s, opts) { if (t === 'Change') opts[(Math.random() * opts.length) | 0].fn({}); } }, { get: (t, k) => t[k] || noop });      // "what will you become": take one, like a player would (and leave the end-of-dive card alone)
 const world = new World({});
-const app = { world, hud, sound: noop, haptics: noop, save, link: null, input: { keys: new Set(), keysOff: false }, state: 'play', params: new URLSearchParams(), applyBudget() {}, pause() {}, toHub() {}, copyText() {},
+const app = { world, hud, sound: noop, haptics: noop, save, link: null, input: { keys: new Set(), keysOff: false }, state: 'play', params: new URLSearchParams(), applyBudget() {}, pause() {}, toHub() {}, copyText() {}, setMode() {}, resume() {},
   travel(specFn, carryFn, o = {}) { const spec = typeof specFn === 'function' ? specFn(+w / +h) : specFn; o.onDark && o.onDark(); world.load(spec, (typeof carryFn === 'function' ? carryFn(spec) : carryFn) || {}); world.listener = this.mode; o.onLoad && o.onLoad(world); for (let k = 0; k < 20; k++) world.step(1 / 60, { intent: null }); o.onReveal && o.onReveal(); } };
 globalThis.setTimeout = () => 0;
 let stalls = 0, ends = 0; const t0 = new Date(d0 + 'T12:00:00Z').getTime();

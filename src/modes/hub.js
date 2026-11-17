@@ -6,6 +6,7 @@
 import { frame, dish } from '../world/rooms.js';
 import { ROOMS, STRATA, stratumOf } from '../world/odyssey.js';
 import { moteTrail } from '../world/entities.js';
+import { shoalOf, fireflyCloud } from '../world/plankton.js';
 import { Odyssey, TRICKS } from './odyssey.js';
 import { SKINS, skinFor, unlockedSkins } from '../core/skins.js';
 import { DAWN } from './epilogue.js';
@@ -51,13 +52,15 @@ export class Hub {
       for (let k = 0; k < 8; k++) { const a = (k + 0.5) / 8 * 6.2832; ents.push({ type: 'mote', x: W / 2 + Math.cos(a) * 104, y: H * 0.55 + Math.sin(a) * 104, value: 1, col: [0.80, 0.95, 1.0] }); }
       const n = this.dests.length; this.pores = [];
       this.dests.forEach((d, k) => { const x = W * (n === 1 ? 0.5 : 0.16 + 0.68 * k / (n - 1)), y = H * (W < H * 1.2 && n > 3 ? (k % 2 ? 0.86 : 0.70) : 0.76); ents.push({ type: 'pore', x, y, r: 40, dest: d.id, col: d.col || (k === 0 ? [1.0, 0.72, 0.5] : [0.45, 0.95, 1.0]) }); });
+      ents.push(...this.homeLife(W, H, Math.min(W * 0.72, 760), ents));
       return { name: 'Atrium', seed: 3, W, H, geo, ents, spawn: { x: W / 2, y: H * 0.55, n: 14 }, pal: save.get('awake', 0) ? { ...DAWN, grid: 0.8 } : { grid: 0.8 } };       // once the slide is awake, the Atrium keeps the morning
     }, null, {
       minDark: this.o.result ? 2.6 : 0.35,
       onDark: () => { app.applyBudget(); if (this.o.result) app.hud.showResult(this.o.result); },
       onLoad: (W) => { if (!this.awake) for (const O of W.player.orgs) O.dormant = true; this.lettersTotal = W.stats.motesTotal; },
-      onReveal: () => { app.hud.hideResult(); app.hud.setCorner(true, () => app.pause()); app.sound.ready && app.sound.ambience('deep', 50);
-        const n = unlockedSkins(save).length, seen = save.get('huesSeen', 1); if (n > seen) { save.set('huesSeen', n); app.hud.toast(`a new hue · ${SKINS[n - 1].name} <small>pause to wear it</small>`, '✺'); } },
+      onReveal: () => { app.hud.hideResult(); app.hud.setCorner(true, () => app.pause()); app.sound.ready && app.sound.ambience('atrium');
+        const n = unlockedSkins(save).length, seen = save.get('huesSeen', 1); if (n > seen) { save.set('huesSeen', n); app.hud.toast(`a new hue · ${SKINS[n - 1].name} <small>pause to wear it</small>`, '✺'); }
+        const home = this.home || [], had = save.get('homeSeen', 0); if (home.length > had) { save.set('homeSeen', home.length); setTimeout(() => { if (app.mode === this) app.hud.toast(home[home.length - 1], '❋', 'cool'); }, 1400); } },
     });
   }
   exit() { this.app.hud.setLabels([]); }
@@ -108,10 +111,39 @@ export class Hub {
   wake() {
     if (this.awake) return; this.awake = true; const W = this.app.world;
     for (const O of W.player.orgs) { O.dormant = false; O.crown.joy(); O.excite = 1; W.fx.ring(O.B.cx, O.B.cy, [1, 0.8, 0.6], 160, 1.0); W.fx.burst(O.B.cx, O.B.cy, 14, [1, 0.85, 0.6], 150, { life: 0.9 }); }
-    const snd = this.app.sound; snd.init(); if (snd.ready) { snd.bloom(); snd.ambience('deep', 50); }
+    const snd = this.app.sound; snd.init(); if (snd.ready) { snd.bloom(); snd.ambience('atrium'); }
   }
   // the whole word eaten: the dish answers — a breath of light from the creature, a chord, and a fuse of dew that runs from it to the way in
-  mote() { const W = this.app.world; if (!this.wordDone && W.stats.motes >= W.stats.motesTotal) this.wordEaten(); }
+  // (only the word and its halo of dew: the living light that came home is a treat, not a chore between you and the chord)
+  mote() { const W = this.app.world; if (!this.wordDone && !W.pickups.some(p => p.isMote && !p.dead && !p.kind && !p.d.gift)) this.wordEaten(); }
+  // the living light of the places you have lit follows you home — the Atrium fills, stratum by stratum:
+  //   your first chamber brings fireflies · the Dew a school circling the word · the Glassworks seed pods on the ceiling ·
+  //   Chemistry shy sparks and drifting light · the Heart a golden swarm over everything
+  homeLife(W, H, ww, ents) {
+    const save = this.app.save, lit = (id) => !!save.room(id), out = [], said = this.home = [];
+    const cleared = ROOMS.filter(r => save.room(r.id)).length;
+    // the dish is a rounded box (margin 34, corners min(W,H)·0.3, a rim that wobbles a little): how far a point sits inside it,
+    // and whether a spot is clear of the rim and of the doors
+    const m = 34, rr = Math.min(W, H) * 0.3, inside = (x, y) => { const qx = Math.abs(x - W / 2) - (W / 2 - m - rr), qy = Math.abs(y - H / 2) - (H / 2 - m - rr); return rr - Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) - Math.min(Math.max(qx, qy), 0); };
+    const doors = ents.filter(e => e.type === 'pore'), clear = (x, y, need) => inside(x, y) >= need && doors.every(d => Math.hypot(d.x - x, d.y - y) > d.r + need);
+    const ceiling = (x) => { let y = m; while (y < H / 2 && inside(x, y) < 40) y += 4; return y; };
+    if (cleared >= 1) { for (const u of [0.14, 0.86]) if (clear(W * u, H * 0.46, 50)) out.push(...fireflyCloud(W * u, H * 0.46, 6, 44, { period: 2.6 })); said.push('fireflies followed you home'); }
+    if (lit('lock')) {      // round the word, close above its letters and below them (each point pulled in from the rim if the room is tight)
+      const cx = W / 2, cy = H * 0.30, rx = ww / 2 + 50, ry = ww / 28.8 * 3 + 34;
+      const path = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(k => { const a = k / 10 * 6.2832 + Math.PI; let x = cx + Math.cos(a) * rx, y = cy + Math.sin(a) * ry; for (let q = 0; q < 12 && inside(x, y) < 26; q++) { x += (cx - x) * 0.12; y += (cy - y) * 0.12; } return { x, y }; });
+      out.push(...shoalOf('home', path[0].x, path[0].y, 7, { path })); said.push('a school of light followed you home');
+    }
+    if (lit('centrifuge')) { for (const u of [0.24, 0.76]) out.push({ type: 'pod', x: W * u, y: ceiling(W * u), a: Math.PI / 2, n: 5, regrow: 14 }); said.push('seed pods took root on the ceiling'); }
+    if (lit('twin-cores')) {
+      for (const [u, v] of [[0.36, 0.6], [0.64, 0.6]]) if (clear(W * u, H * v, 30)) out.push({ type: 'mote', kind: 'shy', x: W * u, y: H * v });
+      out.push({ type: 'mote', kind: 'shy', x: W / 2, y: ceiling(W / 2) + 8 });
+      for (const u of [0.22, 0.5, 0.78]) if (clear(W * u, H * 0.66, 30)) out.push({ type: 'mote', kind: 'drift', x: W * u, y: H * 0.66, value: 2 });
+      said.push('shy sparks moved in');
+    }
+    if (lit('heart')) { out.push(...fireflyCloud(W / 2, H * 0.5, 12, Math.min(W, H) * 0.42, { period: 1.8, value: 2 }).filter(f => clear(f.x, f.y, 26))); said.push('the deep sent its fireflies after you'); }
+    for (const e of out) e.home = true;
+    return out;
+  }
   wordEaten() {
     this.wordDone = true; const app = this.app, W = app.world, F = W.player && W.player.focus; if (!F || !F.alive) return;
     F.crown.joy(); F.excite = 1; W.flash = 0.7; W.hitStop = 0.12;

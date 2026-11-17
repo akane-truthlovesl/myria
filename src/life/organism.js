@@ -40,7 +40,7 @@ export class Organism {
     this.veil = 0; this.stealth = false; this.stillT = 0;
     this.facing = { x: 1, y: 0 };
     this.prevV = { x: 0, y: 0 }; this.impactCD = 0;
-    this.breathT = Math.random() * 10; this.idleT = 0; this.idleNext = 2;
+    this.breathT = Math.random() * 10; this.idleT = 0; this.idleNext = 2; this.humIn = 0;
     this.forageT = 0; this.dormant = false; this.dead = false;
     this.hurtT = 0; this.joyT = 0; this.gulp = 0;
     this.seek = null; this.rallyTo = null; this.cradle = null; this.flightT = 0; this.flightT0 = 0; this.flew = 0; this.hardT = 0; this.wasTouch = false;
@@ -88,6 +88,7 @@ export class Organism {
     if (jolt > 230 && this.impactCD <= 0 && touching) { this.excite = Math.min(1, this.excite + jolt / 800); this.impactCD = 0.18; this.crown.startle(Math.min(1, jolt / 600)); W.onImpact && W.onImpact(this, jolt, cnx, cny); }
     this.prevV.x = B.vx; this.prevV.y = B.vy;
     this.excite = Math.max(0, this.excite - dt * 0.7);
+    if (this.humIn > 0 && (this.humIn -= dt) <= 0) { this.humIn = 0; this.excite = Math.min(1, this.excite + 0.3); this.crown.joy(); }      // the hum sounds: it swells and shimmers with it
     this.spread = Math.max(B.maxx - B.minx, B.maxy - B.miny) / Math.max(8, 2 * B.r + 2 * H);
     if (this.flew > 0) this.flew -= dt;
     // effervescent: it never stops fizzing
@@ -190,17 +191,20 @@ export class Organism {
     this.phi += clamp(B.spin || 0, -6, 6) * dt;
     const im = Math.hypot(this.intent.x, this.intent.y);
     const crown = this.crown;
-    if (!this.dormant && crown.kind === 'sun') {
+    // (a player's body drinks light it touches whatever crown it wears — a Thorn Crown in the Abyss used to leave a diver unable to eat at all)
+    const sun = crown.kind === 'sun';
+    if (!this.dormant && (sun || this.colony && this.colony === W.player)) {
       // forage: free feelers go after nearby light on their own — reach is visible, never a hidden magnet
       this.forageT -= dt;
       if (this.forageT <= 0 && W.pickups) {
         this.forageT = 0.06;
-        const reach = crown.maxReach(B.r) + B.r;
+        const reach = (sun ? crown.maxReach(B.r) : 12) + B.r;
         for (const it of W.pickups) {
           if (it.dead || it.owner != null && it.owner !== B.group || it.spawnT < 0) continue;      // (a light that has not appeared yet cannot be eaten)
           const dx = it.x - B.cx, dy = it.y - B.cy; const d2 = dx * dx + dy * dy;
           if (d2 > reach * reach) continue;
           if (d2 < (B.r * 0.92 + it.r) * (B.r * 0.92 + it.r)) { if (!it.held || it.held && crown.rays.includes(it.held)) it.absorb(this, null); continue; }   // body contact: straight in
+          if (!sun) continue;
           if (it.held || it.claim && it.claim.item === it && it.claim.mode === RAY.REACH || it.dim) continue;      // (a firefly between flashes cannot be found)
           if (it.shy > W.time) continue;
           if (W.phys.blocked(B.cx, B.cy, it.x, it.y, 1)) { it.shy = W.time + 0.3; continue; }      // glass is glass: no reaching through it
@@ -209,7 +213,7 @@ export class Organism {
         }
       }
       // the lead feelers look where the player points
-      if (this.focused && this.aim && im > 0.05 && this.dartT <= 0) {
+      if (sun && this.focused && this.aim && im > 0.05 && this.dartT <= 0) {
         this.lookT = (this.lookT || 0) - dt;
         if (this.lookT <= 0) { this.lookT = 0.25; const dx = this.aim.x - B.cx, dy = this.aim.y - B.cy, d = Math.hypot(dx, dy) + 1; const rr = Math.min(d, B.r + crown.maxReach(B.r) * 0.75); crown.reach(B.cx + dx / d * rr, B.cy + dy / d * rr, null, 0.3, RAY.SNIFF); }
       }
@@ -232,6 +236,7 @@ export class Organism {
       if (t) { const dx = t.x - B.cx, dy = t.y - B.cy, l = Math.hypot(dx, dy) + 1; const rr = Math.min(l, d); x = B.cx + dx / l * rr; y = B.cy + dy / l * rr; }
       crown.reach(x, y, null, 0.9 + Math.random() * 0.6, RAY.SNIFF);
     } else if (r < 0.62) { this.excite = Math.min(1, this.excite + 0.5); crown.startle(0.35); }   // a happy shiver
+    else if (r < 0.74 && this.focused && W.sound && W.sound.hum) { const d = W.sound.hum(); if (d >= 0) this.humIn = Math.max(0.01, d); else crown.joy(); }   // it hums along with the music, on the beat
     else if (r < 0.82) crown.joy();                                                               // a shimmer round the crown
     else if (W.fx) W.fx.bubble(B.cx + (Math.random() - 0.5) * B.r * 0.5, B.cy, 3 + Math.random() * 2.5);  // a private bubble
   }

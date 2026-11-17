@@ -24,7 +24,7 @@ export class Bloom {
     }, null, {
       onDark: () => app.applyBudget(),
       onLoad: (W) => { W.massCosts = false; },
-      onReveal: () => { app.hud.showTitle('', 'Bloom', 'keep the chain alive', 2.6); app.hud.setCorner(true, () => app.pause()); app.sound.ready && app.sound.ambience('bright', 52); },
+      onReveal: () => { app.hud.showTitle('', 'Bloom', 'keep the chain alive', 2.6); app.hud.setCorner(true, () => app.pause()); app.sound.ready && app.sound.ambience('bloom'); },
     });
   }
   restart() { this.app.setMode(new Bloom(this.app)); }

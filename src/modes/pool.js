@@ -26,7 +26,7 @@ export class Pool {
     app.travel((aspect) => { const { W, H } = frame(aspect, 0.9e6); return { name: 'Pool', seed: 11, W, H, geo: dish(W, H, { r: Math.min(W, H) * 0.34 }), ents: [], spawn: { x: W / 2, y: H / 2, n: this.mass }, pal: { deep: [0.020, 0.012, 0.040], mid: [0.070, 0.045, 0.120], wall: [0.110, 0.080, 0.165], rim: [0.80, 0.70, 1.0] } }; }, null, {
       onDark: () => app.applyBudget(),
       onLoad: (W) => { W.massCosts = false; W.massCap = 400; },
-      onReveal: () => { app.hud.showTitle('', 'The Kneading Pool', 'nothing to win'); app.hud.setCorner(true, () => app.pause()); this.tray(); },
+      onReveal: () => { app.hud.showTitle('', 'The Kneading Pool', 'nothing to win'); app.hud.setCorner(true, () => app.pause()); app.sound.ambience('pool'); this.tray(); },
     });
   }
   exit() { if (this.el) this.el.remove(); this.app.input.tiltMute = false; this.app.input.hands = false; }

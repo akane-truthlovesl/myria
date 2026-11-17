@@ -62,9 +62,11 @@ export class Abyss {
         if (this.coop) { const C = this.p2 = new Colony(W, 7, { tint: TINT2, crown: 'sun', isPlayer: true }); C.spawn(W.spec.spawn.x + 80, W.spec.spawn.y, Math.min(260, Math.max(40, this.mass2))); W.colonies.push(C); C.ally = W.player.ally = true; }
         this.marks = []; this.lostSeen = 0; this.layHaunt(W);
       },
-      onReveal: () => { if (this.coop && this.depth === 1) app.hud.toast('touch to share mass · pointer + W A S D', '◌', 'cool'); if (this.haunting) { app.hud.toast(this.haunting.guest ? `a stranger ended here · ${hauntName(this.haunting.id)}` : `you ended here once · ${hauntName(this.haunting.id)}`, '☍', 'cool'); } app.hud.showTitle(this.daily ? this.axiom.name : '', this.spec.arena ? 'Predator Dish' : `Depth ${this.depth}`, this.spec.arena ? 'devour them all' : (this.depth === 1 && this.daily ? this.axiom.sub : ''), 2.4); app.hud.setCorner(true, () => app.pause()); },
+      onReveal: () => { if (this.coop && this.depth === 1) app.hud.toast('touch to share mass · pointer + W A S D', '◌', 'cool'); if (this.haunting) { app.hud.toast(this.haunting.guest ? `a stranger ended here · ${hauntName(this.haunting.id)}` : `you ended here once · ${hauntName(this.haunting.id)}`, '☍', 'cool'); } app.hud.showTitle(this.daily ? this.axiom.name : '', this.spec.arena ? 'Predator Dish' : `Depth ${this.depth}`, this.spec.arena ? 'devour them all' : (this.depth === 1 && this.daily ? this.axiom.sub : ''), 2.4); app.hud.setCorner(true, () => app.pause()); this.music(); },
     });
   }
+  // the deep changes its music every third depth, with its colours (dew, glass, chemistry, the abyss, round again); a predator dish has a warden's
+  music() { const s = this.app.sound, name = ['dew', 'glass', 'chem', 'abyss'][Math.floor((this.depth - 1) / 3) % 4]; if (this.spec && this.spec.arena) s.ambience('warden', s.keyOf(name)); else s.ambience(name); }
   // ── hauntings (core/haunt.js) ──
   // a dive that reaches a depth where an earlier one ended — yours, or a stranger's you were handed — finds what it left: a stain, false lights, and what gets up out of the stain
   layHaunt(W) {
@@ -92,6 +94,7 @@ export class Abyss {
 
   // ── world listener ────────────────────────────────────────────────────
   rivalsAlive(W) { return W.colonies.filter(C => C.kind && C.kind !== 'oil' && C.kind !== 'thorn' && C.orgs.some(o => o.alive && o.B.count >= 14)).length; }
+  moteLost() { for (const e of this.app.world.ents) if (e.d.type === 'pore' && e.need > 0) e.need--; }      // light a neighbour drank can no longer be asked of you (as in the Odyssey)
   poreReady(p) { const W = this.app.world; if (!this.spec) return false; if (this.spec.arena) return this.rivalsAlive(W) === 0; return W.stats.motes >= p.need || W.pickups.filter(q => q.isMote && !q.dead).length === 0; }
   poreProgress(p) { const W = this.app.world; if (!this.spec || this.spec.arena) return 0; return p.need ? Math.min(1, W.stats.motes / p.need) : 1; }
   tier(name) { this.app.hud.toast(name, '✺'); }
@@ -100,9 +103,13 @@ export class Abyss {
   wrung(sp, O, n) { if (n >= 8) this.app.hud.toast('Wrung out', '✦'); }
   unmask() { this.app.hud.toast('Unmasked', '✦'); const F = this.app.world.player.focus; F && F.crown.joy(); }
   cleave() { if (!this.cleft) { this.cleft = true; this.app.hud.toast('Cleave', '✦'); } }
-  devour(C) {
+  devour(C, Bi, Bj) {
     const app = this.app, W = app.world, F = W.player.focus;
     if (C.kind === 'revenant') {         // laid to rest: it gives back the light it died with, and it will not be waiting here again
+      // (only when the last of it is swallowed: a revenant torn in two is not at rest while half of it still wanders — each half used to lay it to rest again)
+      //  (a body's count is only refreshed between steps, so whether another piece still holds any of itself is asked of the particles)
+      const P = W.phys, holds = (B) => { for (let q = 0; q < B.len; q++) { const i = P.bodyIdx[B.start + q]; if (P.alive[i] && P.body[i] === B.id) return true; } return false; };
+      if (C.laid || C.orgs.some(o => o.alive && o.B !== Bj && holds(o.B))) return; C.laid = true;
       const h = C.haunt; this.rested++; this.rev = null; if (h) { app.save.set('haunts', app.save.get('haunts', []).filter(q => q.id !== h.id)); app.save.set('rested', app.save.get('rested', 0) + 1); }
       if (F) { for (let k = 0; k < 10; k++) { const a = k / 10 * 6.283; W.spawn({ type: 'mote', x: F.B.cx + Math.cos(a) * 70, y: F.B.cy + Math.sin(a) * 70, value: 4, free: true, gift: true, vx: Math.cos(a) * 60, vy: Math.sin(a) * 60, col: [0.92, 0.86, 1] }); } W.fx.ring(F.B.cx, F.B.cy, [0.92, 0.86, 1], 320, 1.1, { w: 3 }); F.crown.joy(); }
       this.light += 12; app.sound.bloom && app.sound.bloom(); app.hud.toast(`laid to rest${h ? ' · ' + hauntName(h.id) : ''}`, '☍'); return;

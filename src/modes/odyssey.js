@@ -49,6 +49,8 @@ export const TRICKS = [
   ['Trojan Swallow', 'be swallowed — by something that will never swallow again'],
   ['Outrun', 'come home before your own echo does'],
   ['Phoenix', 'leave a chamber whole after being an ember in it'], ['Immaculate', 'all three stars in a single visit'],
+  ['Net', 'four of a school inside one heartbeat'], ['Velvet', 'take a shy light that never knew you were there'],
+  ['In Time', 'three fireflies in a single flash'], ['Harvest', 'every seed of a pod before it settles'],
 ];
 // ── the Daily Sprint: one chamber a day, under one mutation of its water, against the clock (the same chamber and mutation for everyone, from the date alone) ──
 export const SPRINTS = [
@@ -76,9 +78,12 @@ export class Odyssey {
         minDark: fromPore ? 1.9 : 0.5,
         onDark: () => app.applyBudget(),
         onLoad: (W) => { for (const e of W.ents) if (e.d.type === 'pore' && !e.need) e.need = Math.ceil(W.stats.motesTotal * (this.room.quota ?? this.spec.quota ?? 0.6)); if (this.sprint) this.sprint.m.apply(W); else this.wakeEcho(W); },
-        onReveal: () => { app.hud.hideResult(); app.hud.showTitle(ROMAN[this.i] || '', room.name, this.titleSub()); app.hud.setCorner(true, () => app.pause()); app.sound.ready && app.sound.ambience('deep', 50 - (this.i % 4) * 2); },
+        onReveal: () => { app.hud.hideResult(); app.hud.showTitle(ROMAN[this.i] || '', room.name, this.titleSub()); app.hud.setCorner(true, () => app.pause()); this.music(); },
       });
   }
+  // the music of a chamber: its stratum's piece (one piece across all the stratum's chambers, a cadence at every pore);
+  // a warden's own, in the stratum's key; the Heart's, with a heartbeat under it
+  music() { const s = this.app.sound, name = ['dew', 'glass', 'chem', 'abyss'][stratumOf(this.i)] || 'dew'; if (this.room.id === 'heart') s.ambience('heart'); else if (this.room.boss) s.ambience('warden', s.keyOf(name)); else s.ambience(name); }
   // ── echo: on a chamber you have already cleared, your best run comes back as a pale bead to race; a friend's echo (a pasted code) races beside it ──
   wakeEcho(W) {
     this.rec = []; this.recT = 0; this.echo = null; this.rival = null; this.air = 0; this.groundT = 0;
@@ -101,7 +106,15 @@ export class Odyssey {
   poreProgress(p) { const W = this.app.world; return p.need ? Math.min(1, W.stats.motes / p.need) : 1; }
   tier(name) { this.app.hud.toast(name, '✺'); }
   ember(on) { if (on) this.wasEmber = true; this.app.hud.toast(on ? 'ember — nothing can drink you · light counts double' : 'whole again', '✺', on ? '' : 'cool'); }
-  mote(m, O, chain) { this.hintT = 0; if (chain && chain % 8 === 0) this.app.hud.toast(`Chain ×${chain} <small>+${1 + Math.min(3, chain >> 3)}</small>`, '♪', 'cool'); if (chain === 24) this.trick('Comet'); }
+  mote(m, O, chain) { this.hintT = 0; if (m.living) this.livingTaken(m); if (chain && chain % 8 === 0) this.app.hud.toast(`Chain ×${chain} <small>+${1 + Math.min(3, chain >> 3)}</small>`, '♪', 'cool'); if (chain === 24) this.trick('Comet'); }
+  // living light, taken with wit (world/plankton.js)
+  livingTaken(m) {
+    const t = this.app.world.time, q = (this.lt || (this.lt = {})); const recent = (k, w) => { const a = (q[k] || (q[k] = [])); a.push(t); while (a.length && t - a[0] > w) a.shift(); return a.length; };
+    if (m.kind === 'shoal' && recent('shoal', 1.0) >= 4) this.trick('Net');
+    if (m.kind === 'shy' && !m.fled) this.trick('Velvet');
+    if (m.kind === 'firefly' && recent('fire', 0.55) >= 3) this.trick('In Time');
+    if (m.kind === 'seed' && m.from && t - m.burstT < 3.2 && m.from.seeds.length >= 4 && m.from.seeds.every(s => s.dead)) this.trick('Harvest');
+  }
   moteLost() { for (const e of this.app.world.ents) if (e.d.type === 'pore' && e.need > 0) e.need--; }      // light a neighbour drank can no longer be asked of you
   film() { this.usedHint = this.room.hint === 'dart' || this.usedHint; }
   dart(O) { if (this.room.hint === 'jet' && O.morph && O.morph.jet) this.usedHint = true; }
@@ -176,7 +189,7 @@ export class Odyssey {
       from: { x: pore.x, y: pore.y }, minDark: 2.3,
       onDark: () => { app.applyBudget(); app.hud.showResult(result); },
       onLoad: (W) => { for (const e of W.ents) if (e.d.type === 'pore' && !e.need) e.need = Math.ceil(W.stats.motesTotal * (this.room.quota ?? this.spec.quota ?? 0.6)); if (this.sprint) this.sprint.m.apply(W); else this.wakeEcho(W); },
-      onReveal: () => { app.hud.hideResult(); app.hud.showTitle(ROMAN[this.i] || '', room.name, this.titleSub()); app.hud.setCorner(true, () => app.pause()); },
+      onReveal: () => { app.hud.hideResult(); app.hud.showTitle(ROMAN[this.i] || '', room.name, this.titleSub()); app.hud.setCorner(true, () => app.pause()); this.music(); },
     });
   }
 }

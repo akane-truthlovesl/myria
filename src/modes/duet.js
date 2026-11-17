@@ -18,7 +18,7 @@ export class Duet {
       return { name: 'Duet', seed: 21, W, H, geo, ents: [], spawn: { x: W * 0.25, y: H * 0.5, n: 40 }, pal: { deep: [0.012, 0.022, 0.05], mid: [0.04, 0.07, 0.14], wall: [0.07, 0.10, 0.18], rim: [0.6, 0.8, 1] } }; }, null, {
       onDark: () => app.applyBudget(),
       onLoad: (W) => { const C = this.p2 = new Colony(W, 7, { tint: TINT2, crown: 'sun', isPlayer: true }); C.spawn(W.spec.W * 0.75, W.spec.H * 0.5, 40); W.colonies.push(C); W.massCosts = true; },
-      onReveal: () => { app.hud.showTitle('', 'Duet', 'pointer  ·  W A S D + Space', 3.2); app.hud.setCorner(true, () => app.pause()); },
+      onReveal: () => { app.hud.showTitle('', 'Duet', 'pointer  ·  W A S D + Space', 3.2); app.hud.setCorner(true, () => app.pause()); app.sound.ambience('duet'); },
     });
   }
   exit() { this.app.input.keysOff = false; }

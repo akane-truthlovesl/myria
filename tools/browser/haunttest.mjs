@@ -5,10 +5,14 @@ import { open, sleep, errs } from './lib.mjs';
 const { browser, page, logs } = await open('/index.html?mode=abyss', { w: 1100, h: 700 });
 const play = async () => { for (let k = 0; k < 80; k++) { const s = await page.evaluate(() => window.__app && window.__app.state); if (s === 'play') return; await sleep(250); } };
 await sleep(500); await page.mouse.click(550, 350); await play(); await sleep(800);
+// every toast is recorded as it is raised, per phase: one lives 2.8 s and only three show at once, so reading the glass itself was a race
+// (a streak of light eaten while chasing the revenant could push 'laid to rest' off it before it was read)
+const recToasts = () => page.evaluate(() => { const h = window.__app.hud; if (!h.__rec) { const f = h.toast.bind(h); h.toast = (n, g, c) => { (window.__toasts = window.__toasts || []).push(String(n)); return f(n, g, c); }; h.__rec = true; } window.__toasts = []; });
+await recToasts();
 // wait for a dive that is not run `id`, revealed and in play
 const newDive = async (id) => { for (let k = 0; k < 120; k++) { const ok = await page.evaluate((id) => { const a = window.__app, m = a.mode; return !!m && m.runId && m.runId !== id && a.state === 'play' && a.world.listener === m && a.world.roomTime > 1.2; }, id); if (ok) return true; await sleep(250); } return false; };
 const info = () => page.evaluate(() => { const a = window.__app, W = a.world, m = a.mode; const res = W.ents.find(e => e.d.type === 'residue'); const rev = W.colonies.find(C => C.kind === 'revenant');
-  return { depth: m.depth, haunts: a.save.get('haunts', []).map(h => ({ id: h.id, depth: h.depth, guest: !!h.guest, n: h.n })), rested: a.save.get('rested', 0), haunting: m.haunting ? { id: m.haunting.id, guest: !!m.haunting.guest } : null, residue: res ? { css: a.R.worldToCss(res.x, res.y).map(Math.round), woke: res.woke, n: res.n } : null, revenant: rev ? rev.orgs.filter(o => o.alive).map(o => o.B.count) : null, mass: W.player.mass, toast: [...document.querySelectorAll('.h-toast')].map(e => e.textContent.trim()).join(' | '), gifts: W.ents.filter(e => e.d.gift && !e.dead).length, mimics: W.ents.filter(e => e.d.type === 'mimic').length }; });
+  return { depth: m.depth, haunts: a.save.get('haunts', []).map(h => ({ id: h.id, depth: h.depth, guest: !!h.guest, n: h.n })), rested: a.save.get('rested', 0), haunting: m.haunting ? { id: m.haunting.id, guest: !!m.haunting.guest } : null, residue: res ? { css: a.R.worldToCss(res.x, res.y).map(Math.round), woke: res.woke, n: res.n } : null, revenant: rev ? rev.orgs.filter(o => o.alive).map(o => o.B.count) : null, mass: W.player.mass, toast: (window.__toasts || []).concat([...document.querySelectorAll('.h-toast')].map(e => e.textContent.trim())).join(' | '), gifts: W.ents.filter(e => e.d.gift && !e.dead).length, mimics: W.ents.filter(e => e.d.type === 'mimic').length }; });
 const say = (l, s) => console.log(l, JSON.stringify(s)); const R = {};
 // 1 · a dive ends somewhere in depth 1
 await page.mouse.move(700, 420); await sleep(1500); await page.evaluate(() => { const m = window.__app.mode; m.marks.push([0.3, 0.3], [0.7, 0.6]); m.end(); }); await sleep(600);
@@ -29,7 +33,9 @@ await page.evaluate((g) => { window.prompt = () => g; const a = window.__app; a.
 await page.evaluate(() => window.__app.mode.inviteHaunt()); await sleep(500); R.invited = await info(); say('a stranger\'s line pasted in the Atrium', R.invited);
 const prevRun = await page.evaluate(() => 0); await page.evaluate(() => { const a = window.__app; a.extraModes.find(m => m.id === 'abyss').start(a, {}); }); await newDive(prevRun);
 R.guest = await info(); say('the next dive', R.guest);
-const ok = again && R.left.haunts.length === 1 && R.left.haunts[0].depth === 1 && /^MYRIA-HAUNT\.[0-9a-z.]+$/.test(code) && R.found.haunting && !R.found.haunting.guest && R.found.residue && !R.found.residue.woke && /you ended here once/.test(R.found.toast) && R.found.mimics >= 1
-  && R.woke.revenant && R.woke.residue.woke && R.rest.revenant === null && R.rest.rested === 1 && R.rest.haunts.length === 0 && /laid to rest/.test(R.rest.toast) && R.rest.gifts + (R.rest.mass - R.woke.mass) > 0
-  && R.invited.haunts.some(h => h.guest && h.id === 123456789) && R.guest.haunting && R.guest.haunting.guest && /a stranger ended here/.test(R.guest.toast);
+const C = [['end panel offers both', again], ['one haunting left at depth 1', R.left.haunts.length === 1 && R.left.haunts[0].depth === 1], ['code is one line', /^MYRIA-HAUNT\.[0-9a-z.]+$/.test(code)],
+  ['next dive is haunted (own)', !!R.found.haunting && !R.found.haunting.guest], ['stain lies asleep', !!R.found.residue && !R.found.residue.woke], ['told: you ended here', /you ended here once/.test(R.found.toast)], ['mimics wear its light', R.found.mimics >= 1],
+  ['stepping in raises it', !!R.woke.revenant && !!R.woke.residue && R.woke.residue.woke], ['devoured: gone', R.rest.revenant === null], ['rested counted', R.rest.rested === 1], ['haunting cleared', R.rest.haunts.length === 0], ['told: laid to rest', /laid to rest/.test(R.rest.toast)],
+  ['light given back', R.rest.gifts + (R.rest.mass - R.woke.mass) > 0], ['stranger pasted', R.invited.haunts.some(h => h.guest && h.id === 123456789)], ['stranger found', !!R.guest.haunting && R.guest.haunting.guest], ['told: a stranger', /a stranger ended here/.test(R.guest.toast)]];
+const ok = C.every(c => c[1]); if (!ok) console.log('failed: ' + C.filter(c => !c[1]).map(c => c[0]).join(' · '));
 const e = errs(logs); console.log(e || 'no console errors'); console.log(ok && !e ? 'HAUNT OK' : 'HAUNT FAILED'); await browser.close();

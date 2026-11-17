@@ -47,7 +47,7 @@ export class Epilogue {
       minDark: this.result ? 2.6 : 0.5,
       onDark: () => { app.applyBudget(); if (this.result) app.hud.showResult(this.result); },
       onLoad: (W) => { W.massCosts = false; W.peace = true; W.dewReach = 320; },
-      onReveal: () => { app.hud.hideResult(); app.hud.setTop(null); app.hud.setCorner(true, () => app.pause()); app.sound.ready && app.sound.ambience('bright', 55); },
+      onReveal: () => { app.hud.hideResult(); app.hud.setTop(null); app.hud.setCorner(true, () => app.pause()); app.sound.ready && app.sound.ambience('epilogue'); },
     });
   }
   exit() { this.app.hud.closePanel(); }

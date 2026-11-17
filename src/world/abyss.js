@@ -8,15 +8,17 @@ import { rng, TAU, hashStr } from '../core/util.js';
 import { frame, dish } from './rooms.js';
 import { moteRing, moteTrail } from './entities.js';
 import { PAL } from './odyssey.js';
+import { shoalOf, fireflyCloud } from './plankton.js';
 
 const PALS = [PAL.dew, PAL.glass, PAL.amber, PAL.abyss];
 export const AXIOMS = [
   { id: 'still', name: 'Still Water', sub: 'the slide as you know it' },
   { id: 'thick', name: 'Thick Water', sub: 'everything drags', apply: (s) => { s.drag = 2.6; } },
-  { id: 'hungry', name: 'Hungry Dark', sub: 'a well waits in every chamber', apply: (s, R, W, H) => { s.ents.push({ type: 'well', x: W * R.range(0.4, 0.6), y: H * R.range(0.4, 0.6), r: 18, reach: 210 }); } },
+  // (these used to be dropped anywhere near the middle — which is where a diver is born: a well 43 px from the newborn creature, a blade through it)
+  { id: 'hungry', name: 'Hungry Dark', sub: 'a well waits in every chamber', apply: (s, R, W, H, place) => { const p = place && (place(160) || place(120)); if (p) s.ents.push({ type: 'well', ...p, r: 18, reach: 210 }); } },
   { id: 'feast', name: 'Feast', sub: 'twice the light, twice the mouths', apply: (s) => { s.moteMul = 2; s.rivalMul = 2; } },
-  { id: 'glass', name: 'Glass Storm', sub: 'blades in every chamber', apply: (s, R, W, H) => { s.ents.push({ type: 'blade', x: W * R.range(0.3, 0.7), y: H * R.range(0.3, 0.7), len: 130, spin: R.sign() * 1.4 }); } },
-  { id: 'white', name: 'White Tide', sub: 'a geyser breathes in every chamber', apply: (s, R, W, H) => { s.ents.push({ type: 'geyser', x: W * R.range(0.35, 0.65), y: H * R.range(0.35, 0.65), period: R.range(4.2, 5.6) }); } },
+  { id: 'glass', name: 'Glass Storm', sub: 'blades in every chamber', apply: (s, R, W, H, place) => { const p = place && (place(110) || place(90)); if (p) s.ents.push({ type: 'blade', ...p, len: 130, spin: R.sign() * 1.4 }); } },
+  { id: 'white', name: 'White Tide', sub: 'a geyser breathes in every chamber', apply: (s, R, W, H, place) => { const p = place && (place(110) || place(80)); if (p) s.ents.push({ type: 'geyser', ...p, period: R.range(4.2, 5.6) }); } },
   { id: 'masks', name: 'Masquerade', sub: 'not every light is light', apply: (s, R, W, H) => { for (let k = 0; k < 2; k++) s.ents.push({ type: 'mimic', x: W * R.range(0.2, 0.8), y: H * R.range(0.22, 0.78) }); } },
   { id: 'swift', name: 'Quick Tide', sub: 'you, and everything else, move faster', apply: (s) => { s.speedScale = 1.3; } },
   { id: 'glide', name: 'Glass Water', sub: 'nothing slows you down — nothing', apply: (s) => { s.drag = 0.6; } },
@@ -25,6 +27,7 @@ export const AXIOMS = [
   { id: 'bands', name: 'Slingshot', sub: 'taut bands wait along the walls', apply: (s, R, W, H) => { for (const u of [0.11, 0.89]) s.ents.push({ type: 'bumper', x: W * u, y: H * R.range(0.34, 0.66), len: 130, to: { x: W / 2, y: H / 2 }, kick: 560 }); } },
   { id: 'famine', name: 'Famine', sub: 'half the light — the rest must be hunted', apply: (s) => { s.moteMul = 0.5; s.rivalMul = 1.6; } },
   { id: 'giants', name: 'Giants', sub: 'fewer neighbours, far bigger', apply: (s) => { s.rivalMul = 0.6; s.rivalBig = 1.45; } },
+  { id: 'night', name: 'Firefly Night', sub: 'every light blinks — and the dark finds its rhythm', apply: (s) => { s.fireflies = true; } },
   { id: 'air', name: 'Champagne', sub: 'bubbles drift in every chamber — swallow one and they take you for a giant', apply: (s, R, W, H, place) => { for (let k = 0; k < 5; k++) { const p = place && place(34); if (p) s.ents.push({ type: 'bubble', ...p, r: R.range(15, 24), life: 900 }); } } },
 ];
 // The day's mutation of the world: one on a weekday, two at once on a weekend (never a pair that cancels out). Same for everyone, from the date alone.
@@ -84,6 +87,18 @@ export function abyssRoom(aspect, depth, seed, axiom, mass = 60) {
     for (let k = 0; k < nTr; k++) { const a = place(30), b = place(30); if (a && b) ents.push(...moteTrail([[a.x, a.y], [(a.x + b.x) / 2 + R.range(-80, 80), (a.y + b.y) / 2 + R.range(-80, 80)], [b.x, b.y]], R.int(5, 8), 2)); }
     if (depth > 2) { const p = place(70); if (p) ents.push({ type: 'pool', kind: 'heal', ...p, r: 46, max: 30 }); }
   }
+  // living light (world/plankton.js): every chamber of the deep has something alive in its water — a school, a cloud of fireflies, shy sparks, a pod or two
+  const kinds = arena ? ['school'] : [R.pick(['school', 'school', 'fireflies', 'shy', 'pods']), ...(depth >= 3 && R.chance(0.5) ? [R.pick(['school', 'fireflies', 'shy', 'pods'])] : [])];
+  kinds.forEach((kind, k) => {
+    if (kind === 'school') { const p = place(60); if (p) ents.push(...shoalOf('deep' + k, p.x, p.y, arena ? 10 : R.int(6, 9), { range: Math.min(W, H) * 0.42 })); }
+    else if (kind === 'fireflies') { const p = place(90); if (p) ents.push(...fireflyCloud(p.x, p.y, R.int(5, 8), R.range(70, 110), { period: R.range(2.2, 3) })); }
+    else if (kind === 'shy') { for (let q = 0; q < R.int(2, 3); q++) { const p = place(36); if (p) ents.push({ type: 'mote', kind: 'shy', ...p }); } }
+    else if (kind === 'pods') { for (let q = 0; q < R.int(1, 2); q++) { const p = place(40); if (p) ents.push({ type: 'pod', ...p, a: R.range(0, TAU), n: R.int(4, 6) }); } }
+  });
+  // whatever water runs through the chamber carries a little light
+  for (const e of ents.slice()) if (e.type === 'current') for (let q = 0; q < 3; q++) ents.push({ type: 'mote', kind: 'drift', x: e.x + (R.range(-0.4, 0.4)) * e.w, y: e.y + (R.range(-0.4, 0.4)) * e.h });
+  // Firefly Night: every still light blinks
+  if (spec.fireflies) for (const e of ents) if (e.type === 'mote' && !e.kind) { e.kind = 'firefly'; e.period = 2.6; }
   // neighbours
   const nG = Math.round((arena ? 3 : Math.min(3, 1 + Math.floor(depth / 3))) * spec.rivalMul), nH = arena ? 1 + Math.floor(depth / 10) : depth >= 3 ? Math.min(2, Math.floor(depth / 4) + (R.chance(0.5) ? 1 : 0)) : 0;
   // neighbours are measured against you: grazers are always a meal, lancers hover around your own size —

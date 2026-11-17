@@ -52,10 +52,10 @@ export class World {
     for (const d of spec.ents || []) this.spawn(d);
     // no light is born inside stone: one that falls in a wall (or flush against it) is set down just outside; one buried too deep to find a way out is not born at all
     { const nn = [0, 0]; let buried = false;
-      for (const m of this.pickups) { if (!m.isMote || m.free) continue; let sd = P.sampleSDF(m.x, m.y); if (sd >= 15) continue;
+      for (const m of this.pickups) { if (!m.isMote || m.free && m.kind !== 'firefly' || m.pod) continue; let sd = P.sampleSDF(m.x, m.y); if (sd >= 15) continue;
         for (let k = 0; k < 8 && sd < 15; k++) { P.sdfNormal(m.x, m.y, nn); if (!(Math.abs(nn[0]) + Math.abs(nn[1]) > 0.5)) break; m.x += nn[0] * (17 - sd); m.y += nn[1] * (17 - sd); sd = P.sampleSDF(m.x, m.y); }
-        m.hx = m.x; m.hy = m.y; if (sd < 6) { m.buried = true; buried = true; } }
-      if (buried) { this.pickups = this.pickups.filter(m => !m.buried); this.ents = this.ents.filter(m => !m.buried); } }
+        m.hx = m.x; m.hy = m.y; if (m.kind === 'firefly') { m.ox = m.x; m.oy = m.y; } if (sd < 6) { m.buried = true; buried = true; } }
+      if (buried) { this.pickups = this.pickups.filter(m => !m.buried); this.ents = this.ents.filter(m => !m.buried); this.fireflies = this.fireflies.filter(m => !m.buried); for (const S of this.schools.values()) S.members = S.members.filter(m => !m.buried); } }
     // the player's colony
     const sp = spec.spawn || { x: spec.W / 2, y: spec.H / 2 };
     this.player = this.addColony(0, sp.x, sp.y, carry.mass || sp.n || 40, { tint: carry.tint || (this.host.skin ? this.host.skin() : null), mat: carry.mat ?? MAT.LUMEN, crown: carry.crown || 'sun', morph: carry.morph || null });
@@ -234,7 +234,8 @@ export class World {
   // stretched or coiled, a low pulse when something near can hurt it
   _voice() {
     const s = this.sound; if (!s || !s.ready) return; const F = this.player && this.player.focus;
-    if (!F || !F.alive) { s.setGlide(0, 0); s.setTension(0); s.setDanger(0); return; }
+    if (s.conduct) s.conduct();
+    if (!F || !F.alive) { s.setGlide(0, 0); s.setTension(0); s.setDanger(0); if (s.beacon) s.beacon(0, 0, 0); return; }
     const B = F.B; const sp = Math.hypot(B.vx, B.vy); const contact = Math.min(1, B.contact / Math.max(4, B.count * 0.08));
     s.setGlide(sp, contact);
     const stretch = Math.max(0, Math.min(1, (F.spread - 1.22) / 0.9));
@@ -242,6 +243,8 @@ export class World {
     let danger = this.ember ? 0.7 : 0; if (F.hurtT > 0) danger = Math.max(danger, 0.8);
     for (const h of this.hazards()) { const d = Math.hypot(h.x - B.cx, h.y - B.cy) - (h.r || 40) - B.r; if (d < 90) danger = Math.max(danger, 0.75 * (1 - Math.max(0, d) / 90)); }
     s.setDanger(danger);
+    // the way out, for the score: the nearest open pore calls from its side of the room
+    if (s.beacon) { let bd = 0, bx = 0, by = 0; for (const e of this.ents) if (e.d.type === 'pore' && !e.taken && e.open > 0.5) { const d = Math.hypot(e.x - B.cx, e.y - B.cy); if (!bd || d < bd) { bd = d; bx = e.x - B.cx; by = e.y - B.cy; } } s.beacon(bx, by, bd > 60 ? bd : 0); }
   }
 
   // ── physics callbacks ────────────────────────────────────────────────
@@ -397,7 +400,7 @@ export class World {
       if (eater === this.player) { this.stats.eaten = (this.stats.eaten || 0) + 1; if (Math.random() < 0.25 && this.sound) this.sound.gulp(); }
       if (Bj.count <= 6 && eaten !== this.player) {               // the last of it: swallowed whole
         for (let q = 0; q < Bj.len; q++) { const p2 = P.bodyIdx[Bj.start + q]; if (P.alive[p2] && body[p2] === Bj.id) { if (full) P.kill(p2); else if (lodge) { P.transfer(p2, Bi.id); P.glow[p2] = 2.4; Bi.spores++; } else { P.transfer(p2, Bi.id); mat[p2] = Bi.mat; P.mix[p2] = 1; P.glow[p2] = 1.2; } } }
-        this.fx.ring(Bj.cx, Bj.cy, (eaten.tint || MATS[Bj.mat]).emit, 90, 0.6); if (eater === this.player) { this.sound && this.sound.swallow(); this.hitStop = 0.07; this.emit('devour', eaten, Bi); }
+        this.fx.ring(Bj.cx, Bj.cy, (eaten.tint || MATS[Bj.mat]).emit, 90, 0.6); if (eater === this.player) { this.sound && this.sound.swallow(); this.hitStop = 0.07; this.emit('devour', eaten, Bi, Bj); }
       }
     }
     // swallowed pigment slowly becomes your own colour
