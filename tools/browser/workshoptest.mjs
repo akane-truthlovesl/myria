@@ -35,6 +35,15 @@ await act('erase'); await tap(0.72, 0.35); R.erased = await items(); await act('
 await act('move'); const before = await page.evaluate(() => { const it = window.__app.mode.D.items.find(q => q[0] === 'D'); return [it[1], it[2]]; });
 await drag([[0.62, 0.73], [0.75, 0.73]], 6);
 R.moved = await page.evaluate((b) => { const it = window.__app.mode.D.items.find(q => q[0] === 'D'); return [it[1] - b[0], it[2] - b[1]]; }, before);
+// the mirror: one blade set down, two on the bench, reflected across the middle; a stroke of stone drawn once, set twice
+await act('mirror'); const n0 = await page.evaluate(() => window.__app.mode.D.items.length);
+await tool('blade'); await tap(0.30, 0.36);
+await tool('pen0'); await drag([[0.74, 0.12], [0.84, 0.26]], 6);
+R.mirror = await page.evaluate((n0) => { const m = window.__app.mode, L = m.D.items.slice(n0); const bl = L.filter(q => q[0] === 'bl'), w = L.filter(q => q[0] === 'w');
+  return { added: L.map(q => q[0]).join(','), sym: bl.length === 2 && bl[0][1] === bl[1][1] && Math.abs(bl[0][2] + bl[1][2] - 1000) <= 1, walls: w.length, saved: !!window.__ws.shelf.bench().mirror, on: document.querySelector('.h-tray button[data-act="mirror"]').classList.contains('on'), live: window.__app.world.ents.filter(e => e.d.type === 'blade').length, spins: window.__app.world.ents.filter(e => e.d.type === 'blade').map(e => Math.sign(e.d.spin)).join(','),
+  toast: (() => { const t = document.querySelector('.h-toast'), tr = document.querySelector('.h-tray.ws'); return t && tr ? t.getBoundingClientRect().bottom <= tr.getBoundingClientRect().top + 1 : null; })() }; }, n0);
+if (shot) await page.screenshot({ path: shot + '-mirror.png' });
+await act('mirror'); R.mirrorOff = await page.evaluate(() => !window.__app.mode.mirror);
 if (shot) await page.screenshot({ path: shot + '-bench.png' });
 
 // play it: the wall is now glass in the plate (the room's own SDF), the light is the room's light
@@ -68,5 +77,5 @@ const ok = R.fresh === 'l' && R.light.kind === 'l' && R.light.n >= 4 && R.light.
   && /bl/.test(R.after) && /D/.test(R.after) && R.door && R.door.shut && !/bl/.test(R.erased) && /bl/.test(R.undone) && !/bl/.test(R.erased2)
   && R.trial.sdfAtWall < 0 && R.trial.rods === 0 && R.trial.lights >= 10 && R.trial.need === Math.ceil(R.trial.lights * 0.6) && R.trial.rec >= 5
   && R.sealed && R.sealed.run && R.maker && /^MYRIA-CHAMBER\./.test(code) && R.round && R.guest.rival && R.guest.gifts === 1 && R.guest.par > 0
-  && R.moved[0] > 90 && Math.abs(R.moved[1]) < 30 && R.junk[0] === null && R.junk[1] === 1 && /^Knead,Workshop,Play,Back$/.test(R.panel) && R.list === 1 + 1 + R.starters + 1;
+  && R.moved[0] > 90 && Math.abs(R.moved[1]) < 30 && R.mirror.added === 'bl,bl,w,w' && R.mirror.sym && R.mirror.saved && R.mirror.on && R.mirror.live === 2 && R.mirror.spins === '1,-1' && R.mirror.toast !== false && R.mirrorOff && R.junk[0] === null && R.junk[1] === 1 && /^Knead,Workshop,Play,Back$/.test(R.panel) && R.list === 1 + 1 + R.starters + 1;
 const e = errs(logs); console.log(e || 'no console errors'); console.log(ok && !e ? 'WORKSHOP OK' : 'WORKSHOP FAILED'); await browser.close();

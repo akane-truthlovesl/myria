@@ -28,6 +28,7 @@ canvas#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block;
 .h-top .ex { font-size: 12px; color: var(--dim); }
 /* when the creature or the way out is low on the glass, the words go high (just under the pill) — see HUD.layout */
 #ui.hi .h-toasts { bottom: auto; top: calc(max(12px, env(safe-area-inset-top)) + 96px); }
+#ui.bench .h-toasts, #ui.bench.hi .h-toasts { top: auto; bottom: calc(var(--tray, 190px) + 12px); }
 #ui.hi .h-hint { bottom: auto; top: calc(max(12px, env(safe-area-inset-top)) + 50px); }
 /* corner pause */
 .h-corner { position: absolute; right: max(12px, env(safe-area-inset-right)); top: max(12px, env(safe-area-inset-top)); }

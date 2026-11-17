@@ -40,7 +40,8 @@ const RIVAL = { gz: ['grazer', 0.5], ln: ['hunter', 1.6], tb: ['thorn', 0.9] };
 // every kind of thing a chamber can hold, and how it is laid into a room. (it, f, o): the item, the layout frame, the room being built
 const at = (f, it, i = 1) => f.P(it[i] / 1000, it[i + 1] / 1000);
 const ang = (f, it, dflt) => f.ang(it[3] !== undefined ? it[3] / 1000 : dflt);
-const turn = (f) => (f.land ? 1 : -1);                     // seen over its diagonal, a clockwise wheel turns the other way
+const turn = (f) => (f.land ? 1 : -1);
+const hand = (it) => (it[5] < 0 ? -1 : 1);                   // a wheel set down in the mirror turns the other way: [kind, u, v, angle, size, -1]                     // seen over its diagonal, a clockwise wheel turns the other way
 export const KINDS = {
   w(it, f, o) {
     const pen = PENS[it[1]] || PENS[0]; const pts = []; for (let i = 2; i + 1 < it.length; i += 2) { const q = f.P(it[i] / 1000, it[i + 1] / 1000); pts.push([q.x, q.y]); }
@@ -59,13 +60,13 @@ export const KINDS = {
   dr(it, f, o) { const c = at(f, it); for (let k = 0; k < 3; k++) o.ents.push({ type: 'mote', kind: 'drift', x: c.x + (k - 1) * 30, y: c.y + (k - 1) * 9 }); },
   pd(it, f, o) { o.ents.push({ type: 'pod', ...at(f, it), a: ang(f, it, -Math.PI / 2), n: 6, regrow: o.bench ? 9 : 0 }); },
   gz(it, f, o) { const [kind, k] = RIVAL[it[0]]; o.rivals.push({ kind, ...at(f, it), n: Math.round(Math.max(14, o.mass * k)) }); },
-  bl(it, f, o) { o.ents.push({ type: 'blade', ...at(f, it), len: 140, spin: 1.5 * turn(f) }); },
-  gr(it, f, o) { o.ents.push({ type: 'grinder', ...at(f, it), r: 40, spin: 2.6 * turn(f) }); },
+  bl(it, f, o) { o.ents.push({ type: 'blade', ...at(f, it), len: 140, spin: 1.5 * turn(f) * hand(it) }); },
+  gr(it, f, o) { o.ents.push({ type: 'grinder', ...at(f, it), r: 40, spin: 2.6 * turn(f) * hand(it) }); },
   wl(it, f, o) { o.ents.push({ type: 'well', ...at(f, it), r: 17, reach: 220 }); },
   hp(it, f, o) { o.ents.push({ type: 'pool', kind: 'heal', ...at(f, it), r: 50, max: 80 }); },
   fm(it, f, o) { o.ents.push({ type: 'film', ...at(f, it), len: it[4] ?? 170, a: ang(f, it, 0) }); },
   mg(it, f, o) { o.ents.push({ type: 'magnet', ...at(f, it), reach: 210, power: 620, period: 4.2 }); },
-  ro(it, f, o) { o.ents.push({ type: 'rotor', ...at(f, it), R: it[4] ?? 96, gap: 0.5, spin: 0.5 * turn(f), a: ang(f, it, 0) }); },
+  ro(it, f, o) { o.ents.push({ type: 'rotor', ...at(f, it), R: it[4] ?? 96, gap: 0.5, spin: 0.5 * turn(f) * hand(it), a: ang(f, it, 0) }); },
   bd(it, f, o) { const c = at(f, it), a = ang(f, it, -Math.PI / 2); o.ents.push({ type: 'bumper', ...c, len: 130, to: { x: c.x + Math.cos(a) * 420, y: c.y + Math.sin(a) * 420 } }); },
   gy(it, f, o) { o.ents.push({ type: 'geyser', ...at(f, it), gifts: 30 }); },
   mm(it, f, o) { o.ents.push({ type: 'mimic', ...at(f, it) }); },
@@ -81,8 +82,10 @@ for (const k of ['ln', 'tb']) KINDS[k] = KINDS.gz;
 for (const k of Object.keys(BATHS)) KINDS[k] = (it, f, o) => { const [mat, morph] = BATHS[k]; o.ents.push({ type: 'pool', kind: 'morph', ...at(f, it), mat, morph: morph || { speed: 1, tonus: 1, dart: 1 }, r: 44 }); };
 const AIMED = new Set(['D', 'pd', 'fm', 'ro', 'bd', 'cu', 'wa']);
 const SIZED = new Set(['D', 'fm', 'ro']);
+const TURNS = new Set(['bl', 'gr', 'ro']);
 export const isAimed = (k) => AIMED.has(k);
 export const isSized = (k) => SIZED.has(k);
+export const isTurning = (k) => TURNS.has(k);
 
 export function freshDesign() {
   // a first bench is not empty: a sleeper, a way out, and a line of light between them — something to change rather than a blank to fill
@@ -146,6 +149,7 @@ export function checkDesign(x, v = 1) {
     }
     if (nums.length < 2) continue; const q = [k, n(nums[0], 20, 980, 500), n(nums[1], 20, 980, 500)];
     if (nums.length >= 3) q.push(n(nums[2], 0, 6283, 0)); if (nums.length >= 4 && SIZED.has(k)) q.push(n(nums[3], 50, 360, 130));
+    if (TURNS.has(k) && nums.length >= 5 && nums[4] < 0) { if (q.length < 4) q.push(0); if (q.length < 5) q.push(SIZED.has(k) ? 96 : 0); q.push(-1); }
     D.items.push(q);
   }
   return D;

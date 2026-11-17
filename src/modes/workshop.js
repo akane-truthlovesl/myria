@@ -10,7 +10,7 @@
 //  they copy on carries *their* run instead.
 // ─────────────────────────────────────────────────────────────────────────────
 import { Odyssey } from './odyssey.js';
-import { KINDS, PENS, PLATES, LIMITS, BOULDER, buildChamber, freshDesign, checkDesign, chamberHash, chamberName, packChamber, toUV, angToUV, isAimed } from '../world/workshop.js';
+import { KINDS, PENS, PLATES, LIMITS, BOULDER, buildChamber, freshDesign, checkDesign, chamberHash, chamberName, packChamber, toUV, angToUV, isAimed, isSized, isTurning } from '../world/workshop.js';
 import { layout } from '../world/odyssey.js';
 import { packEcho, unpackEcho } from '../world/entities.js';
 import { shelf } from '../core/shelf.js';
@@ -39,7 +39,7 @@ export const TOOLS = [
   { id: 'b-iron', g: '⬡', k: 'bI', name: 'bath · become iron' }, { id: 'b-silver', g: '⬢', k: 'bS', name: 'bath · become quicksilver' }, { id: 'b-armour', g: '⬣', k: 'bA', name: 'bath · become armour' },
   { id: 'b-foam', g: '◌', k: 'bF', name: 'bath · become foam (every dart a jet)' }, { id: 'b-spore', g: '❋', k: 'bP', name: 'bath · become spore' }, { id: 'b-rinse', g: '◇', k: 'bR', name: 'rinse · be yourself again' },
 ];
-const ACTS = [['play', '▶ play', 'play it — the first run through seals it'], ['undo', '↶', 'undo (Z)'], ['move', '✥', 'move · drag a thing to where it should be'], ['erase', '⌫', 'erase · tap a thing, or drag across things'], ['plate', '◐', 'the plate: its light and its music'], ['down', '⇣', 'give the chamber a down'], ['copy', '⇪', 'copy the chamber as a line of text'], ['new', '✚', 'clear the bench']];
+const ACTS = [['play', '▶ play', 'play it — the first run through seals it'], ['undo', '↶', 'undo (Z)'], ['move', '✥', 'move · drag a thing to where it should be'], ['erase', '⌫', 'erase · tap a thing, or drag across things'], ['mirror', '◫', 'mirror · whatever you set down, paint or draw appears again across the middle'], ['plate', '◐', 'the plate: its light and its music'], ['down', '⇣', 'give the chamber a down'], ['copy', '⇪', 'copy the chamber as a line of text'], ['new', '✚', 'clear the bench']];
 const SIZES = [40, 60, 90, 140];
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const segD = (p, a, b) => { const bx = b[0] - a[0], by = b[1] - a[1], L = bx * bx + by * by || 1; const h = clamp(((p[0] - a[0]) * bx + (p[1] - a[1]) * by) / L, 0, 1); return Math.hypot(p[0] - a[0] - bx * h, p[1] - a[1] - by * h); };
@@ -55,7 +55,7 @@ export class Workshop {
   constructor(app, o = {}) {
     this.app = app; this.o = o; this.noStick = true; this.isBench = true;
     const b = shelf.bench(); this.D = (b && checkDesign(b.design)) || freshDesign(); this.seal = b && b.sealed ? b.sealed : null;
-    this.tool = o.tool || 'light'; this.hist = o.hist || []; this.g = null; this.lastP = null; this.armNew = 0;
+    this.tool = o.tool || 'light'; this.hist = o.hist || []; this.g = null; this.lastP = null; this.armNew = 0; this.mirror = o.mirror ?? !!(b && b.mirror);
   }
   get sealed() { return this.seal && this.seal.h === chamberHash(this.D) ? this.seal : null; }
   enter() {
@@ -71,7 +71,7 @@ export class Workshop {
   spec(aspect) { const pb = this.padB(), a = aspect / (1 - pb); this.f = layout(a); const s = buildChamber(this.D, a, true); s.padB = pb; return s; }
   padB() { const k = this.app.hud.k || 1, h = (typeof window !== 'undefined' && window.innerHeight) || 720; return Math.min(0.32, (184 * k + 8) / h); }
   music() { this.app.sound.ambience((PLATES[this.D.pal] || PLATES[0]).music); }
-  exit() { if (this.el) this.el.remove(); this.el = null; }
+  exit() { if (this.el) this.el.remove(); this.el = null; this.app.hud.root.classList.remove('bench'); }
   // on the bench nothing hungers: everything alive sleeps where it was set down
   calm(W) { W.massCosts = false; for (const C of W.colonies) for (const O of C.orgs) O.dormant = true; }
   poreReady() { return false; }
@@ -93,13 +93,22 @@ export class Workshop {
   }
 
   // ── the design ────────────────────────────────────────────────────────
-  save() { shelf.setBench({ design: this.D, sealed: this.seal }); }
+  save() { shelf.setBench({ design: this.D, sealed: this.seal, mirror: this.mirror }); }
+  // the mirror: across the room's long midline (v → 1000 − v), angles reflected with it; what sits on the midline is not doubled
+  mirrorItem(it) {
+    const m = (v) => 1000 - v; if (it[0] === 'w' || it[0] === 'l') { const head = it[0] === 'w' ? 2 : 1, q = it.slice(0, head); let near = true; for (let i = head; i + 1 < it.length; i += 2) { q.push(it[i], m(it[i + 1])); if (Math.abs(it[i + 1] - 500) > 22) near = false; } return near ? null : q; }
+    if (Math.abs(it[2] - 500) < 22) return null; const q = [it[0], it[1], m(it[2])]; if (it.length > 3) q.push((6283 - it[3]) % 6283); if (it.length > 4) q.push(it[4]);
+    // a wheel's mirror image turns the other way round
+    if (isTurning(it[0])) { if (q.length < 4) q.push(0); if (it[5] < 0) q.length = isSized(it[0]) ? 5 : 4; else { if (q.length < 5) q.push(isSized(it[0]) ? 96 : 0); q.push(-1); } }
+    return q;
+  }
+  mirrorXY(x, y) { const [u, v] = toUV(this.f, x, y), q = this.f.P(u / 1000, (1000 - v) / 1000); return [q.x, q.y]; }
   change(fn, relay = true) { this.hist.push(JSON.stringify(this.D)); if (this.hist.length > 80) this.hist.shift(); fn(); this.save(); if (relay) this.relay(); this.refresh(); }
   undo() { const s = this.hist.pop(); if (!s) { this.app.hud.toast('nothing to undo', '↶', 'cool'); return; } const pal = this.D.pal; this.D = JSON.parse(s); this.save(); this.app.sound.ui(); if (this.D.pal !== pal) { this.reenter(); return; } this.relay(); this.refresh(); }
   clearBench() { this.change(() => { const f = freshDesign(); f.pal = this.D.pal; this.D = f; }); this.app.hud.toast('a clean bench', '✚', 'cool'); }
   // the bench re-laid in place, without an iris: the plate is the same (walls are wet glass, not yet in it), everything on it is new
   relay() { const app = this.app; app.relay(this.spec(app.R.fb.w / app.R.fb.h), { mass: this.D.mass }, (W) => this.calm(W)); }
-  reenter() { this.app.setMode(new Workshop(this.app, { tool: this.tool, hist: this.hist })); }
+  reenter() { this.app.setMode(new Workshop(this.app, { tool: this.tool, hist: this.hist, mirror: this.mirror })); }
   play() { this.save(); this.app.sound.ui(); this.app.setMode(new Trial(this.app, { design: JSON.parse(JSON.stringify(this.D)), own: true })); }
   // one more thing on the bench, alive at once (no re-laying: a gear set down starts turning, a school starts swimming)
   liveAdd(it) {
@@ -151,8 +160,10 @@ export class Workshop {
   }
   lightAt(G, x, y) {
     const app = this.app, W = app.world; if (W.phys.sampleSDF(x, y) < 14 || this.nearWall(x, y, 10)) return false;
-    if (this.lights() + G.lit.length >= LIMITS.lights) { if (!G.full) { G.full = true; app.hud.toast('the bench holds no more light', '✦', 'cool'); } return false; }
-    W.spawn({ type: 'mote', x, y, value: 2, free: true }); G.lit.push([x, y]); app.sound.chime && app.sound.chime(G.lit.length - 1, x / W.spec.W * 1.6 - 0.8); return true;
+    if (this.lights() + G.lit.length + (G.mlit ? G.mlit.length : 0) >= LIMITS.lights) { if (!G.full) { G.full = true; app.hud.toast('the bench holds no more light', '✦', 'cool'); } return false; }
+    W.spawn({ type: 'mote', x, y, value: 2, free: true }); G.lit.push([x, y]); app.sound.chime && app.sound.chime(G.lit.length - 1, x / W.spec.W * 1.6 - 0.8);
+    if (this.mirror) { const [mx, my] = this.mirrorXY(x, y); if (Math.hypot(mx - x, my - y) > 30 && W.phys.sampleSDF(mx, my) >= 14 && !this.nearWall(mx, my, 10)) { W.spawn({ type: 'mote', x: mx, y: my, value: 2, free: true }); (G.mlit || (G.mlit = [])).push([mx, my]); } }
+    return true;
   }
   finish(G) {
     const app = this.app, W = app.world, f = this.f, tap = G.moved < 10, t = TOOLS.find(q => q.id === G.tool) || {};
@@ -178,7 +189,7 @@ export class Workshop {
     }
     if (!t.k) return;
     if (this.D.items.length >= LIMITS.items) { app.hud.toast('the bench is full — erase something first', '✚', 'cool'); return; }
-    if (t.k === 'l') { if (!G.lit.length) return; const it = ['l']; for (const q of G.lit) it.push(...toUV(f, q[0], q[1])); this.change(() => this.D.items.push(it), false); this.refresh(); return; }
+    if (t.k === 'l') { if (!G.lit.length) return; const it = ['l']; for (const q of G.lit) it.push(...toUV(f, q[0], q[1])); const mi = G.mlit && G.mlit.length ? ['l', ...G.mlit.flatMap(q => toUV(f, q[0], q[1]))] : null; this.change(() => { this.D.items.push(it); if (mi) this.D.items.push(mi); }, false); this.refresh(); return; }
     if (t.k === 'w') { this.wall(G, t.pen, tap); return; }
     let x = G.x0, y = G.y0, a, len; const dx = G.x - G.x0, dy = G.y - G.y0, dist = Math.hypot(dx, dy);
     if (t.k === 'D' || t.k === 'fm') { if (tap) { a = f.land ? Math.PI / 2 : 0; len = t.k === 'D' ? 130 : 170; } else { x += dx / 2; y += dy / 2; a = Math.atan2(dy, dx); len = clamp(dist, 50, 360); } }
@@ -191,15 +202,17 @@ export class Workshop {
     }
     if (W.phys.sampleSDF(x, y) < 12) { app.hud.toast('that is inside the stone', '✕', 'cool'); return; }
     const it = [t.k, ...toUV(f, x, y)]; if (a !== undefined) it.push(angToUV(f, a)); if (len !== undefined) it.push(Math.round(len));
-    this.change(() => this.D.items.push(it), false); this.liveAdd(it); W.fx.ring(x, y, [0.8, 0.9, 1], 50, 0.4); app.sound.pop(0.6); this.refresh();
+    let mi = this.mirror && this.D.items.length + 1 < LIMITS.items ? this.mirrorItem(it) : null; if (mi) { const q = this.xy([mi[1], mi[2]]); if (W.phys.sampleSDF(q.x, q.y) < 12) mi = null; }
+    this.change(() => { this.D.items.push(it); if (mi) this.D.items.push(mi); }, false); this.liveAdd(it); W.fx.ring(x, y, [0.8, 0.9, 1], 50, 0.4);
+    if (mi) { this.liveAdd(mi); const q = this.xy([mi[1], mi[2]]); W.fx.ring(q.x, q.y, [0.8, 0.9, 1], 50, 0.4); } app.sound.pop(0.6); this.refresh();
   }
   // a wall: the stroke, its wobble taken out, kept off the sleeper and the way out (a stroke across either is cut in two round it)
   wall(G, pen, tap) {
     const app = this.app, W = app.world, f = this.f, P = PENS[pen] || PENS[0], S = this.xy(this.D.start), Q = this.xy(this.D.pore), sr = this.sleeperR();
     const keep = (x, y, r) => Math.hypot(x - S.x, y - S.y) > r + sr + 30 && Math.hypot(x - Q.x, y - Q.y) > r + 46 && W.phys.sampleSDF(x, y) > -r;
-    const items = [];
-    if (tap) { if (keep(G.x0, G.y0, P.r * BOULDER)) items.push(['w', pen, ...toUV(f, G.x0, G.y0)]); }
-    else { let run = []; const runs = []; for (const q of G.pts) { if (keep(q[0], q[1], P.r)) run.push(q); else { if (run.length >= 2) runs.push(run); run = []; } } if (run.length >= 2) runs.push(run);
+    const items = [], strokes = [G.pts]; if (this.mirror) { const m = G.pts.map(q => this.mirrorXY(q[0], q[1])); if (m.some((q, i) => Math.hypot(q[0] - G.pts[i][0], q[1] - G.pts[i][1]) > 44)) strokes.push(m); }
+    if (tap) { for (const S0 of strokes) if (keep(S0[0][0], S0[0][1], P.r * BOULDER)) items.push(['w', pen, ...toUV(f, S0[0][0], S0[0][1])]); }
+    else for (const pts of strokes) { let run = []; const runs = []; for (const q of pts) { if (keep(q[0], q[1], P.r)) run.push(q); else { if (run.length >= 2) runs.push(run); run = []; } } if (run.length >= 2) runs.push(run);
       for (const r of runs) { const s = simplify(r, 2.5, LIMITS.pts); if (s.length >= 2) { const it = ['w', pen]; for (const q of s) it.push(...toUV(f, q[0], q[1])); items.push(it); } } }
     if (!items.length) { app.hud.toast('glass will not set on the sleeper or the way out', PEN_G[pen], 'cool'); return; }
     if (this.D.items.length + items.length > LIMITS.items) { app.hud.toast('the bench is full — erase something first', '✚', 'cool'); return; }
@@ -222,21 +235,25 @@ export class Workshop {
       b.onclick = (e) => { e.stopPropagation(); if (performance.now() - (b._t || 0) < 700) return; go(); };
     });
     this.app.hud.root.appendChild(el); this.refresh();
+    // what the bench says is said above the tray, never over it
+    this.app.hud.root.classList.add('bench'); requestAnimationFrame(() => this.fitTray());
   }
+  fitTray() { if (this.el && typeof innerHeight !== 'undefined') this.app.hud.root.style.setProperty('--tray', Math.max(0, innerHeight - this.el.getBoundingClientRect().top) + 'px'); }
   act(id) {
     const app = this.app; if (app.state !== 'play') return; app.sound.ui();
     if (id === 'play') return this.play();
     if (id === 'undo') return this.undo();
     if (id === 'erase' || id === 'move') { this.tool = id; this.refresh(); return; }
+    if (id === 'mirror') { this.mirror = !this.mirror; this.save(); this.refresh(); app.hud.toast(this.mirror ? 'mirror · what you make appears again across the middle' : 'no mirror', '◫', 'cool'); return; }
     if (id === 'plate') { this.change(() => { this.D.pal = (this.D.pal + 1) % PLATES.length; }, false); app.hud.toast(`the plate · ${PLATES[this.D.pal].name}`, '◐', 'cool'); this.reenter(); return; }
     if (id === 'down') { this.change(() => { this.D.down = this.D.down >= 0 ? -1 : angToUV(this.f, Math.PI / 2); }); app.hud.toast(this.D.down >= 0 ? 'the chamber has a down' : 'weightless again', '⇣', 'cool'); return; }
     if (id === 'copy') { const s = this.sealed; if (!s) { app.hud.toast('play it through once — then it can be handed on', '⇪', 'cool'); return; } app.copyText(packChamber(this.D, s)); app.hud.toast(`${chamberName(chamberHash(this.D))} · copied <small>whoever plays it races your ${s.t.toFixed(1)} s</small>`, '⇪'); return; }
     if (id === 'new') { if (performance.now() - this.armNew > 3000) { this.armNew = performance.now(); app.hud.toast('tap ✚ again to clear the bench', '✚', 'cool'); return; } this.armNew = 0; this.clearBench(); }
   }
   refresh() {
-    const el = this.el; if (!el) return; const t = TOOLS.find(q => q.id === this.tool);
+    const el = this.el; if (!el) return; const t = TOOLS.find(q => q.id === this.tool); this.fitTray();
     el.querySelectorAll('button[data-id]').forEach(b => b.classList.toggle('on', b.dataset.id === this.tool));
-    el.querySelectorAll('button[data-act]').forEach(b => { const a = b.dataset.act; b.classList.toggle('on', (a === 'erase' || a === 'move') && this.tool === a || a === 'down' && this.D.down >= 0); b.classList.toggle('dim', a === 'copy' && !this.sealed || a === 'undo' && !this.hist.length); });
+    el.querySelectorAll('button[data-act]').forEach(b => { const a = b.dataset.act; b.classList.toggle('on', (a === 'erase' || a === 'move') && this.tool === a || a === 'down' && this.D.down >= 0 || a === 'mirror' && this.mirror); b.classList.toggle('dim', a === 'copy' && !this.sealed || a === 'undo' && !this.hist.length); });
     el.querySelector('.tip').textContent = this.tool === 'erase' ? 'erase · tap a thing, or drag across things' : this.tool === 'move' ? 'move · drag a thing — or the sleeper, or the way out — to where it should be' : t ? t.name : '';
     el.querySelector('.ws-stat').textContent = this.stat();
   }
@@ -253,10 +270,12 @@ export class Workshop {
   overlay(ov, R) {
     const app = this.app, G = this.g; if (!this.f || app.paused) return;
     const cool = [0.62, 0.92, 1], warm = [1, 0.8, 0.55], red = [1, 0.42, 0.36];
+    if (this.mirror) { const a = this.f.P(0.05, 0.5), b = this.f.P(0.95, 0.5); ov.line(a.x, a.y, b.x, b.y, 1.2, cool, 0.16); }
     const mark = (it, j, col, a) => { if (it[0] === 'w') { const P = this.pts(it, 2), r = this.wallR(it); if (P.length === 1) ov.ring(P[0][0], P[0][1], r + 5, 2, col, a); else for (let i = 0; i + 1 < P.length; i++) ov.line(P[i][0], P[i][1], P[i + 1][0], P[i + 1][1], r * 2 + 8, col, a * 0.35); } else if (it[0] === 'l') { const q = this.xy([it[j], it[j + 1]]); ov.ring(q.x, q.y, 13, 1.6, col, a); } else { const q = this.xy([it[1], it[2]]); ov.ring(q.x, q.y, 30, 1.8, col, a); } };
     if (G) {
       const t = TOOLS.find(q => q.id === G.tool) || {}, drag = G.moved >= 10;
-      if (t.k === 'w' && drag) { const pen = PENS[t.pen]; for (let i = 1; i < G.pts.length; i++) { const a = G.pts[i - 1], b = G.pts[i]; ov.line(a[0], a[1], b[0], b[1], pen.r * 2, cool, 0.14); ov.line(a[0], a[1], b[0], b[1], 1.4, [0.92, 0.98, 1], 0.75); } }
+      if (t.k === 'w' && drag) { const pen = PENS[t.pen]; for (let i = 1; i < G.pts.length; i++) { const a = G.pts[i - 1], b = G.pts[i]; ov.line(a[0], a[1], b[0], b[1], pen.r * 2, cool, 0.14); ov.line(a[0], a[1], b[0], b[1], 1.4, [0.92, 0.98, 1], 0.75);
+        if (this.mirror) { const ma = this.mirrorXY(a[0], a[1]), mb = this.mirrorXY(b[0], b[1]); ov.line(ma[0], ma[1], mb[0], mb[1], pen.r * 2, cool, 0.08); ov.line(ma[0], ma[1], mb[0], mb[1], 1.2, [0.92, 0.98, 1], 0.4); } } }
       else if ((t.k === 'D' || t.k === 'fm') && drag) ov.line(G.x0, G.y0, G.x, G.y, t.k === 'D' ? 24 : 7, cool, 0.4);
       else if (t.k === 'ro' && drag) ov.ring(G.x0, G.y0, clamp(Math.hypot(G.x - G.x0, G.y - G.y0), 50, 220), 9, cool, 0.4);
       else if (t.k && isAimed(t.k) && drag) { const dx = G.x - G.x0, dy = G.y - G.y0, d = Math.hypot(dx, dy) || 1, ux = dx / d, uy = dy / d, L = Math.min(d, 160), hx = G.x0 + ux * L, hy = G.y0 + uy * L; ov.line(G.x0, G.y0, hx, hy, 2.2, warm, 0.85); ov.line(hx, hy, hx - ux * 14 - uy * 9, hy - uy * 14 + ux * 9, 2.2, warm, 0.85); ov.line(hx, hy, hx - ux * 14 + uy * 9, hy - uy * 14 - ux * 9, 2.2, warm, 0.85); }
@@ -315,7 +334,7 @@ export class Trial extends Odyssey {
     if (this.own) {
       // the first time through seals it (now it may be handed on); a faster run becomes the record it carries
       const b = shelf.bench() || {}, seal = b.sealed && b.sealed.h === this.h ? b.sealed : null;
-      if (!seal || t < seal.t - 0.01) { shelf.setBench({ design: b.design || this.D, sealed: { h: this.h, t, p: p || (seal && seal.p) || null } }); this.note = seal ? 'a new record for it' : 'sealed · ready to hand on';
+      if (!seal || t < seal.t - 0.01) { shelf.setBench({ ...b, design: b.design || this.D, sealed: { h: this.h, t, p: p || (seal && seal.p) || null } }); this.note = seal ? 'a new record for it' : 'sealed · ready to hand on';
         // a chamber of your own, sealed: the first ever is a trick found (and its picture); every one after keeps a picture of its own
         if (!seal) { if ((this.app.save.data.tricks || {}).Maker) this.app.moment && this.app.moment(this.nameOf, 'a chamber of your own, sealed', 'sealed:' + this.h); this.trick('Maker'); } }
     } else {

@@ -67,7 +67,8 @@ wall where something is watching makes you a veil it cannot see.
   on you rather than slicing — the gel is pushed aside — and for a moment as one ring closes and the
   other opens, a straight line runs to the heart. In on one breath, out on another). Three living
   stars per chamber: **Radiance** (all the light), **Grace** (lose almost nothing), **Swift** (under
-  par). The pore opens at 60 % — the rest is appetite. Twenty-one named tricks (Thread the Needle,
+  par). The pore opens at 60 % — the rest is appetite.
+  Twenty-one named tricks (Thread the Needle,
   Surgical Shear, Ghost Wall, Paper Tiger, Cleave, Slingshot, Gravity Assist, Hole in One, Bank Shot,
   Go-Between, Trojan Swallow, Outrun, Comet, Phoenix, Immaculate, Net, Velvet, In Time, Harvest, Whole, Maker) are noticed when you find them; the Atrium keeps a
   journal in which the ones you have not found yet are riddles. The stars you gather dye you: six
@@ -163,7 +164,9 @@ wall where something is watching makes you a veil it cannot see.
   kept, to play again — beside four that someone left on the bench before you (switches and a door; a
   room with a down; a river and its lanterns; a watcher's gallery) — no record on them yet: your
   first run through is the one you race. On the bench, ✥ moves anything (the sleeper and the way out included), ⌫
-  erases with a tap or a sweep, ↶ undoes; a chamber of your own, sealed, keeps a picture in the Album.
+  erases with a tap or a sweep, ↶ undoes, and ◫ **mirrors**: whatever you set down, paint or draw
+  appears again across the middle — a wheel's reflection turns the other way, so two blades set down
+  once close like shears. A chamber of your own, sealed, keeps a picture in the Album.
 
 Anything that parts you — a comb, a blade, a pole's throw — makes **siblings**, not debris. A real
 share of you (fourteen grains or more) is you: steerable (click it / Tab), callable (rally), and the
