@@ -112,6 +112,7 @@ export class Epilogue {
     W.flash = 1; W.hitStop = 0.14; W.shake = 0.6; for (const O of W.player.orgs) O.crown.joy();
     for (let k = 0; k < 4; k++) W.fx.ring(F.B.cx, F.B.cy, k % 2 ? [1, 1, 1] : col, 180 + k * 150, 1.0 + k * 0.25);
     W.fx.burst(F.B.cx, F.B.cy, 60, col, 460, { size: 3.4, life: 1.6, drag: 1.4 }); app.sound.portal(); app.sound.prism(); app.haptics.fuse && app.haptics.fuse();
+    app.moment && app.moment('Myriad', 'the last room: everyone came home', 'myriad');
   }
   card() {
     const app = this.app, save = app.save; const lit = ROOMS.filter(r => save.room(r.id)).length; const tricks = Object.keys(save.data.tricks || {}).length; const hues = unlockedSkins(save).length;

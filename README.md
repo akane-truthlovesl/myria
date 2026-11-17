@@ -38,7 +38,10 @@ wall where something is watching makes you a veil it cannot see.
   at once, when the first chamber has been lit. Each door wears its name; only the one you are beside
   says more. The living light of every place you light follows you home: the first chamber sends
   fireflies, the Dew a school that circles the word, the Glassworks seed pods on the ceiling (they
-  regrow), Chemistry shy sparks and drifting light, the Heart a golden swarm.
+  regrow), Chemistry shy sparks and drifting light, the Heart a golden swarm. The pause menu there
+  keeps an **Album**: the game takes a small picture by itself at the moments that matter — a trick
+  found for the first time, a warden passed, a new size, a Bloom medal, a haunting laid to rest, the
+  last room — each with a line under it, newest first.
 - **Odyssey** — twenty-eight single-screen chambers in four strata (Dew · Glassworks · Chemistry ·
   Abyss), each teaching one idea through physics alone: squeezing, darting through a soap film,
   budding to hold two pads, threading a comb, blades, sling bands that throw you whole through doubled
@@ -82,7 +85,8 @@ wall where something is watching makes you a veil it cannot see.
   bolt; drift in slowly and they never know. **Fireflies** blink on their own clocks and, coupled to
   their neighbours, fall into one flash over a few seconds — a firefly between flashes is an ember a
   feeler will not reach for. Where music is playing, a cloud slowly finds *its* pulse too, and
-  flashes on the downbeat. **Drift** rides the currents. **Seed pods** burst when brushed, flinging
+  flashes on the downbeat — and a creature resting beside it shimmers with the flash. At rest, the
+  creature turns a feeler to watch whatever moves nearby. **Drift** rides the currents. **Seed pods** burst when brushed, flinging
   their seeds. Each has its trick: four of a school inside one heartbeat (*Net*), a shy spark that
   never knew you were there (*Velvet*), three fireflies in one flash (*In Time*), every seed of a pod
   before it settles (*Harvest*).
@@ -121,7 +125,7 @@ wall where something is watching makes you a veil it cannot see.
   Tide, Glass Water, Long Winter, Rapids, Slingshot, Famine, Giants, Champagne, Firefly Night) — two at once on
   weekends, never a pair that cancels out. **The day's sprint** is one Odyssey chamber in mutated water
   (faster, thicker, frictionless, or "every light or no door"), against the clock, drawn only from the
-  97 chamber × mutation pairs the autopilot finishes in both orientations. *Copy today* makes a result
+  100 chamber × mutation pairs the autopilot finishes in both orientations. *Copy today* makes a result
   line to compare with anyone's.
 - **Duet** — two players, one screen (pointer + W A S D / Space / F): **Together**, a co-op dive where
   touching shares mass between you, or **Versus**, ninety seconds of raining light.

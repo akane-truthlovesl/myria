@@ -185,7 +185,9 @@ function firefly(m, dt) {
 // many flashing at once is a sound: the room's own little bell (only once the cloud has found its rhythm)
 function flashed(W, m) {
   const t = W.time; if (t - (W.ffT || -9) > 0.22) { W.ffT = t; W.ffN = 0; W.ffX = 0; } W.ffN++; W.ffX += m.ox;
-  if (W.ffN === 4 && t - (W.ffBell || -9) > 1.6) { W.ffBell = t; if (W.sound && W.sound.firefly && W.isPlayerNear(m.ox, m.oy, 700)) W.sound.firefly(W.ffX / W.ffN / W.spec.W * 1.6 - 0.8); }
+  if (W.ffN === 4 && t - (W.ffBell || -9) > 1.6) { W.ffBell = t; if (W.sound && W.sound.firefly && W.isPlayerNear(m.ox, m.oy, 700)) W.sound.firefly(W.ffX / W.ffN / W.spec.W * 1.6 - 0.8);
+    // a creature resting beside a swarm that flashes as one shimmers with it
+    const F = W.player && W.player.focus; if (F && F.alive && F.idleT > 1 && Math.hypot(F.B.cx - m.ox, F.B.cy - m.oy) < 320) { F.excite = Math.min(1, F.excite + 0.35); F.crown.joy(); } }
 }
 
 // ── what happens when one is taken ─────────────────────────────────────────

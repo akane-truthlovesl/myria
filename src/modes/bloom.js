@@ -106,6 +106,7 @@ export class Bloom {
     this.over = true; const app = this.app, save = app.save; const prev = save.get('bloomBest', 0); const best = this.score > prev; if (best) save.set('bloomBest', this.score);
     if (this.bestChain > save.get('bloomChain', 0)) save.set('bloomChain', this.bestChain);
     let medal = ''; for (const [s, n] of MEDALS) if (this.score >= s) medal = n; const next = MEDALS.find(([s]) => this.score < s);
+    if (medal && app.moment) app.moment(medal, `Bloom · ${this.score} · a chain of ${this.bestChain}`, 'bloom:' + medal);
     app.sound.portal(); app.hud.setTop(null);
     const W = app.world; const F = W.player.focus; if (F && F.alive) { F.crown.joy(); W.fx.ring(F.B.cx, F.B.cy, GOLD, 300, 1.2); W.fx.burst(F.B.cx, F.B.cy, 40, GOLD, 320, { life: 1.2, size: 3 }); }
     app.hud.panel(medal ? `${medal}` : 'The rain passes', `${this.eaten} motes · longest chain ${this.bestChain}`, [

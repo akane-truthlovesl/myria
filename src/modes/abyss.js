@@ -112,7 +112,8 @@ export class Abyss {
       if (C.laid || C.orgs.some(o => o.alive && o.B !== Bj && holds(o.B))) return; C.laid = true;
       const h = C.haunt; this.rested++; this.rev = null; if (h) { app.save.set('haunts', app.save.get('haunts', []).filter(q => q.id !== h.id)); app.save.set('rested', app.save.get('rested', 0) + 1); }
       if (F) { for (let k = 0; k < 10; k++) { const a = k / 10 * 6.283; W.spawn({ type: 'mote', x: F.B.cx + Math.cos(a) * 70, y: F.B.cy + Math.sin(a) * 70, value: 4, free: true, gift: true, vx: Math.cos(a) * 60, vy: Math.sin(a) * 60, col: [0.92, 0.86, 1] }); } W.fx.ring(F.B.cx, F.B.cy, [0.92, 0.86, 1], 320, 1.1, { w: 3 }); F.crown.joy(); }
-      this.light += 12; app.sound.bloom && app.sound.bloom(); app.hud.toast(`laid to rest${h ? ' · ' + hauntName(h.id) : ''}`, '☍'); return;
+      this.light += 12; app.sound.bloom && app.sound.bloom(); app.hud.toast(`laid to rest${h ? ' · ' + hauntName(h.id) : ''}`, '☍');
+      if (app.moment) app.moment('Laid to rest', `${h ? hauntName(h.id) + ', ' : ''}depth ${this.depth}`, h ? 'rest:' + h.id : ''); return;
     }
     this.devoured++; app.hud.toast(`${C.species ? C.species.name : 'Rival'} devoured`, '✦'); F && F.crown.joy();
   }

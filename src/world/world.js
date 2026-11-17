@@ -141,6 +141,8 @@ export class World {
     for (const e of this.ents) { if (e.dead || !e.curious) continue; const d = Math.hypot(e.x - B.cx, e.y - B.cy); if (d < bd && d > B.r * 0.8) { bd = d; best = e; } }
     return best;
   }
+  // the nearest light that is alive and showing it (moving, or a firefly mid-flash), beyond the body's own edge: what a resting creature looks at
+  findLife(O, range) { const B = O.B; let best = null, bd = range + B.r; for (const m of this.pickups) { if (m.dead || !m.living || m.spawnT < 0) continue; if (!(m.kind === 'firefly' ? m.lit > 0.5 : m.free && m.vx * m.vx + m.vy * m.vy > 600)) continue; const d = Math.hypot(m.x - B.cx, m.y - B.cy); if (d < bd && d > B.r) { bd = d; best = m; } } return best; }
   veilNear(x, y) { for (const e of this.ents) if (e.watch && Math.hypot(e.x - x, e.y - y) < e.range + 220) return true; return false; }
   hazards() { const out = this._hz || (this._hz = []); out.length = 0; for (const e of this.ents) if (e.hazard && !e.dead) out.push(e.hazard); return out; }
   nearestPlayer(x, y, range = 1e9) { let best = null, bd = range; if (this.player) for (const O of this.player.orgs) { if (!O.alive) continue; const d = Math.hypot(O.B.cx - x, O.B.cy - y) - O.B.r; if (d < bd) { bd = d; best = O; } } return best; }
@@ -161,7 +163,7 @@ export class World {
       if (i >= 0) { P.glow[i] = 0.9; P.rr[i] = 0.25; total++; added++; }
     }
     B.energy = Math.min(1.2, (B.energy || 0) + 0.06 * n);
-    if (C === this.player && added) { const m = total; for (const t of TIERS) if (m >= t[0] && m - added < t[0] && (this.tierMax || 0) < t[0]) { this.tierMax = t[0]; B.ctrl && B.ctrl.crown.joy(); this.fx.ring(B.cx, B.cy, [1, 0.9, 0.7], B.r * 3.4, 0.9); this.sound && this.sound.trick(); this.emit('tier', t[1], m); } }
+    if (C === this.player && added) { const m = total; for (const t of TIERS) if (m >= t[0] && m - added < t[0] && (this.tierMax || 0) < t[0]) { this.tierMax = t[0]; B.ctrl && B.ctrl.crown.joy(); this.fx.ring(B.cx, B.cy, [1, 0.9, 0.7], B.r * 3.4, 0.9); this.sound && this.sound.trick(); this.emit('tier', t[1], m); if (this.host.moment && t[0] >= 150) this.host.moment(t[1], 'grew this big for the first time', 'tier:' + t[1]); } }
     if (B.ctrl) { B.ctrl.gulp = 1; B.ctrl.excite = Math.min(1, B.ctrl.excite + 0.12); }
     if (!quiet) { this.fx.ring(x, y, col, 26, 0.35, { a: 0.7 }); this.fx.sparks(x, y, 3, B.cx - x, B.cy - y, col, 160, { life: 0.3, size: 2 }); }
     return added;

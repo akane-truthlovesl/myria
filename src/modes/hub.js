@@ -10,6 +10,7 @@ import { shoalOf, fireflyCloud } from '../world/plankton.js';
 import { Odyssey, TRICKS } from './odyssey.js';
 import { SKINS, skinFor, unlockedSkins } from '../core/skins.js';
 import { DAWN } from './epilogue.js';
+import { album } from '../core/album.js';
 
 // stroke font on a 4×6 grid
 const GLYPH = {
@@ -64,11 +65,20 @@ export class Hub {
     });
   }
   exit() { this.app.hud.setLabels([]); }
-  pauseItems() { const app = this.app; const found = TRICKS.filter(t => (app.save.data.tricks || {})[t[0]]).length; return [{ label: 'Chambers', fn: () => this.chambers() }, { label: `Tricks · ${found} / ${TRICKS.length}`, fn: () => this.journal() }, { label: this.hueLabel(), fn: (b) => { this.nextHue(); b.innerHTML = this.hueLabel(); } }, { label: 'Race an echo', fn: () => this.raceEcho() }, { label: this.hauntLabel(), fn: () => this.inviteHaunt() }, ...(app.save.get('awake', 0) ? [{ label: 'Myriad', fn: () => { app.resume(); app.toEpilogue({}); } }] : [])]; }
+  pauseItems() { const app = this.app; const found = TRICKS.filter(t => (app.save.data.tricks || {})[t[0]]).length, kept = album.count(); return [{ label: 'Chambers', fn: () => this.chambers() }, { label: `Tricks · ${found} / ${TRICKS.length}`, fn: () => this.journal() }, ...(kept ? [{ label: `Album · ${kept}`, fn: () => this.albumPanel() }] : []), { label: this.hueLabel(), fn: (b) => { this.nextHue(); b.innerHTML = this.hueLabel(); } }, { label: 'Race an echo', fn: () => this.raceEcho() }, { label: this.hauntLabel(), fn: () => this.inviteHaunt() }, ...(app.save.get('awake', 0) ? [{ label: 'Myriad', fn: () => { app.resume(); app.toEpilogue({}); } }] : [])]; }
   hueLabel() { const save = this.app.save; const cur = skinFor(save); const nx = SKINS.find(s => s.need > save.stars()); return `Hue · ${cur.name}${nx ? ` <small style="opacity:.55;letter-spacing:.1em;text-transform:none">&nbsp; next: ${nx.name} at ${nx.need} ✦</small>` : ''}`; }
   nextHue() {
     const app = this.app, save = app.save; const list = unlockedSkins(save); const cur = skinFor(save); const nx = list[(list.indexOf(cur) + 1) % list.length]; save.set('skin', SKINS.indexOf(nx));
     const W = app.world, C = W.player; if (C) { C.tint = nx.tint; for (const O of C.orgs) if (O.alive) { O.B.tint = nx.tint; O.crown.joy(); W.fx.ring(O.B.cx, O.B.cy, (nx.tint || { emit: [1, 0.6, 0.4] }).emit, 140, 0.8); } } app.sound.morph();
+  }
+  // the album: the moments the game kept by itself, newest first (a tap makes one large)
+  albumPanel() {
+    const app = this.app, L = album.list().slice().reverse(), esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+    const day = (t) => { try { return new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }); } catch (_) { return ''; } };
+    const cells = L.map((m) => `<figure class="al"><img src="${esc(m.src)}" alt=""><figcaption><b>${esc(m.caption)}</b><span>${esc(m.sub || '')}</span><i>${day(m.t)}</i></figcaption></figure>`).join('');
+    app.hud.panel('Album', `${L.length} moment${L.length === 1 ? '' : 's'} kept`, [{ label: 'Back', cls: 'pri', fn: () => app.resume() }], `<div class="al-grid">${cells}</div>`);
+    const veil = app.hud.veil; veil.querySelector('.panel').classList.add('wide');
+    veil.querySelectorAll('.al').forEach(f => { f.onclick = (e) => { e.stopPropagation(); const on = !f.classList.contains('big'); veil.querySelectorAll('.al.big').forEach(q => q.classList.remove('big')); if (on) { f.classList.add('big'); f.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } app.sound.ui(); }; });
   }
   // the journal: what you have found has a name; what you have not is a riddle
   journal() {

@@ -9,6 +9,7 @@ import { HUD } from './ui/hud.js';
 import { sound } from './core/audio.js';
 import { haptics } from './core/haptics.js';
 import { save } from './core/save.js';
+import { album } from './core/album.js';
 import { smooth, ease } from './core/util.js';
 import { Bot } from './core/bot.js';
 import { skinFor } from './core/skins.js';
@@ -24,7 +25,7 @@ export class App {
     this.input = new Input(canvas);
     this.hud = new HUD(uiRoot);
     this.sound = sound; this.haptics = haptics; this.save = save;
-    this.world = new World({ sound, haptics, overlay: (ov, R) => this._stick(ov, R), skin: () => skinFor(save).tint });
+    this.world = new World({ sound, haptics, overlay: (ov, R) => this._stick(ov, R), skin: () => skinFor(save).tint, moment: (c, s, o) => this.moment(c, s, o) });
     this.mode = null; this.paused = false; this.state = 'idle';
     this.acc = 0; this.t = 0; this.last = 0; this.frames = 0;
     this.pending = { darts: [], buds: [], cycle: 0, focusAt: null };
@@ -106,6 +107,20 @@ export class App {
     this.sound.ui && this.sound.ui();
   }
   // the frame on the glass, as a PNG: every screenshot of this game should be worth keeping
+  // a moment worth keeping (a trick found for the first time, a warden passed, a new size, the last room): a small picture of the
+  // glass a breath later — once the effect has bloomed — with a line under it. `once` keys a moment that is only ever kept once.
+  // The Atrium shows them as an album (core/album.js)
+  moment(caption, sub = '', once = '') {
+    if (once) { const seen = save.get('moments', []); if (seen.includes(once)) return; seen.push(once); save.set('moments', seen); }
+    setTimeout(() => {
+      try {
+        if (typeof document === 'undefined' || document.hidden) return;
+        const c = this.R.canvas, k = Math.min(400 / c.width, 300 / c.height), w = Math.max(1, Math.round(c.width * k)), h = Math.max(1, Math.round(c.height * k));
+        const o = document.createElement('canvas'); o.width = w; o.height = h; o.getContext('2d').drawImage(c, 0, 0, w, h);
+        album.add({ src: o.toDataURL('image/jpeg', 0.76), caption, sub, t: Date.now() });
+      } catch (_) { /* a locked-down browser: no picture, no harm */ }
+    }, 380);
+  }
   snapshot() {
     try {
       const c = this.R.canvas, name = ((this.world.spec && this.world.spec.name) || 'myria').toLowerCase().replace(/[^a-z0-9]+/g, '-');

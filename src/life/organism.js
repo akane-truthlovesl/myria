@@ -219,6 +219,12 @@ export class Organism {
       }
       // idle personality
       this.idleT = im > 0.06 || this.dartT > 0 ? 0 : this.idleT + dt;
+      // …and it watches: at rest, anything alive in the water nearby (a school going by, a firefly's flash, drifting light)
+      //  draws a feeler after it, one look at a time — curiosity, not appetite
+      if (sun && this.focused && this.idleT > 0.8 && !this.stealth && W.findLife) {
+        this.watchT = (this.watchT || 0) - dt;
+        if (this.watchT <= 0) { this.watchT = 0.45; const m = W.findLife(this, 300); if (m) { const dx = m.x - B.cx, dy = m.y - B.cy, d = Math.hypot(dx, dy) + 1, rr = Math.min(d, B.r + crown.maxReach(B.r) * 0.8); crown.reach(B.cx + dx / d * rr, B.cy + dy / d * rr, null, 0.4, RAY.SNIFF); } }
+      }
       if (this.idleT > 2.2 && !this.stealth) {
         this.idleNext -= dt;
         if (this.idleNext <= 0) { this.idleNext = 2.2 + Math.random() * 3.5; this.idleGesture(); }
