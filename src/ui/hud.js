@@ -100,9 +100,9 @@ export class HUD {
       if (Array.isArray(it)) { const row = el('div', 'm-row'); for (const j of it) { const b = el('button', 'm-item' + (j.cls ? ' ' + j.cls : ''), j.label); b.onclick = (e) => { e.stopPropagation(); j.fn(b); }; row.appendChild(b); } box.appendChild(row); }
       else { const b = el('button', 'm-item' + (it.cls ? ' ' + it.cls : ''), it.label); b.onclick = (e) => { e.stopPropagation(); it.fn(b); }; box.appendChild(b); }
     }
-    this.veil.classList.add('on'); this.panelOpen = true;
+    this.veil.classList.add('on'); this.panelOpen = true; this.root.classList.add('veiled');
   }
-  closePanel() { this.veil.classList.remove('on'); this.panelOpen = false; }
+  closePanel() { this.veil.classList.remove('on'); this.panelOpen = false; this.root.classList.remove('veiled'); }          // (veiled: a word still in flight is not read through the panel)
   // ── labels pinned to world points ──
   setLabels(list) {       // [{x,y (css px), html, cls}]
     while (this.labelEls.length < list.length) { const e = el('div', 'h-label'); this.labels.appendChild(e); this.labelEls.push(e); }

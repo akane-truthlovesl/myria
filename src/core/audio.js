@@ -165,6 +165,14 @@ export class Sound {
     return chain;
   }
   prism() { [0, 2, 4, 7].forEach((d, i) => setTimeout(() => this.bell(this.note(d, 2), 0.35, 2.4, 1.2, 0.8), i * 70)); }
+  // Bloom: a figure drawn whole rings as a little run that starts one step higher for every figure the chain has drawn — the
+  // multiplier climbs, and so does the tune; the eighth tops out on a full chord
+  drawn(lvl = 1, pan = 0, up = true) {
+    const k = Math.max(0, lvl - 1); [0, 2, 4].forEach((d, i) => setTimeout(() => this.bell(this.note(k + d, 1), 0.26, 2.2, 1.0, 0.8, pan), i * 62));
+    if (up) setTimeout(() => this.bell(this.note(k + 7, 1), 0.3, 3, 1.2, 0.85, pan), 200); if (up && lvl >= 8) setTimeout(() => this.bloom(), 300);
+  }
+  // …and a chain torn: two notes falling a little out of tune, and the snap of a string
+  torn(v = 1) { if (!this._rate('torn', 300)) return; this.noiseHit(3600, 4, 0.22 * v, 0.12, 0.3, 0.35); this.pluck(this.note(4, 1) + 0.3, 0.42 * v, 0.7, 0.4); this.pluck(this.note(0, 1) - 0.4, 0.38 * v, 1.1, 0.5, this.ctx ? this.ctx.currentTime + 0.13 : 0); this.blip(180, 70, 0.16 * v, 0.45, 'triangle', 0.3); }
   squish(v = 0.5) { if (!this._rate('squish', 60)) return; this.noiseHit(500 + v * 600, 2.5, 0.12 + v * 0.22, 0.16 + v * 0.1, 0.2, 0.25, 'lowpass'); this.blip(180 + v * 80, 60, 0.12 * v, 0.12, 'sine', 0.1); }
   splat(v = 0.5) { if (!this._rate('splat', 90)) return; this.noiseHit(900, 1.2, 0.18 + v * 0.3, 0.22, 0.3, 0.3); this.blip(140, 45, 0.25 * v, 0.2, 'sine', 0.2); }
   pop(v = 0.5) { if (!this._rate('pop', 30)) return; const f = 600 + Math.random() * 500; this.blip(f, f * 2.4, 0.18 * v + 0.05, 0.06, 'sine', 0.25); }

@@ -26,7 +26,7 @@ export class World {
     this.fx = new FX();
     this.ents = []; this.pickups = []; this.colonies = []; this.player = null;
     this.listener = null; this.time = 0; this.roomTime = 0;
-    this.massCap = 420; this.speedScale = 1; this.dartSpeed = 600; this.massCosts = true;
+    this.massCap = 420; this.speedScale = 1; this.dartSpeed = 600; this.massCosts = true; this.etches = [];
     this.spec = null; this.shake = 0; this.flash = 0; this.hitStop = 0;
     this.phys.onSplit = (p, c) => this._onSplit(p, c);
     this.phys.onMerge = (k, g, n) => this._onMerge(k, g, n);
@@ -39,6 +39,8 @@ export class World {
     const P = this.phys;
     P.clear(); this.fx.clear();
     this.ents = []; this.pickups = []; this.colonies = []; this.player = null; this._nextGroup = 0; this.schools = new Map(); this.fireflies = []; this._reb = [];
+    this.chainGap = CHAIN_GAP;   // (a mode may give a streak longer to breathe: Bloom does)
+    this.etches = [];            // marks a mode leaves on the plate for good (Bloom's garden): laid again whenever the plate is developed anew
     this.spec = spec; this.rand = rng(spec.seed || 1);
     const m = 40;
     P.setBounds(-m, -m, spec.W + m, spec.H + m);
@@ -69,7 +71,7 @@ export class World {
     return this;
   }
   // what the backdrop painter needs
-  roomView() { const s = this.spec; if (!this._decor || this._decorFor !== s) { this._decor = growDecor(this, s.pal); this._decorFor = s; } return { W: s.W, H: s.H, padB: s.padB || 0, sdf: this.sdf, seed: s.seed, pal: s.pal, lights: this.lights, wells: this.wells, decals: [ETCH(this), ...this._decor, ...this.ents.filter(e => e.bake)] }; }
+  roomView() { const s = this.spec; if (!this._decor || this._decorFor !== s) { this._decor = growDecor(this, s.pal); this._decorFor = s; } return { W: s.W, H: s.H, padB: s.padB || 0, sdf: this.sdf, seed: s.seed, pal: s.pal, lights: this.lights, wells: this.wells, decals: [ETCH(this), ...this._decor, ...this.etches, ...this.ents.filter(e => e.bake)] }; }
 
   spawn(d) {
     const T = ENT[d.type]; if (!T) { console.warn('unknown entity', d.type); return null; }
@@ -210,7 +212,7 @@ export class World {
   //    longer, brighter feelers that fetch from further, a faint pull on nearby motes, a little more speed —
   //    and every eighth mote of an unbroken chain pays a bonus. Greed with rhythm is rewarded; nothing is punished. ──
   chainUp(m, O) {
-    if (this.time - this.chainT > CHAIN_GAP) this.chain = 0;
+    if (this.time - this.chainT > this.chainGap) this.chain = 0;
     this.chainT = this.time; const c = ++this.chain;
     this.flow = Math.min(1, this.flow + 0.085 + 0.004 * c);
     if (c > (this.stats.bestChain || 0)) this.stats.bestChain = c;
@@ -224,7 +226,7 @@ export class World {
   }
   _flow(dt) {
     const idle = this.time - this.chainT;
-    if (idle > CHAIN_GAP && this.chain) { const was = this.chain; this.chain = 0; if (was >= 8) this.emit('chainEnd', was); }
+    if (idle > this.chainGap && this.chain) { const was = this.chain; this.chain = 0; if (was >= 8) this.emit('chainEnd', was); }
     this.flow = Math.max(0, this.flow - dt * (idle > 1.1 ? 0.42 : 0.06));
     const pl = this.player; const f = this.flow; if (!pl) return;
     if (!this.masks) for (const O of pl.orgs) O.reachK = 1 + 0.5 * f;          // (in Masks every reach is the same short one)

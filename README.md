@@ -72,10 +72,10 @@ wall where something is watching makes you a veil it cannot see.
   you went drawn across it in light — cool where you woke, warm where you went home, brightest where
   you lingered — every light you took a spark, every one you left a dim ring, the echo you raced a
   pale thread (a warden passed, or a chamber of your own sealed, keeps that picture in the Album).
-  Twenty-three named tricks (Thread the Needle,
+  Twenty-four named tricks (Thread the Needle,
   Surgical Shear, Ghost Wall, Paper Tiger, Cleave, Slingshot, Gravity Assist, Hole in One, Bank Shot,
   Go-Between, Trojan Swallow, Outrun, Comet, Phoenix, Immaculate, Net, Velvet, In Time, Harvest, Whole, Maker,
-  Neighbourly, Unseen) are noticed when you find them; the Atrium keeps a
+  Neighbourly, Unseen, Garden) are noticed when you find them; the Atrium keeps a
   journal in which the ones you have not found yet are riddles. The stars you gather dye you: six
   **hues** (Coral · Honey · Rose · Jade · Pearl · Nebula) unlock as they add up — each a full optical
   recipe, chosen from the pause menu in the Atrium.
@@ -100,11 +100,20 @@ wall where something is watching makes you a veil it cannot see.
   brighter feelers that fetch from further, a faint pull on nearby motes, a little more speed, a
   rising melody — and every eighth link pays a bonus of mass. Greed with rhythm is rewarded; nothing
   is punished.
-- **Bloom** — seventy-five seconds of rain. Light falls in drawn figures (lines, arcs, spirals,
-  crosses); every mote scores, an unbroken chain multiplies it up to ×8, and the dish wakes as the
-  clock runs: a blade, then a gear, then both faster. Now and then the rain brings visitors — a school
-  that crosses the dish and scatters (worth the chase), or fireflies that can only be taken while lit.
-  Four medals: Dew · Pearl · Bloom · Prism.
+- **Bloom** — seventy-five seconds of rain, and the garden it leaves. Light falls in figures — a
+  line, a wave, an arc, a ring, a spiral, a cross, a flower — each its own colour, its stars strung on
+  a faint thread. Every star scores; take *every* star of a figure before one fades and the figure is
+  **drawn**: it rings out (a little run that climbs with the multiplier), flares, and is etched into
+  the dish for good. Drawn figures are the multiplier's steps — ×2 after one, ×8 only after fourteen in
+  a single unbroken chain (pips beside the ×N show how far to the next). The chain is what holds the
+  steps up: leave it hungry and a fuse burns round the creature until it falls quiet; touch the blade
+  that wakes at eighteen seconds (or the gear at thirty-eight) and it is cut — either way, back to ×1.
+  The last twelve seconds are a downpour, every figure counting twice. The creature blooms to a nimble
+  size and no further (a giant would sweep the dish, and could not slip past a blade). Visitors still
+  come — a school that scatters, fireflies taken only while lit — but they are bridges, not figures.
+  The run ends on its garden: every figure drawn, in its colour, grown again on the card, the figures
+  tallied as glyphs (╱ ∿ ◠ ◉ @ ✚ ✿ — the same line goes into *Copy result*). Draw all seven kinds in one
+  shower for the trick **Garden**. Four medals: Dew · Pearl · Bloom · Prism.
 - **Abyss** — an endless generated descent with grazers, lancers, thornbacks and oil for neighbours,
   each measured against your own size; from the fourth depth on one of them is an apex that only wit
   (a lance, a held breath) will answer. Vaults — rings of glass turning around a hoard — are worth the
@@ -288,6 +297,7 @@ node tools/browser/modes.mjs                      # every mode opened and left r
 node tools/browser/duettest.mjs                   # two players on one screen (Duet, co-op dive): both steer, both dart and lance; two thumbs on one phone
 node tools/browser/duetmatch.mjs                  # a Duet match against the machine: all five games, cards between, a panel at the end
 node tools/browser/maskstest.mjs                  # Masks on one keyboard: all alike, split keys, unmasked by a stranger, a tag, four lights
+node tools/browser/bloomtest.mjs                  # Bloom: figures on threads, drawn and etched, the multiplier's steps, a quiet chain, a blade's cut, the garden
 node tools/browser/twintest.mjs                   # a door for two in the dive together: sealed until both pads are held at once; solo rooms unchanged
 node tools/browser/linktest.mjs                   # two browsers paired by two lines of text: picture arrives, far pointer steers and darts player two
 node tools/browser/haunttest.mjs                  # a dive ends → its haunting is found, raised, laid to rest; a stranger's line is invited

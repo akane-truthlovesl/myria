@@ -55,6 +55,7 @@ export const TRICKS = [
   ['Maker', 'light the way out of a chamber of your own making'],
   ['Neighbourly', 'win a match against the neighbour the machine plays'],
   ['Unseen', 'among strangers who all look like you, eat your fill — and win'],
+  ['Garden', 'draw every figure the rain knows in a single shower'],
 ];
 // ── the Daily Sprint: one chamber a day, under one mutation of its water, against the clock (the same chamber and mutation for everyone, from the date alone) ──
 export const SPRINTS = [

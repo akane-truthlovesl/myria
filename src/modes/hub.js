@@ -80,8 +80,11 @@ export class Hub {
       } else if (e.d.dest === 'daily') {            // the day turns: a star of eight rays
         for (let k = 0; k < 8; k++) { const q = t * 0.35 + k * Math.PI / 4, l = k % 2 ? r * 0.55 : r; ov.line(x, y, x + Math.cos(q) * l, y + Math.sin(q) * l, 1.4, c, a * 0.65); }
         ov.glow(x, y, 5, [1, 1, 0.9], 0.8);
-      } else if (e.d.dest === 'bloom') {            // a minute of rain
-        for (let k = 0; k < 5; k++) { const f = (t * 0.7 + k * 0.37) % 1; ov.glow(x + (k - 2) * r * 0.42, y - r + f * 2 * r, 3.6, c, a * Math.sin(f * Math.PI)); }
+      } else if (e.d.dest === 'bloom') {            // a flower of light drawn petal by petal, held a moment, let go
+        const f = (t * 0.3) % 1, n = Math.min(6, f * 8.4), hold = f > 0.72 ? 1 - (f - 0.72) / 0.28 : 1, P = (k) => { const q = -Math.PI / 2 + k * Math.PI / 3 + 0.3 * Math.sin(k * 2.4); return [x + Math.cos(q) * r * (0.62 + 0.2 * (k % 2)), y + Math.sin(q) * r * (0.62 + 0.2 * (k % 2))]; };
+        for (let k = 0; k < Math.floor(n); k++) { const [px, py] = P(k); ov.line(x, y, px, py, 1.3, c, a * 0.7 * hold); }
+        for (let k = 0; k < 6; k++) { const [px, py] = P(k); ov.glow(px, py, k < n ? 4 : 2.8, c, a * (k < n ? 0.95 * hold + 0.15 : 0.35)); }
+        ov.glow(x, y, 5.5, [1, 0.86, 0.5], a * 0.9);
       } else if (e.d.dest === 'pool') {             // a drop falls, and the water rings
         const f = (t * 0.45) % 1; if (f < 0.5) ov.glow(x, y - r + f * 2 * r, 5, c, a); else { const g = (f - 0.5) * 2; ov.ring(x, y, r * (0.15 + 0.85 * g), 1.6, c, a * (1 - g)); }
       } else if (e.d.dest === 'duet') {             // two of you, round and round each other
