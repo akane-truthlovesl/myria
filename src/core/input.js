@@ -24,6 +24,8 @@ export class Input {
     this.device = 'mouse';
     this.mouse = { x: 0, y: 0, inside: false, down: false, t0: 0, moved: 0, follow: true };
     this.stick = { active: false, ax: 0, ay: 0, kx: 0, ky: 0, id: -1, t0: 0 };
+    // two on one glass: a mode with a second player sets split(x, y) → 1 | 2, and a touch that begins in player two's half wakes player two's stick
+    this.split = null; this.stick2 = { active: false, ax: 0, ay: 0, kx: 0, ky: 0, id: -1, t0: 0 }; this.swell2 = false;
     this.pointers = new Map();
     this.pinch0 = 0; this.rallyHeld = false; this.rallyPtr = false;
     this.keyMove = { x: 0, y: 0 }; this.padMove = { x: 0, y: 0 }; this.padPrev = []; this.padRally = false;
@@ -46,7 +48,7 @@ export class Input {
     el.addEventListener('wheel', e => { e.preventDefault(); this.events.push({ type: 'cycle', dir: Math.sign(e.deltaY) || 1 }); }, opt);
     window.addEventListener('keydown', e => this._key(e, true));
     window.addEventListener('keyup', e => this._key(e, false));
-    window.addEventListener('blur', () => { this.keyT0 = 0; this.padT0 = 0; this.rmb = 0; this.swellKey = false; this.keys.clear(); this.pointers.clear(); this.stick.active = false; this.rallyHeld = false; this.rallyPtr = false; this.mouse.down = false; this.mouse.inside = false; });
+    window.addEventListener('blur', () => { this.keyT0 = 0; this.padT0 = 0; this.rmb = 0; this.swellKey = false; this.keys.clear(); this.pointers.clear(); this.stick.active = false; this.stick2.active = false; this.rallyHeld = false; this.rallyPtr = false; this.mouse.down = false; this.mouse.inside = false; });
   }
   _act() { this.lastActivity = performance.now(); this.any = true; }
 
@@ -64,6 +66,10 @@ export class Input {
       if (e.button === 1) { p.role = 'rally'; this.rallyPtr = true; return; }
       p.role = 'dart'; this.mouse.down = true; this.mouse.t0 = performance.now();
       return;
+    }
+    if (this.split && this.split(e.clientX, e.clientY) === 2) {          // player two's half of the glass
+      if (this.stick2.active) { p.role = 'second2'; return; }
+      p.role = 'stick2'; const S2 = this.stick2; S2.active = true; S2.id = e.pointerId; S2.ax = S2.kx = e.clientX; S2.ay = S2.ky = e.clientY; S2.t0 = performance.now(); return;
     }
     if (this.stick.active) {            // second finger: bud (tap) or rally (pinch)
       p.role = 'second';
@@ -87,8 +93,8 @@ export class Input {
     for (const c of evs) p.hist.push([c.clientX, c.clientY, performance.now()]);
     if (p.hist.length > 24) p.hist.splice(0, p.hist.length - 24);
     p.x = e.clientX; p.y = e.clientY; this._act();
-    if (p.role === 'stick') {
-      const S = this.stick; S.kx = p.x; S.ky = p.y;
+    if (p.role === 'stick' || p.role === 'stick2') {
+      const S = p.role === 'stick' ? this.stick : this.stick2; S.kx = p.x; S.ky = p.y;
       const dx = S.kx - S.ax, dy = S.ky - S.ay, d = Math.hypot(dx, dy), R = STICK_R * 1.15;
       if (d > R) { S.ax = S.kx - dx / d * R; S.ay = S.ky - dy / d * R; }      // the anchor trails the thumb
     } else if (p.role === 'second') {
@@ -111,7 +117,13 @@ export class Input {
     const dur = performance.now() - p.t0, moved = Math.hypot(p.x - p.x0, p.y - p.y0);
     if (p.role === 'dart') { this.mouse.down = false; if (!cancel) this.events.push({ type: 'click', x: p.x, y: p.y, hold: dur / 1000 }); this.charge = 0; return; }
     if (p.role === 'rally' || p.pinched) this.rallyPtr = [...this.pointers.values()].some(q => q.role === 'rally' || q.pinched);
-    if (cancel) { if (p.role === 'stick') this.stick.active = false; return; }
+    if (cancel) { if (p.role === 'stick') this.stick.active = false; if (p.role === 'stick2') this.stick2.active = false; return; }
+    if (p.role === 'stick2') {
+      this.stick2.active = false; const f = this._flick(p);
+      if (f) this.events.push({ type: 'dartDir2', x: f.x, y: f.y, power: f.power }); else if (dur < 240 && moved < 12) this.events.push({ type: 'tap2', x: p.x, y: p.y });
+      return;
+    }
+    if (p.role === 'second2') return;
     if (p.role === 'stick') {
       this.stick.active = false;
       const f = this._flick(p);
@@ -170,7 +182,8 @@ export class Input {
     const nowC = performance.now(); this.charge = Math.max(this.mouse.down ? (nowC - this.mouse.t0) / 1000 : 0, this.keyT0 ? (nowC - this.keyT0) / 1000 : 0, this.padT0 ? (nowC - this.padT0) / 1000 : 0);
     this.rally = this.rallyHeld || this.rallyPtr || this.padRally;
     const now = performance.now();
-    this.swell = this.swellKey || this.padSwell || (this.rmb && now - this.rmb > 260) || [...this.pointers.values()].some(p => p.role === 'second' && !p.pinched && now - p.t0 > 320);
+    this.swell2 = [...this.pointers.values()].some(p => p.role === 'second2' && now - p.t0 > 320);
+    this.swell = (this.swellKey && !this.keysOff) || this.padSwell || (this.rmb && now - this.rmb > 260) || [...this.pointers.values()].some(p => p.role === 'second' && !p.pinched && now - p.t0 > 320);
     const ev = this.events; this.events = [];
     return this.enabled ? ev : ev.filter(e => e.type === 'pause' || e.type === 'key' || e.type === 'press' || e.type === 'confirm');
   }
@@ -207,6 +220,12 @@ export class Input {
     }
     const T = this.tilt; if (T.on && !this.tiltMute && performance.now() - T.t < 600 && Math.abs(T.x) + Math.abs(T.y) > 0.01) return T;      // (tiltMute: a mode is using the tilt for something else — the Pool pours with it)
     return null;
+  }
+  // player two's stick, when two share the glass
+  vector2() {
+    const S = this.stick2; if (!this.enabled || !S.active) return null;
+    const dx = (S.kx - S.ax) / STICK_R, dy = (S.ky - S.ay) / STICK_R, m = Math.hypot(dx, dy); if (m < DEAD) return { x: 0, y: 0 };
+    const c = Math.min(1, (m - DEAD) / (1 - DEAD)); return { x: dx / m * c, y: dy / m * c };
   }
   get pointerSteers() { return this.enabled && this.device === 'mouse' && this.mouse.follow && this.mouse.inside; }
   get stickRadius() { return STICK_R; }

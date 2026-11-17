@@ -53,6 +53,7 @@ export const TRICKS = [
   ['Net', 'four of a school inside one heartbeat'], ['Velvet', 'take a shy light that never knew you were there'],
   ['In Time', 'three fireflies in a single flash'], ['Harvest', 'every seed of a pod before it settles'], ['Whole', 'into the heart of the Iris and out again, never cut in two'],
   ['Maker', 'light the way out of a chamber of your own making'],
+  ['Neighbourly', 'win a match against the neighbour the machine plays'],
 ];
 // ── the Daily Sprint: one chamber a day, under one mutation of its water, against the clock (the same chamber and mutation for everyone, from the date alone) ──
 export const SPRINTS = [

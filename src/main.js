@@ -65,9 +65,10 @@ function chambersPanel(a) {
 // Duet: two players on one screen (pointer + keys) — or on two devices over a Link (core/link.js): no server, the two find each other by passing two lines of text.
 function duetPanel(a) {
   const L = a.link, back = () => { a.hud.closePanel(); a.toHub({ awake: true }); };      // (the door has been taken: the Atrium is entered afresh)
-  a.hud.panel('Duet', L.live ? 'linked — the other device is player two' : 'pointer  +  W A S D · Space · F', [
+  a.hud.panel('Duet', L.live ? 'linked — the other device is player two' : a.input.device === 'touch' ? 'two on one glass — a half each' : 'pointer  +  W A S D · Space · F', [
     { label: 'Together — dive the abyss as two', cls: 'pri', fn: () => { a.hud.closePanel(); a.setMode(new Abyss(a, { coop: true })); } },
-    { label: 'Versus — ninety seconds of rain', fn: () => { a.hud.closePanel(); a.setMode(new Duet(a)); } },
+    { label: 'Versus — a match of four little games', fn: () => { a.hud.closePanel(); a.setMode(new Duet(a)); } },
+    { label: `Versus a neighbour — the machine plays Tide${(() => { const r = a.save.get('duetAI', null); return r ? ` · you ${r.w}, it ${r.l}` : ''; })()}`, fn: () => { a.hud.closePanel(); a.setMode(new Duet(a, { ai: true })); } },
     ...(L.available ? (L.live ? [{ label: 'Unlink', fn: () => { L.close(); duetPanel(a); } }] : [[{ label: 'Link · host', fn: () => linkHost(a) }, { label: 'Link · join', fn: () => linkJoin(a) }]]) : []),
     { label: 'Back', fn: back }],
     L.available && !L.live ? '<div class="sub" style="opacity:.7;max-width:30em;margin:6px auto 0">Link: play across two devices on the same network. No server — you hand each other two lines of text.</div>' : '');
@@ -106,6 +107,6 @@ else if (m === 'workshop') app.start(new Workshop(app));
 else if (params.has('chamber') && unpackChamber(params.get('chamber'))) { const c = unpackChamber(params.get('chamber')); app.start(new Trial(app, { design: c.design, run: c.run })); }      // a chamber as a link: index.html?chamber=MYRIA-CHAMBER.…
 else if (m === 'bloom') app.start(new Bloom(app));
 else if (m === 'myriad') app.start(new Epilogue(app));
-else if (m === 'duet') app.start(new Duet(app));
+else if (m === 'duet') app.start(new Duet(app, { ai: params.has('ai'), first: params.get('round') || '' }));
 else if (m === 'coop') app.start(new Abyss(app, { coop: true }));
 else app.start(new Hub(app, { awake: params.has('awake') }));

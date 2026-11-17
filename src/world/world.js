@@ -391,7 +391,7 @@ export class World {
       if (Bj.count > Bi.count) { const t = i; i = j; j = t; const tb = Bi; Bi = Bj; Bj = tb; }
       if (Bi.count < Bj.count * 1.12) continue;                 // an even match: a tug-of-war nobody wins
       if (Bi.ctrl && Bi.ctrl.veil > 0.5) continue;
-      const eatenC = this.colonyOf(Bj); if (eatenC === this.player && (this.ember || moved >= 1)) continue;       // an ember cannot be drunk; and you are never drained faster than you can flee
+      const eatenC = this.colonyOf(Bj); if (eatenC.isPlayer && (eatenC === this.player && this.ember || moved >= 1)) continue;       // an ember cannot be drunk; and no player (Tide in a Duet too) is ever drained faster than it can flee
       if (eatenC !== this.player && moved >= 3) break;
       // particle j crosses the membrane into the larger body
       const eater = this.colonyOf(Bi), eaten = this.colonyOf(Bj);

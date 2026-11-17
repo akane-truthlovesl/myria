@@ -8,6 +8,7 @@ import { abyssRoom, AXIOMS, dailyAxioms } from '../world/abyss.js';
 import { MAT } from '../sim/materials.js';
 import { rng, hashStr } from '../core/util.js';
 import { Colony } from '../life/colony.js';
+import { Second } from '../core/second.js';
 
 const TINT2 = { id: 'duet2', absorb: [0.95, 0.30, 0.08], emit: [0.35, 0.9, 1.0], glow: 0.62, halo: 0.5 };
 
@@ -38,15 +39,12 @@ export class Abyss {
     this.R = rng(this.seed ^ 0x5bd1e995); this.over = false; this.pausable = true;
     this.runId = ((Math.random() * 0x7fffffff) | 0) + 1; this.marks = []; this.rested = 0;
   }
-  enter() { if (this.coop) this.app.input.keysOff = true; this.load(null); }
-  exit() { this.app.hud.hint(''); this.app.input.keysOff = false; }
-  onEvent(e) { if (!this.coop || this.app.state !== 'play') return false; if (e.type === 'dartKey') { const F = this.p2 && this.p2.focus; if (F && F.alive) F.dart(F.facing.x, F.facing.y, 0.9 + Math.min(1, (e.hold || 0) / 0.7) * 0.7); return true; } return e.type === 'budKey' || e.type === 'cycle'; }
-  update(dt, W) {
-    if (!this.coop || !this.p2) return; const K = this.app.input.keys; let x = (K.has('KeyD') || K.has('ArrowRight') ? 1 : 0) - (K.has('KeyA') || K.has('ArrowLeft') ? 1 : 0), y = (K.has('KeyS') || K.has('ArrowDown') ? 1 : 0) - (K.has('KeyW') || K.has('ArrowUp') ? 1 : 0); if (x && y) { x *= 0.707; y *= 0.707; }
-    const F = this.p2.focus, V = this.p2.pilot || (this.p2.pilot = { x: 0, y: 0 }); const L = this.app.link && this.app.link.p2(this.p2); if (L) { x = L.x; y = L.y; for (const d of L.darts) F.dart(d.x, d.y, d.power); }
-    V.x += (x - V.x) * Math.min(1, dt * 20); V.y += (y - V.y) * Math.min(1, dt * 20); if (F && F.alive) F.swell = L ? L.swell : K.has('KeyF');
-    for (const O of this.p2.orgs) if (O !== F && F) { O.rallyTo = F.B; O.B.fuseT = Math.min(O.B.fuseT, 0.05); }
-  }
+  // (player two — keys, the far half of a shared phone, or a Link — is steered through core/second.js, as in Duet)
+  enter() { if (this.coop) { this.two = new Second(this.app); this.two.enter(); } this.load(null); }
+  exit() { this.app.hud.hint(''); if (this.two) this.two.exit(); }
+  onEvent(e) { if (!this.coop || this.app.state !== 'play' || !this.two) return false; return this.two.onEvent(e); }
+  update(dt, W) { if (this.coop && this.p2 && this.two) { if (this.two.C !== this.p2) this.two.attach(this.p2); this.two.update(dt); } }
+  overlay(ov, R) { if (this.two) this.two.overlay(ov, R); }
   pauseSub() { return `${this.daily ? 'Daily Abyss · ' + this.axiom.name : this.coop ? 'Abyss together · pointer + W A S D / Space / F' : 'Abyss'} · depth ${this.depth}`; }
 
   load(from) {

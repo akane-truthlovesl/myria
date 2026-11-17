@@ -61,6 +61,7 @@ export class HUD {
   // ── top pill ──
   setTop(o) {
     if (!o) { this.top.classList.remove('on'); this._top = ''; return; }
+    if (o.raw) { if (o.raw !== this._top) { this._top = o.raw; this.top.innerHTML = o.raw; } this.top.classList.add('on'); return; }
     const key = `${o.light}|${o.total}|${o.quota}|${o.stars ? o.stars.join('') : ''}|${o.extra || ''}`;
     if (key === this._top) return; this._top = key;
     const st = o.stars ? `<span class="st">${o.stars.map(s => `<s class="${s === 1 ? 'on' : s === -1 ? 'lost' : ''}"></s>`).join('')}</span>` : '';
@@ -77,6 +78,10 @@ export class HUD {
   setCorner(on, fn) { this.corner.innerHTML = on ? '<button aria-label="pause"><span></span><span></span></button>' : ''; if (on) this.corner.querySelector('button').onclick = (e) => { e.stopPropagation(); fn(); }; }
   // ── result card (between chambers) ──
   showResult(r) {
+    if (r.html) {       // a mode's own card (Duet's between rounds), with its picture if it has one
+      this.result.innerHTML = r.html; if (r.shot) { const s = el('div', 'r-shot'); s.appendChild(r.shot); this.result.prepend(s); if (r.shot.develop) r.shot.develop(); }
+      this.result.classList.add('on'); return;
+    }
     const names = ['Radiance', 'Grace', 'Swift'];
     this.result.innerHTML = `<div class="r-name">${r.name}</div><div class="r-stars">${names.map((n, i) => `<div class="r-star" data-i="${i}"><i></i>${n}</div>`).join('')}</div>
       <div class="r-stats">${[`light <b>${r.light}</b> / ${r.total}`, `time <b>${r.time.toFixed(1)}s</b>${r.par ? ` <span>/ ${r.par}s</span>` : ''}`, `mass <b>${r.mass}</b>`, ...(r.chain >= 8 ? [`chain <b>♪ ${r.chain}</b>`] : [])].map(q => `<i>${q}</i>`).join(' · ')}</div>

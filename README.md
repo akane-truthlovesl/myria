@@ -72,9 +72,10 @@ wall where something is watching makes you a veil it cannot see.
   you went drawn across it in light — cool where you woke, warm where you went home, brightest where
   you lingered — every light you took a spark, every one you left a dim ring, the echo you raced a
   pale thread (a warden passed, or a chamber of your own sealed, keeps that picture in the Album).
-  Twenty-one named tricks (Thread the Needle,
+  Twenty-two named tricks (Thread the Needle,
   Surgical Shear, Ghost Wall, Paper Tiger, Cleave, Slingshot, Gravity Assist, Hole in One, Bank Shot,
-  Go-Between, Trojan Swallow, Outrun, Comet, Phoenix, Immaculate, Net, Velvet, In Time, Harvest, Whole, Maker) are noticed when you find them; the Atrium keeps a
+  Go-Between, Trojan Swallow, Outrun, Comet, Phoenix, Immaculate, Net, Velvet, In Time, Harvest, Whole, Maker,
+  Neighbourly) are noticed when you find them; the Atrium keeps a
   journal in which the ones you have not found yet are riddles. The stars you gather dye you: six
   **hues** (Coral · Honey · Rose · Jade · Pearl · Nebula) unlock as they add up — each a full optical
   recipe, chosen from the pause menu in the Atrium.
@@ -132,8 +133,18 @@ wall where something is watching makes you a veil it cannot see.
   (faster, thicker, frictionless, or "every light or no door"), against the clock, drawn only from the
   100 chamber × mutation pairs the autopilot finishes in both orientations. *Copy today* makes a result
   line to compare with anyone's.
-- **Duet** — two players, one screen (pointer + W A S D / Space / F): **Together**, a co-op dive where
-  touching shares mass between you, or **Versus**, ninety seconds of raining light.
+- **Duet** — two players, one screen: pointer + W A S D / Space / F on a computer, and on a phone **two
+  on one glass** — each half of the screen wakes its own stick (a tap in your half darts, a flick
+  lances, a held second finger swells). **Together** is a co-op dive where touching shares mass between
+  you. **Versus** is a match of four little games, first to two: **Rain** (light rains into the dish;
+  the larger membrane drinks the smaller), **Crown** (hold the crown alone and it fills with your
+  colour — but it is shy: held three seconds straight, or fought over for two, it hops across the dish
+  and the chase begins again), **Spark** (a touch passes it on; it burns, so whoever holds it runs hot;
+  do not be holding it when time runs out) and **Race** (three courses — the Weir, the Gauntlet, the
+  Slings: touch the far light, then first one home). A card between rounds keeps the score and carries
+  the round's long exposure — both ways woven over the dish, Ember's warm and Tide's cool. Alone, play
+  **Versus a neighbour**: the machine plays Tide, with a player's verbs, a player's speed and a
+  player's moment of reaction; the door keeps your record against it.
 - **Link** — the same two modes on **two devices, with no server**. One hosts, one joins; they find each
   other by handing over two lines of text (any messenger). The host's picture and sound stream to the
   guest, whose pointer or finger is player two (move · tap to dart, hold to lance · second finger to
@@ -260,7 +271,8 @@ node tools/trace.mjs 14 900 1060 6                # follow the Bot decision by d
 node tools/browser/ftue.mjs 1280 720 0            # a brand-new save: seconds to first movement / first light (mouse; `480 860 1` = touch)
 node tools/browser/echotest.mjs                   # clear, replay against the ghost, round-trip the share code
 node tools/browser/modes.mjs                      # every mode opened and left running, plus the Atrium's menus
-node tools/browser/duettest.mjs                   # two players on one screen (Duet, co-op dive): both steer, both dart and lance
+node tools/browser/duettest.mjs                   # two players on one screen (Duet, co-op dive): both steer, both dart and lance; two thumbs on one phone
+node tools/browser/duetmatch.mjs                  # a Duet match against the machine: all four games, cards between, a panel at the end
 node tools/browser/linktest.mjs                   # two browsers paired by two lines of text: picture arrives, far pointer steers and darts player two
 node tools/browser/haunttest.mjs                  # a dive ends → its haunting is found, raised, laid to rest; a stranger's line is invited
 node tools/browser/dailytest.mjs                  # a year of the mutation calendar, the day's dive, the day's sprint, the Today panel
