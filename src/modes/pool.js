@@ -5,7 +5,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { frame, dish } from '../world/rooms.js';
 import { MAT } from '../sim/materials.js';
-import { SPACING } from '../sim/physics.js';
 
 import { shoalOf, fireflyCloud } from '../world/plankton.js';
 const TOOLS = [
@@ -42,10 +41,7 @@ export class Pool {
     el.querySelectorAll('button').forEach(b => { b.onclick = (e) => { e.stopPropagation(); const id = b.dataset.id; if (id === 'clear') { this.app.setMode(new Pool(this.app, { mass: 90 })); return; } if (id === 'weight') { this.weight = !this.weight; this.app.input.tiltMute = this.weight; el.querySelector('.tip').textContent = this.weight ? TOOLS.find(t => t.id === id).name : 'weightless again'; } else { this.tool = id; el.querySelector('.tip').textContent = TOOLS.find(t => t.id === id).name; } el.querySelectorAll('button').forEach(q => q.classList.toggle('on', q.dataset.id === this.tool || q.dataset.id === 'weight' && !!this.weight)); }; });
     el.querySelector('.tip').textContent = TOOLS[0].name;
   }
-  blob(W, x, y, n, mat) {
-    const P = W.phys; const B = P.allocBody(-2 - ((Math.random() * 1e4) | 0) % 1 - (this._g = (this._g || 0) + 1), 'loose', mat); if (!B) return; let k = 0;
-    for (let r = 0; k < n; r++) { const m = Math.max(1, Math.floor(6.28 * r)); for (let a = 0; a < m && k < n; a++) { const ang = a / m * 6.28; P.spawn(x + Math.cos(ang) * r * SPACING, y + Math.sin(ang) * r * SPACING, 0, 0, mat, B.id); k++; } }
-  }
+  blob(W, x, y, n, mat) { W.blob(x, y, n, mat); }
   place(wx, wy) {
     const W = this.app.world, R = this.app.R, t = this.tool; const add = (d) => { const e = W.spawn({ ...d, x: wx, y: wy }); if (e && e.bake) { R.room.decals.push(e); R.ink.target(true); e.bake(R.ink, R); R.ink.target(false); R.fb.invalidate(); } return e; };
     if (W.phys.sampleSDF(wx, wy) < 12) return;

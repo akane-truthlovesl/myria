@@ -73,6 +73,13 @@ export class App {
     for (let k = 0; k < 20; k++) this.world.step(STEP, NOCTL);
     this.acc = 0;
   }
+  // re-lay the room in place, without an iris: new things on the same plate (the Workshop's bench — its walls are never part of the plate,
+  // so the developed backdrop is still true; only the decals are laid again, from the pristine plate)
+  relay(spec, carry = {}, onLoad = null) {
+    const W = this.world, R = this.R, keep = W._decor; W.load(spec, carry); W.listener = this.mode; if (keep) { W._decor = keep; W._decorFor = spec; } if (onLoad) onLoad(W);
+    for (let k = 0; k < 6; k++) W.step(STEP, NOCTL);
+    const room = W.roomView(); if (R.base && R.base.length === R.fb.back.length && R.room && R.room.W === room.W && R.room.H === room.H) { R.room = room; R.fb.back.set(R.base); R._bake(); R.fb.invalidate(); } else R.setRoom(room, true);
+  }
   _transition(dt) {
     const T = this.trans; if (!T) return;
     const R = this.R, hud = this.hud; T.t += dt;
@@ -191,7 +198,8 @@ export class App {
   }
 
   _stick(ov, R) {
-    const S = this.input.stick; if (!S.active || this.state !== 'play') return;
+    if (this.mode && this.mode.overlay && this.state === 'play') this.mode.overlay(ov, R);
+    const S = this.input.stick; if (!S.active || this.state !== 'play' || this.mode && this.mode.noStick) return;
     const [ax, ay] = R.cssToWorld(S.ax, S.ay), [kx, ky] = R.cssToWorld(S.kx, S.ky); const r = this.input.stickRadius / (R.view.z / R.pxScale);
     ov.ring(ax, ay, r, 1.2 / R.view.z * R.pxScale, [0.75, 0.9, 1], 0.35); ov.glow(kx, ky, r * 0.5, [0.85, 0.95, 1], 0.45);
   }

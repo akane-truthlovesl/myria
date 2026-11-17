@@ -11,6 +11,7 @@ for (const [name, url, sign] of [
   ['Daily', '/index.html?mode=daily&bot', s => s.t > 2],
   ['Bloom', '/index.html?mode=bloom&bot', s => s.t > 2 && s.motes > 0],
   ['Pool', '/index.html?mode=pool', s => s.mass > 0],
+  ['Workshop', '/index.html?mode=workshop', s => s.mass > 0 && s.ents > 3],
   ['Myriad', '/index.html?mode=myriad', s => s.cols >= 2],
   ['Duet', '/index.html?mode=duet', s => s.cols >= 2],
   ['Co-op dive', '/index.html?mode=coop', s => s.cols >= 2],
@@ -28,7 +29,7 @@ for (const [name, url, sign] of [
       a.resume(); a.pause(); await new Promise(r => setTimeout(r, 300)); out.push('tricks:' + (click('Tricks') && (await new Promise(r => setTimeout(r, 300)), document.querySelectorAll('.tk').length)));
       a.resume(); a.pause(); await new Promise(r => setTimeout(r, 300)); out.push('hue:' + click('Hue'));
       window.prompt = () => ''; out.push('echo:' + click('Race an echo')); await new Promise(r => setTimeout(r, 400)); a.resume(); return out.join(' '); });
-    const e2 = errs(logs); const ok2 = /chambers:28/.test(menu) && /tricks:20/.test(menu) && /hue:true/.test(menu) && /echo:true/.test(menu) && !e2; allOk = allOk && ok2;
+    const e2 = errs(logs); const ok2 = /chambers:28/.test(menu) && /tricks:21/.test(menu) && /hue:true/.test(menu) && /echo:true/.test(menu) && !e2; allOk = allOk && ok2;
     rows.push(`${ok2 ? 'ok  ' : 'FAIL'} ${'Atrium menus'.padEnd(15)} ${menu}${e2 ? ' · ' + e2.slice(0, 200) : ''}`);
   }
   await browser.close();

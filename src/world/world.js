@@ -2,7 +2,7 @@
 //  World — one chamber of the slide, alive: matter, will, things and rules.
 //  DOM-free: the same class runs in the browser and in headless playtests.
 // ─────────────────────────────────────────────────────────────────────────────
-import { Physics, H, shapeSDF } from '../sim/physics.js';
+import { Physics, H, shapeSDF, SPACING } from '../sim/physics.js';
 import { buildSDF } from '../sim/sdf.js';
 import { MAT, MATS, SURF } from '../sim/materials.js';
 import { Colony } from '../life/colony.js';
@@ -60,13 +60,14 @@ export class World {
     const sp = spec.spawn || { x: spec.W / 2, y: spec.H / 2 };
     this.player = this.addColony(0, sp.x, sp.y, carry.mass || sp.n || 40, { tint: carry.tint || (this.host.skin ? this.host.skin() : null), mat: carry.mat ?? MAT.LUMEN, crown: carry.crown || 'sun', morph: carry.morph || null });
     for (const r of spec.rivals || []) this.addRival(r.kind, r.x, r.y, r.n);
+    for (const b of spec.blobs || []) this.blob(b.x, b.y, b.n, b.mat);
     this.time = 0; this.roomTime = 0; this.done = false; this.eatT = 0; this.ember = false; this.tierMax = this.player ? this.player.mass : 0;
     this.chain = 0; this.chainT = -9; this.flow = 0; this.hitStop = 0;
     this.stats = { motes: 0, motesTotal: this.pickups.filter(p => p.isMote).length, lost: 0, darts: 0, splits: 0, fuses: 0, tricks: [] };
     return this;
   }
   // what the backdrop painter needs
-  roomView() { const s = this.spec; if (!this._decor || this._decorFor !== s) { this._decor = growDecor(this, s.pal); this._decorFor = s; } return { W: s.W, H: s.H, sdf: this.sdf, seed: s.seed, pal: s.pal, lights: this.lights, wells: this.wells, decals: [ETCH(this), ...this._decor, ...this.ents.filter(e => e.bake)] }; }
+  roomView() { const s = this.spec; if (!this._decor || this._decorFor !== s) { this._decor = growDecor(this, s.pal); this._decorFor = s; } return { W: s.W, H: s.H, padB: s.padB || 0, sdf: this.sdf, seed: s.seed, pal: s.pal, lights: this.lights, wells: this.wells, decals: [ETCH(this), ...this._decor, ...this.ents.filter(e => e.bake)] }; }
 
   spawn(d) {
     const T = ENT[d.type]; if (!T) { console.warn('unknown entity', d.type); return null; }
@@ -100,6 +101,12 @@ export class World {
     const pts = path.pts; let k = 1; for (let q = Math.min(pts.length - 1, 14); q > 1; q--) if (!this._wayBlocked(B, B.cx, B.cy, pts[q][0], pts[q][1])) { k = q; break; }
     if (Math.hypot(pts[k][0] - B.cx, pts[k][1] - B.cy) < 34) k = Math.min(pts.length - 1, k + 3);
     h.x = pts[k][0]; h.y = pts[k][1]; h.on = true; return h;
+  }
+  // a loose blob of some other matter (oil, quicksilver, resin, foam, ferrofluid), poured in a disc: nobody's body, just stuff in the water
+  blob(x, y, n, mat) {
+    const P = this.phys; const B = P.allocBody(-2 - (this._blobs = (this._blobs || 0) + 1), 'loose', mat); if (!B) return null; let k = 0;
+    for (let r = 0; k < n; r++) { const m = Math.max(1, Math.floor(6.28 * r)); for (let a = 0; a < m && k < n; a++) { const t = a / m * 6.28; P.spawn(x + Math.cos(t) * r * SPACING, y + Math.sin(t) * r * SPACING, 0, 0, mat, B.id); k++; } }
+    return B;
   }
   addColony(group, x, y, n, opts = {}) { const C = new Colony(this, group, opts); C.spawn(x, y, n, opts.mat ?? MAT.LUMEN); this.colonies.push(C); return C; }
   // another organism of the slide (group ids ≥ 1), with a species brain

@@ -50,8 +50,8 @@ export class Renderer {
   setRoom(room, sync = false) {
     this.room = room; this.roomGen = (this.roomGen || 0) + 1;
     const fb = this.fb;
-    const z = Math.min(fb.w / room.W, fb.h / room.H);
-    this.view.z = z; this.view.ox = room.W / 2 - fb.w / (2 * z); this.view.oy = room.H / 2 - fb.h / (2 * z);
+    const hh = fb.h * (1 - (room.padB || 0)), z = Math.min(fb.w / room.W, hh / room.H);           // padB: a band at the bottom kept clear (the Workshop's tray)
+    this.view.z = z; this.view.ox = room.W / 2 - fb.w / (2 * z); this.view.oy = room.H / 2 - hh / (2 * z);
     const t0 = performance.now();
     this.backdrop.prepare(room, fb, this.view);
     fb.refl = this.backdrop.reflect;

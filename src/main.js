@@ -12,6 +12,10 @@ import { Duet } from './modes/duet.js';
 import { Epilogue } from './modes/epilogue.js';
 import { Bloom } from './modes/bloom.js';
 import { ROOMS } from './world/odyssey.js';
+import { Workshop, Trial } from './modes/workshop.js';
+import { packChamber, unpackChamber, chamberHash, chamberName } from './world/workshop.js';
+import { shelf } from './core/shelf.js';
+import { STARTERS } from './world/starters.js';
 
 const params = new URLSearchParams(location.search);
 const canvas = document.getElementById('c');
@@ -34,6 +38,29 @@ function dailyPanel(a) {
     ...(dove || ran ? [{ label: 'Copy today', fn: (b) => { a.copyText(line()); b.textContent = 'Copied ✓'; } }] : []),
     { label: 'Back', fn: () => { a.hud.closePanel(); a.toHub({ awake: true }); } }],
     `<div class="sub" style="line-height:1.7">${ax.map(q => q.sub).join(' · ')}<br>${sp.m.sub}</div>`);
+}
+// The Pool's door: the kneading pool itself — or the Workshop: make a chamber, play it through, and hand it to anyone as a line of text;
+// or play one someone handed you (its record comes with it, as a blue bead to race)
+const small = (t) => `<small style="opacity:.6;letter-spacing:.1em;text-transform:none">&nbsp; ${t}</small>`;
+function poolPanel(a) {
+  const b = shelf.bench(), made = b && b.design && b.design.items && b.design.items.length, n = shelf.gifts().length + STARTERS.length;
+  a.hud.panel('Pool', 'nothing to win — unless you make something to win', [
+    { label: `Knead${small('pour · drop · play')}`, cls: 'pri', fn: () => { a.hud.closePanel(); a.setMode(new Pool(a)); } },
+    { label: `Workshop${small(b && b.sealed && b.sealed.h === chamberHash(b.design) ? chamberName(b.sealed.h) + ' · sealed' : made ? 'back to your chamber' : 'make a chamber')}`, fn: () => { a.hud.closePanel(); a.setMode(new Workshop(a)); } },
+    { label: `Play a chamber${small(n + ' waiting')}`, fn: () => chambersPanel(a) },
+    { label: 'Back', fn: () => { a.hud.closePanel(); a.toHub({ awake: true }); } }]);
+}
+// every chamber you could play: a line someone hands you now, the ones handed to you before, and the ones someone left on the bench —
+// each with the record it carries and, once you have played it, your own best
+function chambersPanel(a) {
+  const play = (c) => { a.hud.closePanel(); a.setMode(new Trial(a, { design: c.design, run: c.run })); };
+  const row = (c, note) => { const h = chamberHash(c.design), mine = shelf.run(h); return { label: `${chamberName(h)}${small([c.run ? c.run.t.toFixed(1) + ' s to beat' : 'no record yet', mine ? 'yours ' + mine.t.toFixed(1) + ' s' : '', note].filter(Boolean).join(' · '))}`, fn: () => play(c) }; };
+  const gifts = shelf.gifts().slice().reverse().map(g => unpackChamber(g.code)).filter(Boolean), left = STARTERS.map(unpackChamber).filter(Boolean);
+  a.hud.panel('Play a chamber', 'made on someone\'s bench', [
+    { label: 'Paste a line someone gave you', cls: 'pri', fn: async (btn) => { const c = unpackChamber(await pasted(/MYRIA-CHAMBER\./, 'Paste a chamber')); if (!c) { btn.textContent = 'no chamber in that — copy one first'; return; } play(c); } },
+    ...gifts.map(c => row(c, 'handed to you')), ...left.map(c => row(c, 'left on the bench')),
+    { label: 'Back', fn: () => poolPanel(a) }]);
+  a.hud.veil.querySelector('.panel').classList.add('wide');
 }
 // Duet: two players on one screen (pointer + keys) — or on two devices over a Link (core/link.js): no server, the two find each other by passing two lines of text.
 function duetPanel(a) {
@@ -66,15 +93,17 @@ app.extraModes = [
   { id: 'abyss', name: 'Abyss', col: [0.86, 0.6, 1.0], get sub() { const b = app.save.get('abyssBest', 0); return b ? `endless · best ${b}` : 'endless descent'; }, lock: 'light a chamber first', unlock: (n) => all || n >= 1, start: (a, o) => a.setMode(new Abyss(a, o)) },
   { id: 'daily', name: 'Daily', col: [0.5, 1.0, 0.7], get sub() { const ax = dailyAxioms(today()); return app.save.get('dailyDay', '') === today() ? `today · ${app.save.get('dailyBest', 0)} ✦` : ax.map(a => a.name).join(' + '); }, lock: 'light a chamber first', unlock: (n) => all || n >= 1, start: (a) => dailyPanel(a) },
   { id: 'bloom', name: 'Bloom', col: [1.0, 0.82, 0.42], get sub() { const b = app.save.get('bloomBest', 0); return b ? `best ${b}` : 'a minute of rain'; }, unlock: (n) => all || n >= 1, start: (a, o) => a.setMode(new Bloom(a, o)) },
-  { id: 'pool', name: 'Pool', col: [0.8, 0.72, 1.0], sub: 'knead · pour · play', unlock: (n) => all || n >= 1, start: (a, o) => a.setMode(new Pool(a, o)) },
+  { id: 'pool', name: 'Pool', col: [0.8, 0.72, 1.0], sub: 'knead · pour · make', unlock: (n) => all || n >= 1, start: (a) => poolPanel(a) },
   { id: 'duet', name: 'Duet', col: [1.0, 0.6, 0.75], get sub() { return app.link.live ? 'linked · two devices' : 'two players · one screen, or two'; }, unlock: (n) => all || n >= 1, start: (a) => duetPanel(a) },
 ];
-window.__app = app; window.__R = app.R; window.__rooms = ROOMS.length; window.__haunt = { packHaunt, unpackHaunt, hauntName }; window.__daily = { dailyAxioms, dailySprint, dailyPanel }; window.__duet = { duetPanel, linkHost, linkJoin };
+window.__app = app; window.__R = app.R; window.__rooms = ROOMS.length; window.__haunt = { packHaunt, unpackHaunt, hauntName }; window.__daily = { dailyAxioms, dailySprint, dailyPanel }; window.__ws = { packChamber, unpackChamber, chamberHash, chamberName, shelf, poolPanel, chambersPanel, Workshop, Trial, STARTERS }; window.__duet = { duetPanel, linkHost, linkJoin };
 const m = params.get('mode');
 if (params.has('room')) app.start(new Odyssey(app, +params.get('room') || 0, { mass: +(params.get('mass') || 0) }));
 else if (m === 'abyss' || m === 'daily') app.start(new Abyss(app, { daily: m === 'daily' }));
 else if (m === 'sprint') { const sp = dailySprint(params.get('day') || today()); app.start(new Odyssey(app, sp.i, { single: true, sprint: sp })); }
 else if (m === 'pool') app.start(new Pool(app));
+else if (m === 'workshop') app.start(new Workshop(app));
+else if (params.has('chamber') && unpackChamber(params.get('chamber'))) { const c = unpackChamber(params.get('chamber')); app.start(new Trial(app, { design: c.design, run: c.run })); }      // a chamber as a link: index.html?chamber=MYRIA-CHAMBER.…
 else if (m === 'bloom') app.start(new Bloom(app));
 else if (m === 'myriad') app.start(new Epilogue(app));
 else if (m === 'duet') app.start(new Duet(app));

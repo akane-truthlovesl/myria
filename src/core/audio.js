@@ -189,6 +189,8 @@ export class Sound {
   hurt(v = 0.5) { if (!this._rate('hurt', 160)) return; this.blip(220, 110, 0.18 * v + 0.06, 0.25, 'triangle', 0.3); this.noiseHit(700, 2, 0.1 * v, 0.2, 0.2); }
   morph() { this.blip(200, 900, 0.14, 0.5, 'sine', 0.7); [0, 3, 7].forEach((d, i) => setTimeout(() => this.bell(this.note(d, 1), 0.2, 1.6, 1.4, 0.7), i * 60)); }
   ui() { this.pluck(this.note(2, 2), 0.18, 0.2, 0.3); }
+  // light painted on the Workshop's bench: each new light one step higher up the tune, so a stroke of light is a run up the scale
+  chime(k = 0, pan = 0) { if (!this._rate('chime', 45)) return; this.bell(this.note(k % 12, 1), 0.15, 1.5, 0.9, 0.75, pan); }
   tickle() { this.bell(this.note(4 + Math.floor(Math.random() * 3), 2), 0.25, 0.9, 1.4, 0.5); }
   star(k = 0) { this.bell(this.note([0, 2, 4][k] ?? 4, 2), 0.4, 2.2, 1.1, 0.8); }
   whoosh() { this.noiseHit(700, 0.5, 0.22, 0.9, 0.5, 3.2); }

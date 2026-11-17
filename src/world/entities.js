@@ -107,7 +107,8 @@ export class Pore extends Entity {
     const calm = Math.hypot(F.intent.x, F.intent.y) < 0.4;
     // the way onward calls all of you: siblings left about the room come home as you settle toward it (never off a pad they are holding)
     if (d < this.r * 3.2 && pl.orgs.length > 1 && !this._pads) this.W.callHome = 0.5;
-    if (d < this.r * 2.4 && calm) { const k = (1 - d / (this.r * 2.4)) * 420; F.cradle = { ax: (this.x - F.B.cx) / (d + 1) * k, ay: (this.y - F.B.cy) / (d + 1) * k, damp: 1.5 }; }
+    // (in a room with a down an open pore also lifts what settles toward it — an updraft into the light — or a door floating above a ledge could never be reached at rest)
+    if (d < this.r * 2.4 && calm) { const k = (1 - d / (this.r * 2.4)) * 420, P = this.W.phys; F.cradle = { ax: (this.x - F.B.cx) / (d + 1) * k - (P.gx || 0), ay: (this.y - F.B.cy) / (d + 1) * k - (P.gy || 0), damp: 1.5 }; }
     // entered on purpose: come to rest on it (you can cross an open pore while chasing the last light)
     if (d < this.r * 0.6 + F.B.r * 0.25 && (calm || Math.hypot(F.B.vx, F.B.vy) < 110)) { this.dwell = (this.dwell || 0) + dt; if (this.dwell > 0.28) { this.taken = true; this.W.emit('complete', this); } } else this.dwell = 0;
   }
@@ -899,7 +900,19 @@ export class Bubble extends Entity {
   }
 }
 
-export const ENT = { louvres: Louvres, pod: Pod, residue: Residue, bubble: Bubble, bumper: Bumper, valve: Valve, echo: Echo, geyser: Geyser, mimic: Mimic, sponge: Sponge, core: Core, rotor: Rotor, spinner: Spinner, mote: Mote, pore: Pore, pad: Pad, gate: Gate, film: Film, blade: Blade, grinder: Grinder, pool: Pool, current: Current, well: Well, crusher: Crusher, lantern: Lantern, watcher: Watcher, frost: Frost, vent: Vent, iceplug: IcePlug, magnet: Magnet };
+// ── Rod: a wall drawn by hand on the Workshop's bench — wet glass, not yet set into the plate (that happens when the chamber is played).
+//    Capsules end to end along the stroke (a single point is a round stone), drawn by the browser's own rasteriser: drawing one costs no re-developing. ──
+export class Rod extends Entity {
+  constructor(W, d) {
+    super(W, d); this.surf = d.surf ?? SURF.STONE; this.r = d.r ?? 13; this.S = []; const pts = d.pts && d.pts.length ? d.pts : [[d.x, d.y]];
+    if (pts.length === 1) this.S.push(makeShape({ type: 0, x: pts[0][0], y: pts[0][1], r: this.r, surf: this.surf }));
+    else for (let i = 0; i + 1 < pts.length; i++) { const [ax, ay] = pts[i], [bx, by] = pts[i + 1]; this.S.push(makeShape({ type: 1, x: (ax + bx) / 2, y: (ay + by) / 2, hl: Math.max(0.5, Math.hypot(bx - ax, by - ay) / 2), r: this.r, angle: Math.atan2(by - ay, bx - ax), surf: this.surf })); }
+    for (const S of this.S) W.phys.shapes.push(S); this.x = pts[0][0]; this.y = pts[0][1];
+  }
+  under(ink, R) { for (const S of this.S) { if (!S._sp || S._sp.z !== R.view.z) S._sp = solidSprite(S, R.view.z, {}); R.solid(S._sp, S.x, S.y, S.angle); } }
+}
+
+export const ENT = { rod: Rod, louvres: Louvres, pod: Pod, residue: Residue, bubble: Bubble, bumper: Bumper, valve: Valve, echo: Echo, geyser: Geyser, mimic: Mimic, sponge: Sponge, core: Core, rotor: Rotor, spinner: Spinner, mote: Mote, pore: Pore, pad: Pad, gate: Gate, film: Film, blade: Blade, grinder: Grinder, pool: Pool, current: Current, well: Well, crusher: Crusher, lantern: Lantern, watcher: Watcher, frost: Frost, vent: Vent, iceplug: IcePlug, magnet: Magnet };
 
 // helpers for room builders
 export function moteTrail(pts, n, value = 2, extra = {}) {

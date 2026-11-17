@@ -33,6 +33,8 @@ export function solidSprite(S, z, o = {}) {
     else if (m === SURF.GLASS) { const band = Math.exp(-depth / 16); cr = 0.05 + 0.2 * band; cg = 0.09 + 0.33 * band; cb = 0.12 + 0.42 * band; gloss = 1; rimK = 1.6; }
     else if (m === SURF.BOUNCE) { cr = 0.03; cg = 0.34; cb = 0.42; gloss = 0.8; const e = Math.exp(-depth / 3.5); eg = 0.5 * e; eb = 0.6 * e; }
     else if (m === SURF.RESIN) { cr = 0.4; cg = 0.18; cb = 0.03; gloss = 0.7; er = 0.1; eg = 0.04; }
+    else if (m === SURF.STONE) { const n = vnoise(wx * 0.16, wy * 0.16); const band = Math.exp(-depth / 12); cr = 0.15 + 0.06 * n + 0.08 * band; cg = 0.19 + 0.06 * n + 0.12 * band; cb = 0.22 + 0.06 * n + 0.14 * band; gloss = 0.45; rimK = 1.1; }      // porous coral-glass: a frosted grain, a warm lip
+    else if (m === SURF.ICE) { const band = Math.exp(-depth / 9), crack = Math.pow(Math.abs(Math.sin(wx * 0.31 + Math.sin(wy * 0.23) * 2.1)), 40); cr = 0.30 + 0.28 * band + 0.25 * crack; cg = 0.45 + 0.28 * band + 0.25 * crack; cb = 0.58 + 0.30 * band + 0.2 * crack; gloss = 0.95; rimK = 1.5; }
     else {                                                                                   // METAL: cool brushed steel, a milled lip, a faint inlay line
       const br = vnoise(wx * 0.5, wy * 0.045); const lipIn = Math.exp(-Math.pow((depth - 7) / 1.6, 2));
       cr = 0.24 * (0.78 + 0.4 * br) + 0.10 * lipIn; cg = 0.30 * (0.78 + 0.4 * br) + 0.16 * lipIn; cb = 0.40 * (0.78 + 0.4 * br) + 0.22 * lipIn; gloss = 0.9; rimK = 1.3;

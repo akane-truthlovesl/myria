@@ -76,7 +76,11 @@ export class Abyss {
     let x = h.u * sp.W, y = h.v * sp.H, ok = free(x, y, 46); for (let k = 1; k < 60 && !ok; k++) { const a = k * 2.4, r = 30 + k * 11; const qx = h.u * sp.W + Math.cos(a) * r, qy = h.v * sp.H + Math.sin(a) * r; if (free(qx, qy, 46)) { x = qx; y = qy; ok = true; } } if (!ok) return;      // (the room's distance field saturates near 70)
     const tint = ghostTint((SKINS[h.hue] || SKINS[0]).tint); const n = Math.round(Math.max(30, Math.min(h.n * 0.85, this.mass * 1.25)));          // it is the body it was — but never hopelessly more than you are
     this.residue = W.spawn({ type: 'residue', x, y, n, tint, col: tint.emit, haunt: h });
-    for (const d of h.dec || []) { const dx = d[0] * sp.W, dy = d[1] * sp.H; if (P.sampleSDF(dx, dy) > 34 && Math.hypot(dx - x, dy - y) > 110 && Math.hypot(dx - sp.spawn.x, dy - sp.spawn.y) > 130) W.spawn({ type: 'mimic', x: dx, y: dy, col: tint.emit }); }
+    // false lights where it bled — or, where it bled against a wall, by the stain or by the way in, at the nearest clear spot (a haunting with no false light is no haunting)
+    const clear = (qx, qy) => P.sampleSDF(qx, qy) > 34 && Math.hypot(qx - x, qy - y) > 110 && Math.hypot(qx - sp.spawn.x, qy - sp.spawn.y) > 130 && !W.ents.some(e => e.d.type === 'mimic' && Math.hypot(e.x - qx, e.y - qy) < 70);
+    for (const d of h.dec || []) { const dx = d[0] * sp.W, dy = d[1] * sp.H; let at = clear(dx, dy) ? [dx, dy] : null;
+      for (let r = 40; !at && r <= 160; r += 40) for (let k = 0; k < 10 && !at; k++) { const a = k / 10 * 6.2832 + r * 0.01, qx = dx + Math.cos(a) * r, qy = dy + Math.sin(a) * r; if (clear(qx, qy)) at = [qx, qy]; }
+      if (at) W.spawn({ type: 'mimic', x: at[0], y: at[1], col: tint.emit }); }
     this.haunting = h;
   }
   haunt(res, C) { this.rev = C; }

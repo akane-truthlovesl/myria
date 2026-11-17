@@ -67,9 +67,9 @@ wall where something is watching makes you a veil it cannot see.
   on you rather than slicing — the gel is pushed aside — and for a moment as one ring closes and the
   other opens, a straight line runs to the heart. In on one breath, out on another). Three living
   stars per chamber: **Radiance** (all the light), **Grace** (lose almost nothing), **Swift** (under
-  par). The pore opens at 60 % — the rest is appetite. Twenty named tricks (Thread the Needle,
+  par). The pore opens at 60 % — the rest is appetite. Twenty-one named tricks (Thread the Needle,
   Surgical Shear, Ghost Wall, Paper Tiger, Cleave, Slingshot, Gravity Assist, Hole in One, Bank Shot,
-  Go-Between, Trojan Swallow, Outrun, Comet, Phoenix, Immaculate, Net, Velvet, In Time, Harvest, Whole) are noticed when you find them; the Atrium keeps a
+  Go-Between, Trojan Swallow, Outrun, Comet, Phoenix, Immaculate, Net, Velvet, In Time, Harvest, Whole, Maker) are noticed when you find them; the Atrium keeps a
   journal in which the ones you have not found yet are riddles. The stars you gather dye you: six
   **hues** (Coral · Honey · Rose · Jade · Pearl · Nebula) unlock as they add up — each a full optical
   recipe, chosen from the pause menu in the Atrium.
@@ -143,6 +143,27 @@ wall where something is watching makes you a veil it cannot see.
   sponges, mimics, currents, vents and frost, bathe to become iron, quicksilver, armour, foam or
   spore, invite neighbours, and watch one physics answer everything. Or keep a terrarium: release a
   school, a cloud of fireflies, shy sparks, drift, a seed pod that grows back.
+- **Workshop** — the Pool's door asks: knead, make, or play what someone made. On the **bench** you
+  build a chamber of your own. Drag to paint light (each new light a step up the tune). Draw walls in
+  six surfaces — **stone** the gel can grip and climb, **glass** nothing holds to, **resin** that
+  strings, **grit** that shears, a **membrane** that throws back, **ice** that chills — or tap a pen
+  for a round stone. Set down **switches and doors** (a door opens when every switch is held at once;
+  in a room with no switch, when the way out wakes), **lanterns** (every one lit before the way out
+  will open), and any machine, fluid, neighbour or living light of the Pool; drag to aim a band, a
+  current, a watcher, to stretch a film or a door across a passage. Choose the **plate** (its light
+  and its music) and, if you like, give the chamber a **down** — then it plays like a little physics
+  platformer: darts are leaps, stone ledges are climbable, a band aimed up is a trampoline, and an open
+  way out lifts you into it. Everything set down lives at once; the sleeper waits where it will wake;
+  walls stand as wet glass until the chamber is played, when they are set into the plate. **Play it
+  through once and it is sealed**: your run becomes its record (Swift means beating it), and *Copy*
+  turns the chamber — record and all — into one line of text. Whoever pastes it into *Play a chamber
+  someone made* gets the same room in any window shape (it turns over its diagonal), with a generated
+  name of its own and your run racing them as a blue bead; beat it, and the line they copy on carries
+  *their* run instead. A link works too: `index.html?chamber=<line>`. The chambers you are handed are
+  kept, to play again — beside four that someone left on the bench before you (switches and a door; a
+  room with a down; a river and its lanterns; a watcher's gallery) — no record on them yet: your
+  first run through is the one you race. On the bench, ✥ moves anything (the sleeper and the way out included), ⌫
+  erases with a tap or a sweep, ↶ undoes; a chamber of your own, sealed, keeps a picture in the Album.
 
 Anything that parts you — a comb, a blade, a pole's throw — makes **siblings**, not debris. A real
 share of you (fourteen grains or more) is you: steerable (click it / Tab), callable (rally), and the
@@ -237,6 +258,8 @@ node tools/browser/linktest.mjs                   # two browsers paired by two l
 node tools/browser/haunttest.mjs                  # a dive ends → its haunting is found, raised, laid to rest; a stranger's line is invited
 node tools/browser/dailytest.mjs                  # a year of the mutation calendar, the day's dive, the day's sprint, the Today panel
 node tools/browser/sandbox.mjs                    # emulated fingers: a strand between two of them, bubbles, a down, pouring, dropping
+node tools/browser/workshoptest.mjs [shot]        # the bench with a real mouse (paint, draw, set down, erase, undo), play, seal, copy, replay as a stranger
+node tools/chambers.mjs 1280 720 3                # the autopilot plays the chambers left on the bench through the real Trial mode (STAMP=1 also prints each line with its best run as a record)
 node tools/browser/stranger.mjs 5 0               # five strangers told nothing (random pointer; `5 1 480 860` = random thumb): how soon are they moving, fed?
 node tools/browser/senses.mjs                     # every voice measured (level, length, pitch centre), the tension hum, the haptic patterns and tremors
 node tools/browser/hands.mjs dir "/index.html?room=7"   # play by hand, one decision per turn, a real frame after each (see the file's header)
