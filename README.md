@@ -36,8 +36,10 @@ wall where something is watching makes you a veil it cannot see.
   save meets nothing else but one door (the way in) and a halo of dew round the sleeper, so that a first
   unknowing nudge in any direction is answered with light inside a second; the other doors arrive, all
   at once, when the first chamber has been lit. Each door wears its name; only the one you are beside
-  says more.
-- **Odyssey** — twenty-seven single-screen chambers in four strata (Dew · Glassworks · Chemistry ·
+  says more. The living light of every place you light follows you home: the first chamber sends
+  fireflies, the Dew a school that circles the word, the Glassworks seed pods on the ceiling (they
+  regrow), Chemistry shy sparks and drifting light, the Heart a golden swarm.
+- **Odyssey** — twenty-eight single-screen chambers in four strata (Dew · Glassworks · Chemistry ·
   Abyss), each teaching one idea through physics alone: squeezing, darting through a soap film,
   budding to hold two pads, threading a comb, blades, sling bands that throw you whole through doubled
   films no dart can break (and one flat, pale band that aims nothing: it gives back the mirror image of
@@ -50,16 +52,19 @@ wall where something is watching makes you a veil it cannot see.
   stiffens you and vents that thaw a frozen door, watchers you hide from by holding still, a gyre of
   currents, a black hole, bluffing giants with a held breath, a spore bath that turns whatever you
   leave behind into a ripening decoy — and whatever swallows it into a rain of dew — a hunt, and a
-  heart that needs you in three places at once. Three **wardens** close the first strata: **The Lock**
+  heart that needs you in three places at once. Four **wardens** close the strata: **The Lock**
   (two rings of glass turning against each other around a heart of light — every doorway is a moment,
   not a place), **The Centrifuge** (a drum whose three arms sweep you past lanterns and gears: you do
   not cross it, you ride it) and **Twin Cores** (two electromagnets circling one another inside a ring
   of gears: as iron you are drawn in, the pole flickers, leans, and throws you — to its twin, unless
-  you lean elsewhere; coat both long enough and the pair falls together and pays out). Three living
+  you lean elsewhere; coat both long enough and the pair falls together and pays out) and **The Iris**
+  (two rings of glass louvres round a heart of light that breathe in turn — the outer on one bar of its
+  music, the inner on the next: turned across, every gap is a doorway; laid flat, a wall; a beat before
+  they move, the blades flash. In on one breath, out on another). Three living
   stars per chamber: **Radiance** (all the light), **Grace** (lose almost nothing), **Swift** (under
-  par). The pore opens at 60 % — the rest is appetite. Fifteen named tricks (Thread the Needle,
+  par). The pore opens at 60 % — the rest is appetite. Twenty named tricks (Thread the Needle,
   Surgical Shear, Ghost Wall, Paper Tiger, Cleave, Slingshot, Gravity Assist, Hole in One, Bank Shot,
-  Go-Between, Trojan Swallow, Outrun, Comet, Phoenix, Immaculate) are noticed when you find them; the Atrium keeps a
+  Go-Between, Trojan Swallow, Outrun, Comet, Phoenix, Immaculate, Net, Velvet, In Time, Harvest, Whole) are noticed when you find them; the Atrium keeps a
   journal in which the ones you have not found yet are riddles. The stars you gather dye you: six
   **hues** (Coral · Honey · Rose · Jade · Pearl · Nebula) unlock as they add up — each a full optical
   recipe, chosen from the pause menu in the Atrium.
@@ -69,13 +74,25 @@ wall where something is watching makes you a veil it cannot see.
   two players, no server, no clock in common.
 - **Myriad** — the last room has no door. Everything you met on the way is there, and nothing in it is
   hungry; what you do with all that light is the ending. (Afterwards the Atrium keeps the morning.)
+- **Living light** — not every light waits to be eaten. **Schools** swim their loops as one body
+  (cohesion, alignment, a startle that runs through all of them) and scatter from anything fast —
+  hold still and they come to look at you. **Shy sparks** read how fast you are closing on them and
+  bolt; drift in slowly and they never know. **Fireflies** blink on their own clocks and, coupled to
+  their neighbours, fall into one flash over a few seconds — a firefly between flashes is an ember a
+  feeler will not reach for. Where music is playing, a cloud slowly finds *its* pulse too, and
+  flashes on the downbeat. **Drift** rides the currents. **Seed pods** burst when brushed, flinging
+  their seeds. Each has its trick: four of a school inside one heartbeat (*Net*), a shy spark that
+  never knew you were there (*Velvet*), three fireflies in one flash (*In Time*), every seed of a pod
+  before it settles (*Harvest*).
 - **Flow** — light taken in quick succession becomes a chain. A chain makes the crown *bloom*: longer,
   brighter feelers that fetch from further, a faint pull on nearby motes, a little more speed, a
   rising melody — and every eighth link pays a bonus of mass. Greed with rhythm is rewarded; nothing
   is punished.
 - **Bloom** — seventy-five seconds of rain. Light falls in drawn figures (lines, arcs, spirals,
   crosses); every mote scores, an unbroken chain multiplies it up to ×8, and the dish wakes as the
-  clock runs: a blade, then a gear, then both faster. Four medals: Dew · Pearl · Bloom · Prism.
+  clock runs: a blade, then a gear, then both faster. Now and then the rain brings visitors — a school
+  that crosses the dish and scatters (worth the chase), or fireflies that can only be taken while lit.
+  Four medals: Dew · Pearl · Bloom · Prism.
 - **Abyss** — an endless generated descent with grazers, lancers, thornbacks and oil for neighbours,
   each measured against your own size; from the fourth depth on one of them is an apex that only wit
   (a lance, a held breath) will answer. Vaults — rings of glass turning around a hoard — are worth the
@@ -86,7 +103,7 @@ wall where something is watching makes you a veil it cannot see.
   wrung out, everything it ever drank bursting free for whoever is nearest) and **mimics** (something
   curled up wearing a ring of light: its lights blink all together, there is a knot of thorns at its
   heart, and no feeler ever reaches for it; wander in and it bites, dart through it and it bursts into
-  the light it pretended to be). The daily dive's rule mutation may now be *White Tide* (a geyser in
+  the light it pretended to be). Its rooms have fauna of living light too. The daily dive's rule mutation may now be *White Tide* (a geyser in
   every chamber) or *Masquerade*. Bigger membranes siphon smaller ones (the swallowed pigment swirls
   inside you before it becomes yours). Every second chamber you choose one of three ways to change;
   every fifth is a predator dish. Three embers.
@@ -97,12 +114,12 @@ wall where something is watching makes you a veil it cannot see.
   waiting again). "Whoever" is you on a later dive — or a stranger: the end of a dive offers *Copy my
   haunting*, one line of text; pasted into *Invite a haunting* in anyone's Atrium, your remains wait
   for them at that depth. Asynchronous, serverless, and a little personal.
-- **Daily** — the same for everyone, from the date alone. **The day's dive** is bent by one of fourteen
+- **Daily** — the same for everyone, from the date alone. **The day's dive** is bent by one of fifteen
   mutations of the world (Thick Water, Hungry Dark, Feast, Glass Storm, White Tide, Masquerade, Quick
-  Tide, Glass Water, Long Winter, Rapids, Slingshot, Famine, Giants, Champagne) — two at once on
+  Tide, Glass Water, Long Winter, Rapids, Slingshot, Famine, Giants, Champagne, Firefly Night) — two at once on
   weekends, never a pair that cancels out. **The day's sprint** is one Odyssey chamber in mutated water
   (faster, thicker, frictionless, or "every light or no door"), against the clock, drawn only from the
-  89 chamber × mutation pairs the autopilot finishes in both orientations. *Copy today* makes a result
+  97 chamber × mutation pairs the autopilot finishes in both orientations. *Copy today* makes a result
   line to compare with anyone's.
 - **Duet** — two players, one screen (pointer + W A S D / Space / F): **Together**, a co-op dive where
   touching shares mass between you, or **Versus**, ninety seconds of raining light.
@@ -118,7 +135,8 @@ wall where something is watching makes you a veil it cannot see.
   pour. Pour oil, quicksilver,
   resin, foam and ferrofluid, drop gears, blades, wells, poles, turning rings, sling bands, geysers,
   sponges, mimics, currents, vents and frost, bathe to become iron, quicksilver, armour, foam or
-  spore, invite neighbours, and watch one physics answer everything.
+  spore, invite neighbours, and watch one physics answer everything. Or keep a terrarium: release a
+  school, a cloud of fireflies, shy sparks, drift, a seed pod that grows back.
 
 Anything that parts you — a comb, a blade, a pole's throw — makes **siblings**, not debris. A real
 share of you (fourteen grains or more) is you: steerable (click it / Tab), callable (rally), and the
@@ -153,7 +171,7 @@ GPU behind a remote desktop, so it is designed to cost only what moves.
   that trail, reach, fetch and startle; colonies of siblings with focus and rally; small legible
   brains for the other species (they judge you by silhouette, so a held breath can bluff them).
 - **Playtesting** (`src/core/bot.js`, `tools/`) — a path-planning Bot uses the same verbs through the
-  same input record as a player. It finishes all twenty-seven chambers in landscape and portrait, sets
+  same input record as a player. It finishes all twenty-eight chambers in landscape and portrait, sets
   the par times, plays Bloom, proves which daily sprints are fair, and powers `?bot`. It is not a
   person: `tools/browser/hands.mjs` lets whoever is developing play one decision at a time with their
   eyes on real frames — which is how the ghost lights, the dragged relay, the shredding river and the
@@ -171,9 +189,19 @@ GPU behind a remote desktop, so it is designed to cost only what moves.
   focused caustic. Moving machines are stamped by the browser's own rasteriser. An internal pixel
   budget is measured at start-up and re-tuned between chambers; long frames fall back to 30 fps pacing
   instead of slowing time.
-- **Sound** (`src/core/audio.js`) — fully procedural WebAudio; every mote is a note and chains
-  become melodies. The body has a continuous voice: a silk whisper when it glides against things, a
-  hum that climbs as it is stretched or coiled, a low pulse when something near can hurt it.
+- **Sound** (`src/core/audio.js`) — fully procedural WebAudio, and a score that listens. Every place
+  has its own piece — a key, a pulse, a slow progression (Dew in E, the Glassworks in B dorian,
+  Chemistry in F lydian with one chromatic step aside, the Abyss in C minor; wardens turn their
+  stratum's key minor and walk the bass on every beat). A pad glides between voicings, the bass
+  breathes once a bar (twice, like a heart, when something near can hurt you), and a glass layer sings
+  chord tones as fast as the creature lives — stillness thins it to a few chimes. Every tonal effect
+  is drawn from the chord sounding *now*, so a chain of motes is an arpeggio of the harmony under it
+  and a firefly's flash is in tune. An open pore calls with a three-note motif from its own side of the
+  room (louder as you near, a fourth note when you are almost there, and it does not nag); leaving
+  resolves the music home. Left alone, the creature hums two notes of the chord on the beat; fireflies
+  retune their clocks until they flash on the downbeat; the pause menu sends the music behind the glass. The body
+  has a continuous voice too: a silk whisper when it glides against things, a hum that climbs as it is
+  stretched or coiled, a low pulse when something near can hurt it.
 
 ## Development
 

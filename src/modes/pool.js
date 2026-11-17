@@ -7,10 +7,13 @@ import { frame, dish } from '../world/rooms.js';
 import { MAT } from '../sim/materials.js';
 import { SPACING } from '../sim/physics.js';
 
+import { shoalOf, fireflyCloud } from '../world/plankton.js';
 const TOOLS = [
   { id: 'hand', g: '☟', name: 'knead · every finger holds the gel — pull, pinch, stretch' },
   { id: 'bubble', g: '◯', name: 'bubble · the gel swallows air and swells · dart to breathe out' }, { id: 'weight', g: '⇣', name: 'weight · give the pool a down (with motion on, tip the device to pour)', toggle: true },
-  { id: 'light', g: '✦', name: 'light' }, { id: 'dew', g: '◌', name: 'dew' }, { id: 'oil', g: '●', name: 'oil', mat: MAT.OIL }, { id: 'silver', g: '◍', name: 'quicksilver', mat: MAT.SILVER },
+  { id: 'light', g: '✦', name: 'light' }, { id: 'dew', g: '◌', name: 'dew' },
+  { id: 'school', g: '⋙', name: 'a school · it swims as one — hold still and it comes to look' }, { id: 'fireflies', g: '✧', name: 'fireflies · each blinks alone, until they find one flash' },
+  { id: 'shy', g: '✩', name: 'shy sparks · drift in slowly, or they bolt' }, { id: 'drift', g: '≈', name: 'drift · rides any current' }, { id: 'pod', g: '❦', name: 'seed pod · brush it and it bursts (it grows back)' }, { id: 'oil', g: '●', name: 'oil', mat: MAT.OIL }, { id: 'silver', g: '◍', name: 'quicksilver', mat: MAT.SILVER },
   { id: 'resin', g: '◉', name: 'resin', mat: MAT.RESIN }, { id: 'foam', g: '○', name: 'foam', mat: MAT.FOAM }, { id: 'iron', g: '✺', name: 'ferrofluid', mat: MAT.FERRO },
   { id: 'grazer', g: '☼', name: 'grazer' }, { id: 'hunter', g: '➶', name: 'lancer' }, { id: 'thorn', g: '✸', name: 'thornback' },
   { id: 'grinder', g: '⚙', name: 'grinder' }, { id: 'blade', g: '／', name: 'blade' }, { id: 'well', g: '◎', name: 'well' }, { id: 'pool', g: '♨', name: 'spring' }, { id: 'film', g: '⌇', name: 'film' },
@@ -48,6 +51,11 @@ export class Pool {
     if (W.phys.sampleSDF(wx, wy) < 12) return;
     if (t === 'bubble') { for (let k = 0; k < 3; k++) W.spawn({ type: 'bubble', x: wx + (Math.random() - 0.5) * 30, y: wy + (Math.random() - 0.5) * 30, r: 13 + Math.random() * 15, vx: (Math.random() - 0.5) * 60, vy: -20 - Math.random() * 40, safe: 0.25 }); this.app.sound.pop(0.4); return; }
     if (t === 'light') for (let k = 0; k < 7; k++) { const a = k / 7 * 6.28; W.spawn({ type: 'mote', x: wx + Math.cos(a) * 26, y: wy + Math.sin(a) * 26, free: true }); }
+    else if (t === 'school') { this.nSchool = (this.nSchool || 0) + 1; for (const d of shoalOf('pool' + this.nSchool, wx, wy, 7, { range: 260 })) W.spawn(d); }
+    else if (t === 'fireflies') { for (const d of fireflyCloud(wx, wy, 8, 64, { period: 2.4 })) W.spawn(d); }
+    else if (t === 'shy') { for (let k = 0; k < 3; k++) { const a = k / 3 * 6.28 + 0.5, x = wx + Math.cos(a) * 34, y = wy + Math.sin(a) * 34; if (W.phys.sampleSDF(x, y) > 10) { const m = W.spawn({ type: 'mote', kind: 'shy', x, y }); W.settle(m); } } }
+    else if (t === 'drift') { for (let k = 0; k < 3; k++) W.spawn({ type: 'mote', kind: 'drift', x: wx + (k - 1) * 30, y: wy + (Math.random() - 0.5) * 20 }); }
+    else if (t === 'pod') W.spawn({ type: 'pod', x: wx, y: wy, a: -Math.PI / 2, n: 6, regrow: 9 });
     else if (t === 'dew') { const P = W.phys; for (let k = 0; k < 10; k++) { const D = P.allocBody(-1, 'dew', MAT.DEW); if (D) P.spawn(wx + (Math.random() - 0.5) * 50, wy + (Math.random() - 0.5) * 50, 0, 0, MAT.DEW, D.id); } }
     else if (['oil', 'silver', 'resin', 'foam', 'iron'].includes(t)) this.blob(W, wx, wy, 44, TOOLS.find(q => q.id === t).mat);
     else if (t === 'magnet') add({ type: 'magnet', reach: 210, power: 620, period: 4.2 }); else if (t === 'rotor') add({ type: 'rotor', R: 96, gap: 0.5, spin: Math.random() < 0.5 ? 0.5 : -0.5 });

@@ -197,6 +197,8 @@ export class Sound {
   skitter() { if (!this._rate('skitter', 110)) return; this.blip(1700 + Math.random() * 300, 2900, 0.06, 0.07, 'sine', 0.35); setTimeout(() => this.blip(2300, 3600, 0.045, 0.05, 'sine', 0.35), 42); }
   firefly(pan = 0) { this.ffk = ((this.ffk || 0) + 1) % 5; this.bell(this.note([4, 6, 4, 7, 9][this.ffk], 2), 0.13, 2.6, 0.32, 0.92, pan); }
   podPop(pan = 0) { if (!this._rate('podPop', 90)) return; this.noiseHit(1100, 1.4, 0.2, 0.13, 0.3, 0.45, 'lowpass'); this.blip(250, 640, 0.13, 0.12, 'sine', 0.3); [0, 2, 4].forEach((d, i) => setTimeout(() => this.bell(this.note(d + 7, 1), 0.11, 1.3, 0.8, 0.7, pan), 50 + i * 55)); }
+  // the Iris's louvres turning: a glassy shk — brighter and rising as they open, lower and falling as they shut
+  louvre(open) { if (!this._rate('louvre', 120)) return; this.noiseHit(open ? 2600 : 1500, 3, 0.16, 0.14, 0.35, open ? 1.6 : 0.55); this.blip(open ? 300 : 460, open ? 560 : 230, 0.09, 0.16, 'triangle', 0.35); this.bell(this.note(open ? 7 : 5, 1), 0.12, 1.2, 1.4, 0.7); }
   boom() { this.blip(90, 30, 0.5, 1.2, 'sine', 0.6); this.noiseHit(300, 0.6, 0.35, 1.0, 0.6, 0.2, 'lowpass'); }
 
   // ── continuous layers (glide whisper, tension hum, ambience) ──────────
@@ -269,6 +271,15 @@ export class Sound {
     const bd = ctx.createGain(), bw = ctx.createGain(); bd.connect(this.dry); bw.connect(this.verbIn); this.bed = { dry: bd, verbIn: bw };
     this.ambNodes.push({ g, o: os }, { g: bd, o: [] }, { g: bw, o: [] });
     this.sc = { n: 0, t: t + 0.6, w: 5, hold: 0, q: [], last: t, call: this.bcn ? 1 : 0, calls: 0, called: -1e9 }; this.mel = P0.mel;
+  }
+  // paused: the music steps back behind the glass (darker, quieter) and comes forward again on resume
+  duck(on) { if (!this.ready || !this.padLP || !this.bed) return; const t = this.ctx.currentTime; this.padLP.frequency.setTargetAtTime(on ? 520 : 900, t, 0.25); for (const g of [this.bed.dry, this.bed.verbIn]) g.gain.setTargetAtTime(on ? 0.35 : 1, t, 0.25); }
+  // the music's pulse, for whatever wants to keep time with it (fireflies): [phase 0‥1, period s] of the grid — one, two, four or
+  // eight beats, whichever is nearest period T — counted from the phrase's first downbeat; null when no music is playing
+  pulse(T) {
+    const sc = this.sc; if (!this.ready || !this.th || !sc) return null;
+    const beat = 60 / this.th.bpm; let P = beat; for (const k of [2, 4, 8]) if (Math.abs(Math.log(beat * k / T)) < Math.abs(Math.log(P / T))) P = beat * k;
+    const t0 = sc.t - sc.n * beat / 2; return [(((this.ctx.currentTime - t0) / P) % 1 + 1) % 1, P];
   }
   keyOf(name) { return (THEMES[name] || THEMES.atrium).root; }
   // the way out, as the score hears it: where the nearest open pore is from the creature (d = 0: none)

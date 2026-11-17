@@ -46,7 +46,7 @@ export class App {
   }
 
   // ── modes ─────────────────────────────────────────────────────────────
-  setMode(m) { if (this.mode && this.mode.exit) this.mode.exit(); this.hud.closePanel(); this.hud.hideResult(); this.hud.setTop(null); this.hud.setLabels([]); this.hud.hint(''); this.paused = false; this.mode = m;
+  setMode(m) { if (this.mode && this.mode.exit) this.mode.exit(); this.hud.closePanel(); this.hud.hideResult(); this.hud.setTop(null); this.hud.setLabels([]); this.hud.hint(''); if (this.paused) this.sound.duck && this.sound.duck(false); this.paused = false; this.mode = m;
     // The room on screen belongs to the mode that is leaving: until the new mode's own room is loaded (_load sets the listener) the world answers to nobody.
     // (Handing it to the new mode at once made a fresh dive read its not-yet-built room — "Dive again" threw every frame and never arrived — and let a new
     //  run be charged for the old run's death while the iris closed.)
@@ -114,7 +114,7 @@ export class App {
     } catch (_) { /* a locked-down browser: no picture, no harm */ }
   }
   pause() {
-    if (this.paused || this.state !== 'play') return; this.paused = true;
+    if (this.paused || this.state !== 'play') return; this.paused = true; this.sound.duck && this.sound.duck(true);
     const m = this.mode, hud = this.hud;
     const items = [{ label: 'Resume', cls: 'pri', fn: () => this.resume() }];
     if (m && m.restart) items.push({ label: 'Restart chamber', fn: () => { this.resume(); m.restart(); } });
@@ -129,7 +129,7 @@ export class App {
     if (!m || m.isHub !== true) items.push({ label: 'Leave to the atrium', fn: () => { this.resume(); this.toHub(); } });
     hud.panel('Paused', m && m.pauseSub ? m.pauseSub() : '', items, (this.input.device === 'touch' ? CONTROLS_TOUCH_HTML : this.input.device === 'pad' ? CONTROLS_PAD_HTML : CONTROLS_HTML));
   }
-  resume() { this.paused = false; this.hud.closePanel(); this.last = performance.now(); this.input.levelTilt(); }
+  resume() { this.paused = false; this.sound.duck && this.sound.duck(false); this.hud.closePanel(); this.last = performance.now(); this.input.levelTilt(); }
 
   // ── intent → ctl ──────────────────────────────────────────────────────
   _events(evs) {

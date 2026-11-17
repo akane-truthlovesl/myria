@@ -419,6 +419,23 @@ export const ROOMS = [
     const r = [{ kind: 'grazer', ...f.P(0.3, 0.7), n: 26 }, { kind: 'grazer', ...f.P(0.7, 0.3), n: 26 }, { kind: 'grazer', ...f.P(0.5, 0.82), n: 22 }, { kind: 'hunter', ...f.P(0.82, 0.74), n: 96 }, { kind: 'hunter', ...f.P(0.78, 0.22), n: 84 }];
     return { W, H, geo, ents, pal: PAL.abyss, spawn: { ...f.P(0.10, 0.5), n: 56 }, minMass: 56, cap: 56, rivals: r };
   } },
+  { id: 'iris', name: 'The Iris', par: 55, boss: true, quota: 0.6, build(a) {
+    const f = L(a), { W, H } = f; const geo = dish(W, H, { r: Math.min(W, H) * 0.34 }); const c = f.P(0.5, 0.5);
+    // the warden of the Abyss: two rings of glass louvres round a heart of light, breathing in turn — the outer one on one bar,
+    // the inner on the next. Turned across, every gap is a doorway; laid flat, a wall. In on one breath, out on another
+    // (open, the outer blades reach R2 + R2·sin 18° + 4: kept a body's width short of the rim, so nothing is pinned against it)
+    const R2 = Math.min(W, H) / 2 - 112, R1 = R2 * 0.56;
+    const ents = [
+      { type: 'louvres', x: c.x, y: c.y, R: R2, n: 10, w: 7, at: 0, openFor: 0.4, period: 5, spin: 0.05, phase0: 0.7 },
+      { type: 'louvres', x: c.x, y: c.y, R: R1, n: 6, w: 7, at: 0.5, openFor: 0.4, period: 5, spin: -0.08, phase0: 0.7, col: [1.0, 0.8, 0.5] },
+      ...moteRing(c.x, c.y, (R1 + R2) / 2, 8, 2, { a0: 0.2 }),
+      ...moteRing(c.x, c.y, R1 * 0.5, 6, 4, { col: [1.0, 0.8, 0.5], a0: 0.5 }).map(m => ({ ...m, kind: 'firefly', phase: 0.1 + 0.05 * Math.random(), period: 1.25, beat: 2 })),
+      ...moteRing(c.x, c.y, R1 * 0.2, 4, 4, { col: [1.0, 0.85, 0.6] }),
+      ...trail(f, [[0.13, 0.5], [0.22, 0.5]], 4),
+      { type: 'pore', ...f.P(0.92, 0.5), r: 34, col: [1.0, 0.8, 0.5] },
+    ];
+    return { W, H, geo, ents, pal: PAL.abyss, spawn: { ...f.P(0.07, 0.5), n: 70 }, minMass: 70, cap: 110, decor: 0.6 };
+  } },
   { id: 'heart', name: 'The Heart', par: 60, quota: 0.5, build(a) {
     const f = L(a), { W, H } = f; const geo = dish(W, H, { r: Math.min(W, H) * 0.42 }); const c = f.P(0.5, 0.5);
     const dd = f.vec(-1, 0), a0 = Math.atan2(-dd[1], -dd[0]);          // the doorway faces where you arrive from

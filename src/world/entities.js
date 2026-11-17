@@ -797,6 +797,46 @@ export class Spinner extends Entity {
   over(ov) { ov.glow(this.x, this.y, 46, this.col, 0.35 + 0.15 * Math.sin(this.t * 2)); for (const S of this.arms) { const a = S.angle; const e = S._mid + S.hl; ov.glow(this.x + Math.cos(a) * e, this.y + Math.sin(a) * e, 12, this.col, 0.5); } }
 }
 
+// ── Louvres: a ring of glass blades, each turning on its own centre. Flat along the ring they are a wall; turned across it,
+//    every gap between two of them is a doorway (narrowing inward: the gel squeezes through). They breathe on a clock — open
+//    for a share of each breath, shut for the rest — and where a score is playing the clock keeps the music's pulse (found, not
+//    imposed). A beat before they move, the blades flash. The Iris, warden of the Abyss, is two of these round a heart of light. ──
+const smoothstep = (x) => x * x * (3 - 2 * x);
+export class Louvres extends Entity {
+  constructor(W, d) {
+    super(W, d); this.n = d.n ?? 8; this.R = d.R ?? 110; this.w = d.w ?? 7; this.col = d.col || [1, 0.62, 0.5];
+    this.period = d.period ?? 5; this.at = d.at ?? 0; this.openFor = d.openFor ?? 0.4; this.spin = d.spin ?? 0; this.ang = d.a ?? 0;
+    this.phase = d.phase0 ?? 0.6; this.open = 0; this.warn = 0;
+    this.hl = this.R * Math.sin(Math.PI / this.n) + this.w * 0.6;          // flat, neighbours just overlap: a closed ring
+    this.blades = [];
+    for (let k = 0; k < this.n; k++) { const S = makeShape({ type: 1, x: d.x, y: d.y, hl: this.hl, r: this.w, surf: d.surf ?? SURF.GLASS }); S._k = k; W.phys.shapes.push(S); this.blades.push(S); }
+    this.open = this.openness(this.phase); this._place(1 / 60);
+  }
+  // 0 → shut (blades along the ring) · 1 → open (blades across it)
+  openness(p) { const q = ((p - this.at) % 1 + 1) % 1, o = this.openFor, e = 0.08; return q < e ? smoothstep(q / e) : q < o ? 1 : q < o + e ? 1 - smoothstep((q - o) / e) : 0; }
+  _place(dt) { const tw = this.open * Math.PI / 2; for (const S of this.blades) { const a = this.ang + S._k / this.n * TAU; moveShape(S, this.x + Math.cos(a) * this.R, this.y + Math.sin(a) * this.R, a + Math.PI / 2 + tw, dt); } }
+  update(dt) {
+    const W = this.W; this.t += dt;
+    const pu = W.sound && W.sound.pulse ? W.sound.pulse(this.period) : null;
+    this.phase += dt / (pu ? pu[1] : this.period); if (pu) { let e = pu[0] - this.phase; e -= Math.round(e); this.phase += e * Math.min(1, dt * 0.8); }
+    this.phase -= Math.floor(this.phase);
+    const was = this.open; this.open = this.openness(this.phase); this.ang += this.spin * dt;
+    const q = ((this.phase - this.at) % 1 + 1) % 1, lead = 0.1;
+    this.warn = q > 1 - lead || (q > this.openFor - lead && q < this.openFor) ? 1 : Math.max(0, this.warn - dt * 3);
+    if ((was < 0.5) !== (this.open < 0.5)) { W.sound && W.sound.louvre && W.sound.louvre(this.open >= 0.5); W.emit('louvres', this, this.open >= 0.5); }
+    this._place(dt);
+  }
+  get shut() { return this.open < 0.5; }
+  // the time until the next opening (s) — for anyone (the bot) who wants to be at the door when it opens
+  untilOpen() { const q = ((this.phase - this.at) % 1 + 1) % 1; return q < this.openFor ? 0 : (1 - q) * this.period; }
+  bake(ink) { const c = this.col; ink.ring(this.x, this.y, this.R, 0.5, c[0] * 0.45, c[1] * 0.45, c[2] * 0.45, 0.3, 0); }
+  under(ink, R) { for (const S of this.blades) { if (!S._sp || S._sp.z !== R.view.z) S._sp = solidSprite(S, R.view.z, {}); R.solid(S._sp, S.x, S.y, S.angle); } }
+  over(ov) {
+    const c = this.col, w = this.warn;
+    for (const S of this.blades) { ov.glow(S.x, S.y, 10 + 8 * w, c, 0.22 + 0.5 * w); if (this.open > 0.6) ov.glow(S.x, S.y, this.hl * 0.9, c, 0.06 * this.open, 1); }
+  }
+}
+
 // ── Residue: the stain a dive left where it ended. It is tacky (whatever is in it is held back), and the moment a living body
 //    steps in it, what the stain remembers gets up: a pale revenant of the body that fell here (core/haunt.js). ──
 export class Residue extends Entity {
@@ -855,7 +895,7 @@ export class Bubble extends Entity {
   }
 }
 
-export const ENT = { pod: Pod, residue: Residue, bubble: Bubble, bumper: Bumper, valve: Valve, echo: Echo, geyser: Geyser, mimic: Mimic, sponge: Sponge, core: Core, rotor: Rotor, spinner: Spinner, mote: Mote, pore: Pore, pad: Pad, gate: Gate, film: Film, blade: Blade, grinder: Grinder, pool: Pool, current: Current, well: Well, crusher: Crusher, lantern: Lantern, watcher: Watcher, frost: Frost, vent: Vent, iceplug: IcePlug, magnet: Magnet };
+export const ENT = { louvres: Louvres, pod: Pod, residue: Residue, bubble: Bubble, bumper: Bumper, valve: Valve, echo: Echo, geyser: Geyser, mimic: Mimic, sponge: Sponge, core: Core, rotor: Rotor, spinner: Spinner, mote: Mote, pore: Pore, pad: Pad, gate: Gate, film: Film, blade: Blade, grinder: Grinder, pool: Pool, current: Current, well: Well, crusher: Crusher, lantern: Lantern, watcher: Watcher, frost: Frost, vent: Vent, iceplug: IcePlug, magnet: Magnet };
 
 // helpers for room builders
 export function moteTrail(pts, n, value = 2, extra = {}) {

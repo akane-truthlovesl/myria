@@ -50,7 +50,7 @@ export const TRICKS = [
   ['Outrun', 'come home before your own echo does'],
   ['Phoenix', 'leave a chamber whole after being an ember in it'], ['Immaculate', 'all three stars in a single visit'],
   ['Net', 'four of a school inside one heartbeat'], ['Velvet', 'take a shy light that never knew you were there'],
-  ['In Time', 'three fireflies in a single flash'], ['Harvest', 'every seed of a pod before it settles'],
+  ['In Time', 'three fireflies in a single flash'], ['Harvest', 'every seed of a pod before it settles'], ['Whole', 'into the heart of the Iris and out again, never cut in two'],
 ];
 // ── the Daily Sprint: one chamber a day, under one mutation of its water, against the clock (the same chamber and mutation for everyone, from the date alone) ──
 export const SPRINTS = [
@@ -60,7 +60,7 @@ export const SPRINTS = [
   { id: 'glean', name: 'Gleaner', sub: 'the way out opens only when every light is yours', apply: (W) => { for (const e of W.ents) if (e.d.type === 'pore') e.need = W.stats.motesTotal; } },
 ];
 // every (chamber, mutation) pair the bot has finished — the day's sprint is only ever drawn from these (tools/sprint.mjs rebuilds the list)
-export const SPRINT_OK = [["narrows","swift"],["leap","swift"],["two-hearts","swift"],["lock","swift"],["comb","swift"],["shear","swift"],["rebound","swift"],["grinder-row","swift"],["press","swift"],["centrifuge","swift"],["amber","swift"],["quicksilver","swift"],["fizz","swift"],["osmosis","swift"],["oil-water","swift"],["bastion","swift"],["iron-bloom","swift"],["thaw","swift"],["twin-cores","swift"],["veil","swift"],["tidepool","swift"],["event-horizon","swift"],["bluff","swift"],["trojan","swift"],["narrows","thick"],["leap","thick"],["two-hearts","thick"],["lock","thick"],["comb","thick"],["shear","thick"],["rebound","thick"],["grinder-row","thick"],["press","thick"],["centrifuge","thick"],["amber","thick"],["quicksilver","thick"],["fizz","thick"],["osmosis","thick"],["oil-water","thick"],["bastion","thick"],["iron-bloom","thick"],["thaw","thick"],["twin-cores","thick"],["veil","thick"],["tidepool","thick"],["event-horizon","thick"],["bluff","thick"],["trojan","thick"],["narrows","glide"],["leap","glide"],["two-hearts","glide"],["lock","glide"],["comb","glide"],["shear","glide"],["rebound","glide"],["grinder-row","glide"],["press","glide"],["centrifuge","glide"],["amber","glide"],["quicksilver","glide"],["fizz","glide"],["osmosis","glide"],["oil-water","glide"],["bastion","glide"],["iron-bloom","glide"],["thaw","glide"],["twin-cores","glide"],["veil","glide"],["tidepool","glide"],["event-horizon","glide"],["bluff","glide"],["trojan","glide"],["hunt","glide"],["narrows","glean"],["leap","glean"],["two-hearts","glean"],["lock","glean"],["shear","glean"],["press","glean"],["amber","glean"],["fizz","glean"],["oil-water","glean"],["bastion","glean"],["thaw","glean"],["veil","glean"],["event-horizon","glean"],["bluff","glean"],["trojan","glean"],["hunt","glean"]];
+export const SPRINT_OK = [["narrows","swift"],["leap","swift"],["two-hearts","swift"],["lock","swift"],["comb","swift"],["shear","swift"],["rebound","swift"],["grinder-row","swift"],["press","swift"],["centrifuge","swift"],["amber","swift"],["quicksilver","swift"],["fizz","swift"],["osmosis","swift"],["oil-water","swift"],["bastion","swift"],["iron-bloom","swift"],["thaw","swift"],["twin-cores","swift"],["veil","swift"],["tidepool","swift"],["event-horizon","swift"],["bluff","swift"],["trojan","swift"],["narrows","thick"],["leap","thick"],["two-hearts","thick"],["lock","thick"],["comb","thick"],["shear","thick"],["rebound","thick"],["grinder-row","thick"],["press","thick"],["centrifuge","thick"],["amber","thick"],["quicksilver","thick"],["fizz","thick"],["osmosis","thick"],["oil-water","thick"],["bastion","thick"],["iron-bloom","thick"],["thaw","thick"],["twin-cores","thick"],["veil","thick"],["tidepool","thick"],["event-horizon","thick"],["bluff","thick"],["trojan","thick"],["hunt","thick"],["narrows","glide"],["leap","glide"],["two-hearts","glide"],["lock","glide"],["comb","glide"],["shear","glide"],["rebound","glide"],["grinder-row","glide"],["press","glide"],["centrifuge","glide"],["amber","glide"],["quicksilver","glide"],["fizz","glide"],["osmosis","glide"],["oil-water","glide"],["bastion","glide"],["iron-bloom","glide"],["thaw","glide"],["twin-cores","glide"],["veil","glide"],["tidepool","glide"],["event-horizon","glide"],["bluff","glide"],["trojan","glide"],["hunt","glide"],["narrows","glean"],["leap","glean"],["two-hearts","glean"],["lock","glean"],["comb","glean"],["shear","glean"],["grinder-row","glean"],["press","glean"],["centrifuge","glean"],["amber","glean"],["quicksilver","glean"],["fizz","glean"],["oil-water","glean"],["bastion","glean"],["iron-bloom","glean"],["thaw","glean"],["twin-cores","glean"],["veil","glean"],["tidepool","glean"],["event-horizon","glean"],["bluff","glean"],["trojan","glean"],["hunt","glean"]];
 export function dailySprint(day) {
   let pairs = SPRINT_OK; if (!pairs) { pairs = []; for (const r of ROOMS) for (const m of SPRINTS) if (r.id !== 'first-light' && r.id !== 'heart') pairs.push([r.id, m.id]); }
   const pick = pairs[hashStr('sprint' + day) % pairs.length]; return { day, i: Math.max(0, ROOMS.findIndex(r => r.id === pick[0])), m: SPRINTS.find(q => q.id === pick[1]) || SPRINTS[0] };
@@ -72,7 +72,7 @@ export class Odyssey {
 
   load(fromPore) {
     const app = this.app, room = this.room = ROOMS[this.i];
-    this.finished = false; this.tricks = []; this.thrownTo = null; this.skim = null; this.wasEmber = false; this.hintT = 0; this.usedHint = false; this.combT = 0; this.air = 0; this.groundT = 0;
+    this.finished = false; this.tricks = []; this.wasCut = false; this.hearted = false; this.thrownTo = null; this.skim = null; this.wasEmber = false; this.hintT = 0; this.usedHint = false; this.combT = 0; this.air = 0; this.groundT = 0;
     app.travel((aspect) => { const s = room.build(aspect); s.name = room.name; s.no = this.i + 1; s.seed = s.seed || (this.i * 97 + 13); this.spec = s; return s; },
       (spec) => ({ mass: this.startMass = this.massFor(spec) }), {
         minDark: fromPore ? 1.9 : 0.5,
@@ -106,7 +106,7 @@ export class Odyssey {
   poreProgress(p) { const W = this.app.world; return p.need ? Math.min(1, W.stats.motes / p.need) : 1; }
   tier(name) { this.app.hud.toast(name, '✺'); }
   ember(on) { if (on) this.wasEmber = true; this.app.hud.toast(on ? 'ember — nothing can drink you · light counts double' : 'whole again', '✺', on ? '' : 'cool'); }
-  mote(m, O, chain) { this.hintT = 0; if (m.living) this.livingTaken(m); if (chain && chain % 8 === 0) this.app.hud.toast(`Chain ×${chain} <small>+${1 + Math.min(3, chain >> 3)}</small>`, '♪', 'cool'); if (chain === 24) this.trick('Comet'); }
+  mote(m, O, chain) { this.hintT = 0; if (m.living) this.livingTaken(m); if (this.room.id === 'iris' && !this.hearted) { const L = this.app.world.ents.filter(e => e.d.type === 'louvres'); const core = L.length && L.reduce((a, b) => (b.R < a.R ? b : a)); if (core && Math.hypot(m.x - core.x, m.y - core.y) < core.R) this.hearted = true; } if (chain && chain % 8 === 0) this.app.hud.toast(`Chain ×${chain} <small>+${1 + Math.min(3, chain >> 3)}</small>`, '♪', 'cool'); if (chain === 24) this.trick('Comet'); }
   // living light, taken with wit (world/plankton.js)
   livingTaken(m) {
     const t = this.app.world.time, q = (this.lt || (this.lt = {})); const recent = (k, w) => { const a = (q[k] || (q[k] = [])); a.push(t); while (a.length && t - a[0] > w) a.shift(); return a.length; };
@@ -119,7 +119,7 @@ export class Odyssey {
   film() { this.usedHint = this.room.hint === 'dart' || this.usedHint; }
   dart(O) { if (this.room.hint === 'jet' && O.morph && O.morph.jet) this.usedHint = true; }
   bud() { if (this.room.hint === 'bud') this.usedHint = true; }
-  split(parent, child, cut) { if (cut && !this.tricks.includes('Surgical Shear')) this.pendingShear = this.app.world.time; }
+  split(parent, child, cut) { if (cut && !this.tricks.includes('Surgical Shear')) this.pendingShear = this.app.world.time; this.wasCut = true; }
   pad(p) { if (p.active && this.pendingShear && this.app.world.time - this.pendingShear < 12 && this.app.world.player.orgs.length > 1) this.trick('Surgical Shear'); }
   fuse(keep, gone, n) { const W = this.app.world; if (this.room.id === 'comb' && W.player.orgs.length === 1 && keep.cx > W.spec.W * 0.5 || this.room.id === 'comb' && keep.cy > W.spec.H * 0.5) { if (W.stats.lost <= GRACE) this.trick('Thread the Needle'); } if (this.room.hint === 'rally') this.usedHint = true; }
   trick(name) { if (this.tricks.includes(name)) return; this.tricks.push(name); const first = this.app.save.trick(name); this.app.hud.toast(name, '✦'); this.app.sound.trick(); void first; }
@@ -162,6 +162,7 @@ export class Odyssey {
     if (stars.every(Boolean)) this.trick('Immaculate'); if (this.wasEmber && W.player.mass >= this.startMass) this.trick('Phoenix');
     const beatOwn = this.echo && !this.echo.home, beatRival = this.rival && !this.rival.home, lostRival = this.rival && this.rival.home;
     if (beatOwn) this.trick('Outrun');
+    if (this.room.id === 'iris' && this.hearted && !this.wasCut) this.trick('Whole');
     if (beatRival) app.hud.toast(`echo beaten by ${(this.rival.T - W.roomTime).toFixed(1)} s`, '◷'); else if (lostRival) app.hud.toast(`the echo was ${(W.roomTime - this.rival.T).toFixed(1)} s ahead`, '◷', 'cool');
     // (a sprint is run in mutated water: its stars and its path are the day's, not the chamber's record)
     const rec = this.sprint ? { newBest: false, firstClear: false } : app.save.recordRoom(this.room.id, { stars, time: W.roomTime, light: s.motes });
@@ -184,7 +185,7 @@ export class Odyssey {
   }
   loadNext(result, pore) {
     const app = this.app; const room = this.room = ROOMS[this.i];
-    this.finished = false; this.tricks = []; this.thrownTo = null; this.skim = null; this.wasEmber = false; this.hintT = 0; this.usedHint = false; this.pendingShear = 0;
+    this.finished = false; this.tricks = []; this.wasCut = false; this.hearted = false; this.thrownTo = null; this.skim = null; this.wasEmber = false; this.hintT = 0; this.usedHint = false; this.pendingShear = 0;
     app.travel((aspect) => { const s = room.build(aspect); s.name = room.name; s.no = this.i + 1; s.seed = s.seed || (this.i * 97 + 13); this.spec = s; return s; }, (spec) => ({ mass: this.startMass = this.massFor(spec) }), {
       from: { x: pore.x, y: pore.y }, minDark: 2.3,
       onDark: () => { app.applyBudget(); app.hud.showResult(result); },

@@ -9,6 +9,7 @@ import { frame, dish } from '../world/rooms.js';
 import { SURF } from '../sim/materials.js';
 import { TAU, rng } from '../core/util.js';
 import { PAL } from '../world/odyssey.js';
+import { shoalOf, fireflyCloud } from '../world/plankton.js';
 
 const LEN = 75, GOLD = [1.0, 0.82, 0.40], BLUE = [0.6, 0.95, 1.0];
 export const MEDALS = [[5000, 'Dew'], [10000, 'Pearl'], [18000, 'Bloom'], [30000, 'Prism']];
@@ -42,6 +43,8 @@ export class Bloom {
     const R = this.R, sw = W.spec.W, sh = W.spec.H; const F = W.player.focus; const fx = F && F.alive ? F.B.cx : sw / 2, fy = F && F.alive ? F.B.cy : sh / 2;
     const hard = Math.min(1, this.el / 55); const kind = R.pick(['line', 'line', 'arc', 'ring', 'spiral', 'cluster', 'wave', 'cross']);
     // figures begin within reach of where you are, and lead away: the rain invites, it never ambushes
+    // now and then the rain brings visitors: a school that crosses the dish (it scatters — worth the chase), or fireflies (only a lit one can be taken: eat to their beat)
+    if (this.el > 10 && R() < 0.15) { this.visit(W, this.el < 24 || R() < 0.5 ? 'school' : 'fireflies'); return; }
     const a0 = R.range(0, TAU); const near = R() < 0.55 - 0.25 * hard;           // …at first. Later it falls where it likes, and the chain must be carried there
     const sx = near ? fx + Math.cos(a0) * R.range(70, 150) : R.range(sw * 0.2, sw * 0.8), sy = near ? fy + Math.sin(a0) * R.range(70, 150) : R.range(sh * 0.2, sh * 0.8); const pts = [];
     if (kind === 'line') { const a = a0 + R.range(-0.9, 0.9), L = R.range(230, 380), n = 9; for (let k = 0; k < n; k++) pts.push([sx + Math.cos(a) * L * k / (n - 1), sy + Math.sin(a) * L * k / (n - 1), k === n - 1]); }
@@ -53,6 +56,17 @@ export class Bloom {
     else { const cx = sx + Math.cos(a0) * 90, cy = sy + Math.sin(a0) * 90; for (let k = 0; k < 7; k++) { const b = k * 2.4, r = 16 + k * 7; pts.push([cx + Math.cos(b) * r, cy + Math.sin(b) * r, k === 0]); } }
     const put = this._put(W, pts, { ttl: 9 - 2.5 * hard, col: kind === 'arc' || kind === 'spiral' ? BLUE : undefined });
     if (put < 4) this.rain = 0.2;       // the figure fell on glass: try again at once
+  }
+  visit(W, kind) {
+    const R = this.R, sw = W.spec.W, sh = W.spec.H, n = this.visits = (this.visits || 0) + 1;
+    if (kind === 'school') {
+      const wide = sw >= sh, s = R.sign(), c0 = R.range(0.3, 0.7), amp = R.range(0.08, 0.16), path = [];
+      for (let k = 0; k <= 8; k++) { const u = 0.1 + 0.8 * (s > 0 ? k / 8 : 1 - k / 8), v = c0 + amp * Math.sin(k / 8 * TAU); path.push(wide ? { x: sw * u, y: sh * v } : { x: sw * v, y: sh * u }); }
+      for (const d of shoalOf('bloom' + n, path[0].x, path[0].y, 6, { path })) if (this._ok(W, d.x, d.y)) W.spawn({ ...d, ttl: 15 });
+    } else {
+      const cx = R.range(sw * 0.3, sw * 0.7), cy = R.range(sh * 0.3, sh * 0.7);
+      for (const d of fireflyCloud(cx, cy, 7, 72, { period: 1.6, value: 2 })) if (this._ok(W, d.x, d.y)) W.spawn({ ...d, ttl: 13 });
+    }
   }
   // ── the dish wakes ──
   _warn(W, x, y, r) { for (let k = 0; k < 3; k++) W.fx.add({ x, y, type: 2, size: r * (1.4 - 0.2 * k), grow: -r * 0.5, life: 1.3 + k * 0.15, col: [1, 0.35, 0.3], a: 0.7, w: 2.4, drag: 0 }); W.sound && W.sound.hurt(0.4); }
@@ -75,7 +89,7 @@ export class Bloom {
     if (this.t <= 0) this.end();
   }
   mote(m, O, chain) {
-    const mult = 1 + Math.min(7, (chain - 1) >> 3); const pts = (m.d.gold ? 50 : 10) * mult; this.score += pts; this.eaten++;
+    const mult = 1 + Math.min(7, (chain - 1) >> 3); const pts = (m.d.gold ? 50 : m.kind === 'shoal' ? 30 : m.kind === 'firefly' ? 25 : 10) * mult; this.score += pts; this.eaten++;
     if (chain > this.bestChain) this.bestChain = chain;
     if (chain % 8 === 0 && chain <= 56) this.app.hud.toast(`×${1 + Math.min(7, chain >> 3)}`, '♪', 'cool');
     if (m.d.gold) this.app.world.fx.ring(m.x, m.y, GOLD, 60, 0.5, { a: 0.8 });

@@ -57,10 +57,20 @@ export class Bot {
     if (!cands.length) { if (pore) return { x: pore.x, y: pore.y, kind: 'wait', ref: pore, r: pore.r * 2.2 }; return null; }
     // lowest priority class first; inside a class the shortest real path wins (checked for the few nearest by air)
     cands.sort((a, b) => a.pri - b.pri || Math.hypot(a.x - B.cx, a.y - B.cy) - Math.hypot(b.x - B.cx, b.y - B.cy));
-    const top = cands.filter(c => c.pri === cands[0].pri).slice(0, 5); let best = null, bl = 1e9;
-    for (const c of top) { const p = this.nav.path(B.cx, B.cy, c.x, c.y); if (!p) { this.skip.set(c.ref, this.t + 4); continue; } if (p.cost < bl) { bl = p.cost; best = c; best.route = p; } }
+    const top = cands.filter(c => c.pri === cands[0].pri).slice(0, 5); let best = null, bl = 1e9, wait = null;
+    for (const c of top) { const p = this.nav.path(B.cx, B.cy, c.x, c.y); if (!p) { const dw = this.door(c, B); if (dw) { wait = wait || dw; continue; } this.skip.set(c.ref, this.t + 4); continue; } if (p.cost < bl) { bl = p.cost; best = c; best.route = p; } }
     if (!best) { for (const c of cands.slice(top.length)) { const p = this.nav.path(B.cx, B.cy, c.x, c.y); if (p) { c.route = p; return c; } } }
-    return best;
+    return best || wait;
+  }
+  // a ring of louvres between us and a light is a door on a clock, not a wall (the Iris): wait just our side of it, in front of the
+  // gap nearest our own bearing — where the blades turn away from as they open — until it opens. null if no shut ring is in the way
+  door(c, B) {
+    let e = null, bd = 1e9; const dist = (q) => Math.hypot(B.cx - q.x, B.cy - q.y);
+    for (const q of this.W.ents) { if (q.d.type !== 'louvres' || !q.shut) continue; const inB = dist(q) < q.R, inC = Math.hypot(c.x - q.x, c.y - q.y) < q.R; if (inB === inC) continue; const g = Math.abs(dist(q) - q.R); if (g < bd) { bd = g; e = q; } }
+    if (!e) return null;
+    const inside = dist(e) < e.R, step = 2 * Math.PI / e.n, a0 = Math.atan2(B.cy - e.y, B.cx - e.x), a = e.ang + (Math.round((a0 - e.ang) / step - 0.5) + 0.5) * step;
+    const rr = inside ? e.R - e.w - B.r - 8 : e.R + e.w + B.r + 8;
+    return { x: e.x + Math.cos(a) * rr, y: e.y + Math.sin(a) * rr, kind: 'wait', ref: e, r: 18, pri: c.pri };
   }
 
   step(dt, ctl) {

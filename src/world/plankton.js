@@ -82,7 +82,7 @@ export function initKind(m, W, d) {
     if (!S) { S = { members: [], hx: d.home ? d.home.x : m.x, hy: d.home ? d.home.y : m.y, range: d.range || 220, path: d.path || null, pk: 0, tx: m.x, ty: m.y, tT: 0, cx: m.x, cy: m.y, cT: -1, scareT: -9, scareX: 0, scareY: 0 }; W.schools.set(id, S); }
     S.members.push(m); m.school = S; const a = Math.random() * TAU; m.vx = Math.cos(a) * 40; m.vy = Math.sin(a) * 40; m.r = 4.6;
   } else if (m.kind === 'firefly') {
-    m.ox = m.x; m.oy = m.y; m.phase = d.phase ?? Math.random(); m.omega = (1 / (d.period || 2.5)) * (0.95 + 0.1 * Math.random()); m.lit = 0; m.dim = true; m.beat = d.beat || 1; W.fireflies.push(m);
+    m.ox = m.x; m.oy = m.y; m.phase = d.phase ?? Math.random(); m.omega = m.omega0 = (1 / (d.period || 2.5)) * (0.95 + 0.1 * Math.random()); m.lit = 0; m.dim = true; m.beat = d.beat || 1; W.fireflies.push(m);
   } else if (m.kind === 'seed') {
     m.pod = d.pod || null; if (m.pod) m.spawnT = -1e9;          // asleep in its pod: neither seen nor eaten until the pod bursts
   }
@@ -172,6 +172,11 @@ function firefly(m, dt) {
   const W = m.W, F = W.fireflies; let s = 0, n = 0;
   for (let i = 0; i < F.length; i++) { const o = F[i]; if (o === m || o.dead) continue; const dx = o.ox - m.ox, dy = o.oy - m.oy; if (dx * dx + dy * dy > 115600) continue; s += Math.sin(TAU * (o.phase - m.phase)); n++; }
   m.phase += dt * (m.omega + (n ? 0.075 * s / n : 0));                // weak coupling: a cloud takes a quarter of a minute to find one rhythm — long enough to be watched doing it
+  // …and where music is playing, the cloud slowly finds *its* pulse (the one, two, four or eight beats nearest its own clock), so it flashes on the downbeat
+  //  and its little bell falls in time. Found, not imposed: the clock retunes over seconds and the pull on the phase is gentle
+  const pu = W.sound && W.sound.pulse ? W.sound.pulse(1 / m.omega0) : null;
+  if (pu) { m.omega += ((0.98 + 0.04 * m.seed) / pu[1] - m.omega) * Math.min(1, dt * 0.25); m.phase += dt * 0.05 * Math.sin(TAU * (pu[0] - m.phase)); }
+  else m.omega += (m.omega0 - m.omega) * Math.min(1, dt * 0.25);
   if (m.phase >= 1) { m.phase -= 1; flashed(W, m); }
   const p = m.phase; m.lit = m.beat === 2 ? (p < 0.17 ? Math.sin(p / 0.17 * Math.PI) : p > 0.24 && p < 0.42 ? 0.8 * Math.sin((p - 0.24) / 0.18 * Math.PI) : 0)      // a heart: lub-dub
     : p < 0.34 ? Math.pow(Math.sin(p / 0.34 * Math.PI), 0.75) : 0; m.dim = m.lit < 0.3;
