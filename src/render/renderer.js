@@ -84,6 +84,12 @@ export class Renderer {
     fb.mark(x0, y0, x1, y1);
   }
 
+  // put one decal back into the backdrop (a shy light that has come to rest somewhere new)
+  rebake(e) {
+    if (!this.base || e.baked) return; const fb = this.fb, v = this.view, ink = this.ink; ink.target(true); e.bake(ink, this); ink.target(false); if (!e.baked) return;
+    const r = e.bakeR || 30; const x0 = Math.max(0, Math.floor((e.bx - r - v.ox) * v.z)), y0 = Math.max(0, Math.floor((e.by - r - v.oy) * v.z)), x1 = Math.min(fb.w, Math.ceil((e.bx + r - v.ox) * v.z)), y1 = Math.min(fb.h, Math.ceil((e.by + r - v.oy) * v.z));
+    if (x1 <= x0 || y1 <= y0) return; for (let y = y0; y < y1; y++) { const o = y * fb.w; for (let x = x0; x < x1; x++) fb.px[o + x] = fb.back[o + x]; } fb.mark(x0, y0, x1, y1);
+  }
   // world ↔ framebuffer / css
   wx2f(x) { return (x - this.view.ox) * this.view.z; }
   wy2f(y) { return (y - this.view.oy) * this.view.z; }

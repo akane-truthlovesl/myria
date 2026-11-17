@@ -85,6 +85,9 @@ export class App {
       const done = R.develop(this.turbo ? 200 : 10);
       if (done && T.dark >= T.minDark && (!T.o.hold || T.o.hold())) {
         hud.setLoader(false); T.phase = 'in'; T.t = 0; this.state = 'in'; this.acc = 0;
+        // the pointer is wherever the last door was: a new room must not set off after it. The creature waits for the hand to move.
+        if (this.input.device === 'mouse') this.input.mouse.follow = false;
+        { const F = this.world.player && this.world.player.focus, cl = hud.clear; cl.length = 0; if (F) { cl.push(R.worldToCss(F.B.cx, F.B.cy)); for (const e of this.world.ents) if (e.d.type === 'pore') cl.push(R.worldToCss(e.x, e.y)); } }
         T.o.onReveal && T.o.onReveal();
       }
     } else if (T.phase === 'in') {
@@ -208,6 +211,10 @@ export class App {
     const sh = this.world.shake; if (sh > 0.04 && this.state === 'play' && !this.paused) { this.canvas.style.transform = `translate(${((Math.random() - 0.5) * sh * 9).toFixed(1)}px,${((Math.random() - 0.5) * sh * 9).toFixed(1)}px)`; this._shook = true; } else if (this._shook) { this.canvas.style.transform = ''; this._shook = false; }
     this.hud.setFlash(this.world.flash);
     if (this.mode && this.mode.frame) this.mode.frame(dt);
+    // what the words on the glass must keep clear of: the creature and the way out
+    if ((this.frames & 7) === 0) { const W = this.world, F = W.player && W.player.focus, cl = this.hud.clear; cl.length = 0;
+      if (F && F.alive && this.state !== 'idle') { cl.push(this.R.worldToCss(F.B.cx, F.B.cy)); for (const e of W.ents) if (e.d.type === 'pore' && !e.taken) cl.push(this.R.worldToCss(e.x, e.y)); }
+      this.hud.layout(); }
     const p = this.perf; p.sim += (t1 - t0 - p.sim) * 0.1; if (draw) p.ren += (t2 - t1 - p.ren) * 0.1;
     if (this.state === 'play' && !this.paused && raw < 0.25) this._adapt(raw);
   }

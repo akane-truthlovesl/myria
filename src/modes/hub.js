@@ -110,6 +110,18 @@ export class Hub {
     for (const O of W.player.orgs) { O.dormant = false; O.crown.joy(); O.excite = 1; W.fx.ring(O.B.cx, O.B.cy, [1, 0.8, 0.6], 160, 1.0); W.fx.burst(O.B.cx, O.B.cy, 14, [1, 0.85, 0.6], 150, { life: 0.9 }); }
     const snd = this.app.sound; snd.init(); if (snd.ready) { snd.bloom(); snd.ambience('deep', 50); }
   }
+  // the whole word eaten: the dish answers — a breath of light from the creature, a chord, and a fuse of dew that runs from it to the way in
+  mote() { const W = this.app.world; if (!this.wordDone && W.stats.motes >= W.stats.motesTotal) this.wordEaten(); }
+  wordEaten() {
+    this.wordDone = true; const app = this.app, W = app.world, F = W.player && W.player.focus; if (!F || !F.alive) return;
+    F.crown.joy(); F.excite = 1; W.flash = 0.7; W.hitStop = 0.12;
+    W.fx.ring(F.B.cx, F.B.cy, [1, 0.86, 0.62], Math.max(W.spec.W, W.spec.H) * 0.55, 1.7, { a: 0.55, w: 3.2 }); W.fx.ring(F.B.cx, F.B.cy, [1, 0.95, 0.85], F.B.r * 3.2, 0.8, { a: 0.8 });
+    W.fx.burst(F.B.cx, F.B.cy, 34, [1, 0.9, 0.7], 280, { life: 1.3, size: 2.8 });
+    if (app.sound.ready) app.sound.bloom(); app.haptics && app.haptics.fuse && app.haptics.fuse();
+    const door = W.ents.find(e => e.d.type === 'pore' && e.d.dest === 'odyssey'); if (!door) return;
+    const dx = door.x - F.B.cx, dy = door.y - F.B.cy, L = Math.hypot(dx, dy), n = Math.max(4, Math.round(L / 64)); if (L < F.B.r + door.r + 40) return;
+    for (let k = 1; k < n; k++) { const u = (F.B.r + 26 + (L - F.B.r - door.r - 50) * (k - 1) / Math.max(1, n - 2)) / L; W.spawn({ type: 'mote', x: F.B.cx + dx * u, y: F.B.cy + dy * u, value: 1, free: true, delay: 0.35 + k * 0.08, col: [1, 0.92, 0.74] }); }
+  }
   onEvent(e) { if (!this.awake && (e.type === 'press' || e.type === 'key')) { this.wake(); return e.type === 'press'; } return false; }
   poreReady(p) { const d = this.dests.find(q => q.id === p.d.dest); return this.awake && d && d.open && (this.app.save.stars() > 0 || this.app.world.stats.motes >= 6 || p.d.dest !== 'odyssey'); }
   poreProgress(p) { const d = this.dests.find(q => q.id === p.d.dest); if (!d || !d.open) return 0; return p.d.dest === 'odyssey' && !this.app.save.stars() ? Math.min(1, this.app.world.stats.motes / 6) : 1; }

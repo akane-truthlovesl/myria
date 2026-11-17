@@ -36,7 +36,9 @@ export class Bot {
     const risky = (x, y) => { for (const h of hz) if (Math.hypot(h.x - x, h.y - y) < h.r + 30) return true; return false; };
     const ready = pore && pore.open > 0.8;
     const dared = [];
-    if (!(ready && this.greed === 0)) for (const m of W.pickups) { if (m.dead || m.held) continue; if (this.greed < 2 && risky(m.x, m.y)) { dared.push(m); continue; } add(m.x, m.y, 'mote', m, 4, 8); }
+    if (!(ready && this.greed === 0)) for (const m of W.pickups) { if (m.dead || m.held || m.spawnT < 0) continue; if (this.greed < 2 && risky(m.x, m.y)) { dared.push(m); continue; } add(m.x, m.y, 'mote', m, m.living ? 4.5 : 4, 8); }      // still light first; living light after (it will not wait for us)
+    // a pod full of seeds: brush it
+    if (!(ready && this.greed === 0)) for (const e of W.ents) if (e.d.type === 'pod' && !e.open && e.full > 0.6 && !risky(e.x, e.y)) add(e.x, e.y, 'pod', e, 4.2, e.r + 6);
     // the door is still shut and the only light left is beside something with teeth: then that is the light to take (the planner keeps to the safe side of it)
     if (!ready && !cands.some(c => c.kind === 'mote')) for (const m of dared) add(m.x, m.y, 'mote', m, 4, 8);
     // neighbours: prey is food, especially when the pore asks for it
@@ -51,7 +53,7 @@ export class Bot {
     // doubled films only give way to a flight: when one is up, the bands that throw at it (straight, or by way of another band) are places to go
     const tough = W.ents.filter(e => e.d.type === 'film' && e.tough && e.S.active);
     if (tough.length) for (const e of W.ents) { if (e.d.type !== 'bumper') continue; let q = e, hops = 0, hit = false; while (q && hops++ < 5) { const fx = q.to ? q.to.x : q.x + q.nx * 300, fy = q.to ? q.to.y : q.y + q.ny * 300; if (tough.some(t => Math.hypot(t.x - fx, t.y - fy) < t.len * 0.5)) { hit = true; break; } q = W.ents.find(o => o.d.type === 'bumper' && o !== q && Math.hypot(o.x - fx, o.y - fy) < 70); } if (hit) add(e.x + e.nx * 64, e.y + e.ny * 64, 'bumper', e, 5, 10); }
-    if (ready) add(pore.x, pore.y, 'pore', pore, cands.some(c => c.kind === 'mote' || c.kind === 'prey') && this.greed > 0 ? 6 : 1, pore.r * 0.3);
+    if (ready) add(pore.x, pore.y, 'pore', pore, cands.some(c => c.kind === 'mote' || c.kind === 'prey' || c.kind === 'pod') && this.greed > 0 ? 6 : 1, pore.r * 0.3);
     if (!cands.length) { if (pore) return { x: pore.x, y: pore.y, kind: 'wait', ref: pore, r: pore.r * 2.2 }; return null; }
     // lowest priority class first; inside a class the shortest real path wins (checked for the few nearest by air)
     cands.sort((a, b) => a.pri - b.pri || Math.hypot(a.x - B.cx, a.y - B.cy) - Math.hypot(b.x - B.cx, b.y - B.cy));
@@ -92,6 +94,7 @@ export class Bot {
     }
     const T = this.target; if (!T) return ctl;
     if ((T.kind === 'prey' || T.kind === 'cleave' || T.kind === 'bait') && T.ref.alive) { T.x = T.ref.B.cx; T.y = T.ref.B.cy; }
+    if (T.kind === 'mote' && T.ref.living) { T.x = T.ref.x; T.y = T.ref.y; if (T.ref.free) this.replan = Math.min(this.replan, 0.25); }      // living light moves: keep after it
     if (T.kind === 'lantern' && T.ref.orb) { T.x = T.ref.x; T.y = T.ref.y; }
     // follow the route: aim at the furthest waypoint still in line of sight
     let ax = T.x, ay = T.y;
@@ -100,7 +103,14 @@ export class Bot {
     let dx = ax - B.cx, dy = ay - B.cy; const d = Math.hypot(dx, dy) + 1e-3; const dT = Math.hypot(T.x - B.cx, T.y - B.cy);
     let thr = 1;
     if (T.kind === 'pad' || T.kind === 'wait' || T.kind === 'pool' || T.kind === 'heal' || T.kind === 'vent' || T.kind === 'pore') thr = dT < T.r ? 0 : Math.min(1, dT / 70 + 0.15);       // arrive like a player does: ease in, then rest
+    // a shy light is only ever taken by something that comes slowly
+    if (T.kind === 'mote' && T.ref.kind === 'shy' && dT < 240) thr = Math.min(thr, 0.34);
     ctl.intent.x = dx / d * thr; ctl.intent.y = dy / d * thr; ctl.aim = { x: ax, y: ay };
+    // a school outswims us: a dart into it is the way (and a chase that goes nowhere is let go)
+    if (T.kind === 'mote' && T.ref.kind === 'shoal') {
+      if (dT < 170 && dT > B.r && F.dartCD <= 0 && B.count > 30 && this.lanceT < this.t && !W.phys.blocked(B.cx, B.cy, T.x, T.y, 4)) { ctl.darts = [{ x: T.x - B.cx, y: T.y - B.cy, power: 1 }]; this.lanceT = this.t + 1.2; this.note('dart→shoal'); }
+    }
+    if (T.kind === 'mote' && T.ref.living) { this.lifeT = this.lifeRef === T.ref ? (this.lifeT || 0) + dt : 0; this.lifeRef = T.ref; if (this.lifeT > 7) { this.skip.set(T.ref, this.t + 20); this.lifeT = 0; this.replan = 0; this.note('let-go:' + T.ref.kind); } }
     if (T.kind === 'prey' && dT < 150 && dT > T.ref.B.r + B.r * 0.6 && F.dartCD <= 0 && B.count > 40 && this.lanceT < this.t) { ctl.darts = [{ x: T.x - B.cx, y: T.y - B.cy, power: 1 }]; this.lanceT = this.t + 1.6; this.note('pounce'); }
     if (T.kind === 'sow' && dT < 34 && this.budT <= 0) {
       // a piece already in there that is not on the switch, or too little of us here to spare one: call everyone back and sow again

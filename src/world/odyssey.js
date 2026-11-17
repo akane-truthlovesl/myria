@@ -7,6 +7,7 @@ import { SURF, MAT } from '../sim/materials.js';
 import { TAU } from '../core/util.js';
 import { frame, dish } from './rooms.js';
 import { moteTrail, moteRing } from './entities.js';
+import { shoalOf, fireflyCloud } from './plankton.js';
 
 // layout frame: u runs along the long axis, v across it
 function L(aspect) {
@@ -38,6 +39,8 @@ export const ROOMS = [
       ...trail(f, [[0.30, 0.60], [0.40, 0.78], [0.50, 0.83], [0.60, 0.78], [0.70, 0.60]], 9),
       ...moteRing(f.P(0.86, 0.5).x, f.P(0.86, 0.5).y, 74, 5, 2, { a0: 0.3 }),
       { type: 'pore', ...f.P(0.86, 0.5) },
+      // …and something alive: a school of little lights swimming its slow loop round the stone. Rush it and it scatters; keep still and it comes to look.
+      ...shoalOf('pillar', c.x + 150, c.y, 7, { path: [0, 1, 2, 3, 4, 5, 6, 7].map(k => ({ x: c.x + Math.cos(k / 8 * TAU) * (f.land ? 168 : 150), y: c.y + Math.sin(k / 8 * TAU) * (f.land ? 150 : 168) })) }),
     ];
     return { W, H, geo, ents, pal: PAL.dew, spawn: { ...f.P(0.11, 0.5), n: 40 } };
   } },
@@ -53,6 +56,8 @@ export const ROOMS = [
       ...trail(f, [[0.60, 0.42], [0.72, 0.52], [0.66, 0.74], [0.80, 0.78]], 8),
       ...trail(f, [[0.74, 0.15], [0.84, 0.15]], 3, 4, { col: [0.6, 0.95, 1] }),
       { type: 'pore', ...f.P(0.88, 0.56) },
+      // beyond the gap, three shy sparks: whatever squeezed through slowly can take them; whatever rushes them is left with an empty plate
+      { type: 'mote', kind: 'shy', ...f.P(0.62, 0.86) }, { type: 'mote', kind: 'shy', ...f.P(0.86, 0.36) }, { type: 'mote', kind: 'shy', ...f.P(0.92, 0.80) },
     ];
     return { W, H, geo, ents, pal: PAL.dew, spawn: { ...f.P(0.12, 0.5) } };
   } },
@@ -67,6 +72,7 @@ export const ROOMS = [
       ...trail(f, [[0.52, 0.5], [0.64, 0.5]], 4), ...trail(f, [[0.56, 0.24], [0.74, 0.16], [0.90, 0.26]], 6), ...trail(f, [[0.56, 0.76], [0.74, 0.84], [0.90, 0.74]], 6),
       { type: 'film', ...f.P(0.83, 0.5), len: f.Lv * 0.30, a: fa, speed: 400 }, ...moteRing(f.P(0.91, 0.5).x, f.P(0.91, 0.5).y, 26, 3, 4, { col: [0.6, 0.95, 1] }),
       { type: 'pore', ...f.P(0.62, 0.5), r: 38 },
+      ...fireflyCloud(f.P(0.62, 0.5).x, f.P(0.62, 0.5).y, 7, 96),          // a cloud of fireflies round the way out, finding one another's rhythm
     ];
     return { W, H, geo, ents, pal: PAL.dew, spawn: { ...f.P(0.10, 0.5) } };
   } },
@@ -80,6 +86,8 @@ export const ROOMS = [
       ...trail(f, [[0.18, 0.5], [0.30, 0.5]], 4), ...trail(f, [[0.20, 0.26], [0.34, 0.20]], 4), ...trail(f, [[0.20, 0.74], [0.34, 0.80]], 4),
       ...trail(f, [[0.52, 0.30], [0.58, 0.5], [0.52, 0.70]], 6), ...moteRing(f.P(0.86, 0.5).x, f.P(0.86, 0.5).y, 70, 6, 3),
       { type: 'pore', ...f.P(0.86, 0.5) },
+      // two seed pods grown on the far wall: brush one and it bursts into drifting light
+      { type: 'pod', ...f.P(0.56, 0.06), a: Math.atan2(f.vec(0, 1)[1], f.vec(0, 1)[0]), n: 5 }, { type: 'pod', ...f.P(0.56, 0.94), a: Math.atan2(f.vec(0, -1)[1], f.vec(0, -1)[0]), n: 5 },
     ];
     return { W, H, geo, ents, pal: PAL.dew, spawn: { ...f.P(0.10, 0.5), n: 70 }, minMass: 70 };
   } },
@@ -90,7 +98,7 @@ export const ROOMS = [
     const ents = [
       { type: 'rotor', x: c.x, y: c.y, R: R2, r: 8, gap: 0.27, spin: 0.36, a: a0 + 1.9, pulse: 0.5 },
       { type: 'rotor', x: c.x, y: c.y, R: R1, r: 8, gap: 0.42, spin: -0.52, a: a0 - 1.2, col: [1.0, 0.8, 0.5] },
-      ...moteRing(c.x, c.y, (R1 + R2) / 2, 12, 2), ...moteRing(c.x, c.y, R1 * 0.52, 6, 4, { col: [1.0, 0.8, 0.5], a0: 0.4 }),
+      ...moteRing(c.x, c.y, (R1 + R2) / 2, 12, 2), ...moteRing(c.x, c.y, R1 * 0.52, 6, 4, { col: [1.0, 0.8, 0.5], a0: 0.4 }).map(m => ({ ...m, kind: 'firefly', phase: 0.12 + 0.05 * Math.random(), period: 1.5, beat: 2 })),      // the heart beats: six gold fireflies, flashing as one
       ...trail(f, [[0.13, 0.26], [0.20, 0.5], [0.13, 0.74]], 5), ...trail(f, [[0.87, 0.26], [0.80, 0.5], [0.87, 0.74]], 5),
       { type: 'pore', x: c.x, y: c.y, r: 34, col: [1.0, 0.8, 0.5] },
     ];
@@ -105,6 +113,7 @@ export const ROOMS = [
       ...trail(f, [[0.18, 0.24], [0.34, 0.30], [0.36, 0.5], [0.34, 0.70], [0.18, 0.76]], 11),
       ...trail(f, [[0.56, 0.20], [0.56, 0.80]], 8), ...trail(f, [[0.70, 0.30], [0.78, 0.5], [0.70, 0.70]], 6, 3),
       { type: 'pore', ...f.P(0.88, 0.5) },
+      ...shoalOf('comb', f.P(0.70, 0.5).x, f.P(0.70, 0.5).y, 7, { path: [f.P(0.64, 0.22), f.P(0.80, 0.24), f.P(0.84, 0.76), f.P(0.64, 0.78)] }),
     ];
     return { W, H, geo, ents, pal: PAL.glass, spawn: { ...f.P(0.11, 0.5), n: 90 }, minMass: 90 };
   } },
@@ -158,6 +167,7 @@ export const ROOMS = [
       ...trail(f, [[0.18, 0.2], [0.24, 0.5], [0.18, 0.8]], 5), ...trail(f, [[0.74, 0.22], [0.80, 0.36]], 3),
       { type: 'pool', kind: 'heal', ...f.P(0.80, 0.22), r: 52, max: 50 },
       { type: 'pore', ...f.P(0.88, 0.62) },
+      { type: 'mote', kind: 'shy', ...f.P(0.50, 0.12) }, { type: 'mote', kind: 'shy', ...f.P(0.20, 0.86) }, { type: 'mote', kind: 'shy', ...f.P(0.72, 0.88) },
     ];
     return { W, H, geo, ents, pal: PAL.glass, spawn: { ...f.P(0.10, 0.5), n: 100 }, minMass: 100 };
   } },
@@ -170,7 +180,8 @@ export const ROOMS = [
     [0.34, 0.5, 0.66].forEach((u, k) => { const top = k % 2 === 0; const q = f.P(u, top ? 0.5 - (lane / 2 + 62) / f.Lv : 0.5 + (lane / 2 + 62) / f.Lv); const sz = f.land ? [92, 124] : [124, 92];
       ents.push({ type: 'crusher', x: q.x, y: q.y, w: sz[0], h: sz[1], travel: lane - 30, period: 2.8, phase: k * 0.33, dir: top ? dir : [-dir[0], -dir[1]] }); });
     ents.push(...trail(f, [[0.26, 0.5], [0.74, 0.5]], 13), ...trail(f, [[0.12, 0.24], [0.16, 0.5], [0.12, 0.76]], 5), ...trail(f, [[0.88, 0.24], [0.84, 0.40]], 3, 3),
-      { type: 'lantern', id: 'L1', ...f.P(0.12, 0.14) }, { type: 'lantern', id: 'L2', ...f.P(0.88, 0.86) }, { type: 'pore', ...f.P(0.88, 0.5), key: ['L1', 'L2'] });
+      { type: 'lantern', id: 'L1', ...f.P(0.12, 0.14) }, { type: 'lantern', id: 'L2', ...f.P(0.88, 0.86) }, { type: 'pore', ...f.P(0.88, 0.5), key: ['L1', 'L2'] },
+      ...shoalOf('lane', f.P(0.5, 0.5).x, f.P(0.5, 0.5).y, 6, { path: [f.P(0.30, 0.5), f.P(0.70, 0.5)] }));
     return { W, H, geo, ents, pal: PAL.glass, spawn: { ...f.P(0.10, 0.5), n: 110 }, minMass: 110 };
   } },
   { id: 'centrifuge', name: 'The Centrifuge', par: 80, boss: true, quota: 0.5, build(a) {
@@ -205,6 +216,8 @@ export const ROOMS = [
       ...trail(f, [[0.14, 0.24], [0.28, 0.30], [0.30, 0.52]], 6), ...trail(f, [[0.46, 0.22], [0.54, 0.40], [0.46, 0.60]], 7, 3, { col: [1, 0.75, 0.3] }),
       ...trail(f, [[0.70, 0.24], [0.80, 0.5], [0.70, 0.76]], 8), { type: 'pool', kind: 'rinse', ...f.P(0.80, 0.82), r: 40 },
       { type: 'pore', ...f.P(0.88, 0.30) },
+      // light adrift in the river, carried down toward the grinder at its foot: catch it on the way, or the teeth will have it
+      ...[0.10, 0.24, 0.38].map((v, k) => ({ type: 'mote', kind: 'drift', ...f.P(0.5 + (k - 1) * 0.05, v), value: 3 })),
     ];
     return { W, H, geo, ents, pal: PAL.amber, spawn: { ...f.P(0.11, 0.5), n: 80 }, minMass: 80 };
   } },
@@ -215,6 +228,7 @@ export const ROOMS = [
       { type: 'pool', kind: 'morph', mat: MAT.SILVER, morph: { speed: 1.5, tonus: 0.8, dart: 1.25 }, ...f.P(0.22, 0.5), r: 48 },
       ...trail(f, [[0.30, 0.22], [0.50, 0.16], [0.70, 0.22]], 9), ...trail(f, [[0.30, 0.78], [0.50, 0.84], [0.70, 0.78]], 9), ...trail(f, [[0.36, 0.36], [0.64, 0.36]], 5, 3), ...trail(f, [[0.36, 0.64], [0.64, 0.64]], 5, 3),
       { type: 'pore', ...f.P(0.88, 0.5) },
+      { type: 'mote', kind: 'shy', ...f.P(0.44, 0.08) }, { type: 'mote', kind: 'shy', ...f.P(0.56, 0.92) },
     ];
     const h1 = f.P(0.62, 0.26), h2 = f.P(0.62, 0.74);
     return { W, H, geo, ents, pal: PAL.amber, spawn: { ...f.P(0.10, 0.5), n: 70 }, minMass: 70, cap: 120, rivals: [{ kind: 'hunter', ...h1, n: 150 }, { kind: 'hunter', ...h2, n: 150 }] };
@@ -237,6 +251,7 @@ export const ROOMS = [
       ...trail(f, [[0.60, 0.865], [0.16, 0.865]], 7, 2, { col: m }),        // the flume pays you for the ride
       ...trail(f, [[0.74, 0.14], [0.92, 0.14]], 4), ...trail(f, [[0.76, 0.865], [0.92, 0.865]], 4, 3),
       ...moteRing(f.P(0.84, 0.42).x, f.P(0.84, 0.42).y, 64, 6, 2), { type: 'pore', ...f.P(0.84, 0.42) },
+      ...[0.30, 0.45, 0.60].map(u => ({ type: 'mote', kind: 'drift', ...f.P(u, 0.865) })),          // light riding the loop: river, flume, valve, round again
     ];
     return { W, H, geo, ents, pal: PAL.amber, spawn: { ...f.P(0.12, 0.34), n: 80 }, minMass: 80 };
   } },
@@ -301,6 +316,7 @@ export const ROOMS = [
       ...m.flatMap(q => moteRing(f.P(q[0], q[1]).x, f.P(q[0], q[1]).y, 40, 5, 3, { col: [0.7, 0.8, 1] })),
       ...trail(f, [[0.12, 0.60], [0.24, 0.70], [0.14, 0.84]], 6), ...trail(f, [[0.76, 0.30], [0.86, 0.5], [0.76, 0.70]], 7),
       { type: 'pool', kind: 'rinse', ...f.P(0.82, 0.16), r: 38 }, { type: 'pore', ...f.P(0.88, 0.84), r: 36 },
+      ...[0.36, 0.64].map(u => ({ type: 'mote', kind: 'drift', ...f.P(u, 0.08), value: 3 })),
     ];
     return { W, H, geo, ents, pal: PAL.amber, spawn: { ...f.P(0.09, 0.42), n: 80 }, minMass: 80 };
   } },
@@ -344,6 +360,7 @@ export const ROOMS = [
       { type: 'watcher', ...f.P(0.38, 0.09), a: down, sweep: 0.75, speed: 0.55, range: 300 }, { type: 'watcher', ...f.P(0.60, 0.91), a: up, sweep: 0.75, speed: 0.6, phase: 1.6, range: 300 }, { type: 'watcher', ...f.P(0.80, 0.09), a: down, sweep: 0.6, speed: 0.7, phase: 3, range: 280 },
       ...trail(f, [[0.16, 0.30], [0.24, 0.5], [0.16, 0.70]], 5), ...trail(f, [[0.34, 0.40], [0.40, 0.56], [0.52, 0.52]], 6), ...trail(f, [[0.54, 0.44], [0.66, 0.46], [0.70, 0.58]], 6, 3), ...trail(f, [[0.80, 0.56], [0.86, 0.70]], 3),
       { type: 'pore', ...f.P(0.90, 0.5), r: 36 },
+      ...fireflyCloud(f.P(0.54, 0.5).x, f.P(0.54, 0.5).y, 9, Math.min(W, H) * 0.34, { period: 2.8 }).filter(m => !geo.some(g => g.t === 'circle' && Math.hypot(g.x - m.x, g.y - m.y) < g.r + 24)),       // in the dark between the watchers, fireflies finding one rhythm
     ];
     return { W, H, geo, ents, pal: PAL.abyss, spawn: { ...f.P(0.09, 0.5), n: 80 }, minMass: 80 };
   } },
@@ -357,6 +374,8 @@ export const ROOMS = [
       { type: 'current', ...f.P(0.76, 0.5), w: lh[0], h: lh[1], vx: a2[0] * 210, vy: a2[1] * 210 }, { type: 'current', ...f.P(0.24, 0.5), w: lh[0], h: lh[1], vx: -a2[0] * 210, vy: -a2[1] * 210 },
       ...trail(f, [[0.30, 0.2], [0.70, 0.2]], 8), ...trail(f, [[0.76, 0.32], [0.76, 0.68]], 5), ...trail(f, [[0.70, 0.8], [0.30, 0.8]], 8), ...trail(f, [[0.24, 0.68], [0.24, 0.32]], 5),
       ...moteRing(c.x, c.y, 84, 6, 3, { col: [0.8, 0.7, 1] }), { type: 'pore', ...f.P(0.90, 0.88), r: 36 },
+      ...shoalOf('gyre', f.P(0.5, 0.2).x, f.P(0.5, 0.2).y, 8, { path: [f.P(0.72, 0.2), f.P(0.76, 0.5), f.P(0.70, 0.8), f.P(0.30, 0.8), f.P(0.24, 0.5), f.P(0.28, 0.2)] }),
+      ...[[0.40, 0.2], [0.76, 0.6], [0.6, 0.8], [0.24, 0.4]].map(q => ({ type: 'mote', kind: 'drift', ...f.P(q[0], q[1]) })),
     ];
     return { W, H, geo, ents, pal: PAL.abyss, spawn: { ...f.P(0.09, 0.12), n: 90 }, minMass: 90 };
   } },
@@ -373,7 +392,7 @@ export const ROOMS = [
     const f = L(a), { W, H } = f; const geo = dish(W, H);
     geo.push(f.box(0.5, 0.26, f.Lu * 0.30, 36, 18), f.box(0.5, 0.74, f.Lu * 0.30, 36, 18));
     const ents = [...trail(f, [[0.18, 0.20], [0.30, 0.14]], 4), ...trail(f, [[0.18, 0.80], [0.30, 0.86]], 4), ...trail(f, [[0.36, 0.5], [0.64, 0.5]], 9, 3), ...trail(f, [[0.40, 0.12], [0.60, 0.12]], 5), ...trail(f, [[0.40, 0.88], [0.60, 0.88]], 5), ...moteRing(f.P(0.86, 0.5).x, f.P(0.86, 0.5).y, 62, 5, 2),
-      { type: 'pore', ...f.P(0.88, 0.5), r: 36 }];
+      { type: 'pore', ...f.P(0.88, 0.5), r: 36 }, ...shoalOf('bluff', f.P(0.5, 0.5).x, f.P(0.5, 0.5).y, 6, { range: 200 })];
     return { W, H, geo, ents, pal: PAL.abyss, spawn: { ...f.P(0.09, 0.5), n: 56 }, minMass: 56, cap: 56, rivals: [{ kind: 'hunter', ...f.P(0.5, 0.5), n: 104 }, { kind: 'hunter', ...f.P(0.70, 0.30), n: 100 }, { kind: 'hunter', ...f.P(0.70, 0.72), n: 100 }] };
   } },
   { id: 'trojan', name: 'Trojan', par: 70, quota: 0, hint: 'decoy', build(a) {
@@ -410,7 +429,8 @@ export const ROOMS = [
     [0, 1, 2].forEach((k) => { const an = a0 + k * TAU / 3; const px = c.x + Math.cos(an) * 250, py = c.y + Math.sin(an) * 250; ents.push({ type: 'pad', id: 'ABC'[k], x: px, y: py, need: 14, r: 44 }, ...moteRing(px, py, 64, 6, 2)); });
     [1, -1].forEach((sg) => { const an = a0 + sg * TAU / 6; ents.push({ type: 'blade', x: c.x + Math.cos(an) * 215, y: c.y + Math.sin(an) * 215, len: 100, spin: sg * 1.3 }); });
     ents.push({ type: 'blade', x: c.x + dd[0] * 84, y: c.y + dd[1] * 84, len: 84, spin: 1.6 });
-    ents.push({ type: 'gate', id: 'G', x: c.x + dd[0] * 150, y: c.y + dd[1] * 150, w: dd[0] ? 36 : 150, h: dd[0] ? 150 : 36, dx: dd[0] ? 0 : 116, dy: dd[0] ? 116 : 0, need: ['A', 'B', 'C'], latch: true, surf: SURF.GLASS }, ...moteRing(c.x, c.y, 100, 10, 3, { col: [1, 0.8, 0.6] }));
+    // (inside the shell, the heart itself: ten lights beating as one)
+    ents.push({ type: 'gate', id: 'G', x: c.x + dd[0] * 150, y: c.y + dd[1] * 150, w: dd[0] ? 36 : 150, h: dd[0] ? 150 : 36, dx: dd[0] ? 0 : 116, dy: dd[0] ? 116 : 0, need: ['A', 'B', 'C'], latch: true, surf: SURF.GLASS }, ...moteRing(c.x, c.y, 100, 10, 3, { col: [1, 0.8, 0.6] }).map(m => ({ ...m, kind: 'firefly', phase: 0.1 + 0.04 * Math.random(), period: 1.25, beat: 2 })));
     const sd = Math.min(330, (f.Lu / 2) - 90);
     return { W, H, geo, ents: ents.filter(e => e.type !== 'mote' || (e.x > 60 && e.y > 60 && e.x < W - 60 && e.y < H - 60)), pal: PAL.abyss, spawn: { x: c.x + dd[0] * sd, y: c.y + dd[1] * sd, n: 120 }, minMass: 120 };
   } },

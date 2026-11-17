@@ -11,6 +11,7 @@ import { TAU, clamp } from '../core/util.js';
 import { makeShape, moveShape } from '../sim/physics.js';
 import { SURF, MAT, MATS } from '../sim/materials.js';
 import { solidSprite } from '../render/sprites.js';
+import { initKind, stepKind, drawKind, bakeKind, takenKind, Pod } from './plankton.js';
 
 export const COL = {
   mote: [1.0, 0.86, 0.56], cyan: [0.45, 0.95, 1.0], heal: [1.0, 0.55, 0.38], gold: [1.0, 0.8, 0.42],
@@ -32,6 +33,7 @@ export class Mote extends Entity {
     this.hx = this.x; this.hy = this.y; this.vx = d.vx || 0; this.vy = d.vy || 0;
     this.seed = Math.random(); this.col = d.col || COL.mote; this.held = null; this.claim = null; this.owner = d.owner ?? null;
     this.free = !!d.free; this.spawnT = d.delay ? -d.delay : 0.0001; this.pop = 0; this.ttl = d.ttl || 0; this.age = 0;
+    this.kind = d.kind || null; this.living = false; if (this.kind) initKind(this, W, d);          // living light (plankton.js): drift · shy · shoal · firefly · seed
   }
   update(dt) {
     this.t += dt;
@@ -41,6 +43,7 @@ export class Mote extends Entity {
     // nobody is making must not keep every other feeler — and the autopilot — away from the light for ever (found as an unwinnable "every light" sprint).
     { const r = this.held || this.claim; if (r && r.beat !== undefined && this.W.time - r.beat > 0.6) { this.held = null; this.claim = null; } }
     if (this.held) { if (this.baked) this.W.release(this); return; }
+    if (this.living) { stepKind(this, dt); this.x = this.hx; this.y = this.hy; return; }
     if (this.baked) return;                           // at home, painted into the plate: costs nothing until something wants it
     if (this.free) { const dr = Math.max(0, 1 - 2.2 * dt); this.vx *= dr; this.vy *= dr; this.hx += this.vx * dt; this.hy += this.vy * dt; }
     this.x = this.hx; this.y = this.hy;
@@ -49,6 +52,7 @@ export class Mote extends Entity {
     if (this.dead) return; this.dead = true;
     const W = this.W; W.release(this);
     W.feed(O.B, (this.value + (O.colony === W.player ? W.moteBonus || 0 : 0)) * (O.colony === W.player && W.ember ? 2 : 1), this.x, this.y, this.col);
+    if (this.living) takenKind(this);
     if (this.d.pity) { if (O.colony === W.player) { W.sound && W.sound.heal(); } return; }                    // wept light feeds, but is not the room's light: it counts for nothing
     if (O.colony === W.player || O.colony && O.colony.ally) { if (!this.d.gift) W.stats.motes++; const chain = W.chainUp(this, O); W.sound && W.sound.mote((this.x / W.spec.W) * 1.6 - 0.8, chain); W.host.haptics && W.host.haptics.tick(); W.emit('mote', this, O, chain); }
     else W.emit('moteLost', this, O);
@@ -57,8 +61,9 @@ export class Mote extends Entity {
   bake(ink) {
     // (a light already eaten or already in a feeler's grip must never be painted: the plate can finish developing a moment *after* the first lights are taken,
     //  and lifting a neighbour re-bakes everything around it — either way a dead light would be left on the floor as a ghost nobody can pick up)
-    if (this.free || this.dead || this.held) return; const c = this.col, r = this.r;
+    if (this.free || this.dead || this.held || this.spawnT < 0) return; const c = this.col, r = this.r;
     this.baked = true; this.bx = this.hx; this.by = this.hy; this.bakeR = r * 4.4;
+    if (this.living) { bakeKind(this, ink); return; }
     ink.light(this.hx, this.hy, r * 4.2, PROF.halo, c[0], c[1], c[2], 0.20);
     ink.light(this.hx, this.hy, r * 1.5, PROF.glow, c[0], c[1], c[2], 1.15);
     ink.light(this.hx, this.hy, r * 0.62, PROF.core, 1, 1, 0.95, 1.0);
@@ -68,6 +73,7 @@ export class Mote extends Entity {
     if (this.baked || this.spawnT < 0) return;
     const k = Math.min(1, this.spawnT / 0.35); let s = k * (2 - k);
     if (this.ttl) { const left = this.ttl - this.age; if (left < 1.6) s *= 0.55 + 0.45 * Math.abs(Math.sin(left * 9)) * Math.min(1, left / 0.4 + 0.3); }      // about to fade: it flickers
+    if (this.living) { drawKind(this, ink, s); return; }
     const c = this.col, r = this.r * s;
     ink.light(this.x, this.y, r * 3.0, PROF.halo, c[0], c[1], c[2], 0.20);
     ink.light(this.x, this.y, r * 1.5, PROF.glow, c[0], c[1], c[2], 1.25);
@@ -508,6 +514,8 @@ export class Grinder extends Entity {
   update(dt) { this.t += dt; this.ot = (this.ot || 0) + dt; let x = this.x, y = this.y; if (this.orbit) { const o = this.orbit; const a = this.ot * (o.w ?? 0.6) + (o.p ?? 0); x = o.x + Math.cos(a) * o.r; y = o.y + Math.sin(a) * (o.ry ?? o.r); } moveShape(this.S, x, y, this.S.angle + this.spin * dt, dt); this.hazard.x = x; this.hazard.y = y; }
   post(dt) {
     const W = this.W, P = W.phys; this.acc += dt; if (this.acc < 0.07) return; this.acc = 0; let shed = 0, who = null;
+    // light that drifts into the teeth is ground to sparks (and no longer asked of you)
+    for (const p of W.pickups) if (p.living && !p.dead && !p.held && p.free && p.spawnT > 0 && Math.hypot(p.x - this.S.x, p.y - this.S.y) < this.r + 4) { p.dead = true; W.fx.sparks(p.x, p.y, 6, p.x - this.S.x, p.y - this.S.y, p.col, 180, { life: 0.4 }); W.sound && W.sound.grind && W.sound.grind(); W.emit('moteLost', p, null); }
     P.forEachNear(this.S.x, this.S.y, this.r + 13, (i) => {
       if (shed >= 2) return; const B = P.bodies[P.body[i]];
       if (B.group < 0 || B.count < 8 || P.mat[i] === MAT.BASTION && Math.random() < 0.85 || Math.random() < 0.5) return;
@@ -570,6 +578,8 @@ export class Well extends Entity {
     const W = this.W, P = W.phys; this.acc += dt; if (this.acc < 0.05) return; this.acc = 0; let who = null, n = 0;
     P.forEachNear(this.x, this.y, this.r + 4, (i) => { const B = P.bodies[P.body[i]]; if (B.group === 0) { who = B; n++; } P.kill(i); });
     if (n) { W.stats.lost += n; W.fx.sparks(this.x, this.y, Math.min(6, n), 0, -1, [0.8, 0.6, 1], 120, { spread: 6.3, life: 0.4 }); W.hurt(who, n, this.x, this.y, true); }
+    // light that drifts into the dark is gone (and no longer asked of you)
+    for (const p of W.pickups) if (p.isMote && !p.dead && !p.held && p.free && p.spawnT > 0 && Math.hypot(p.x - this.x, p.y - this.y) < this.r + 4) { p.dead = true; W.fx.ring(this.x, this.y, p.col, this.r * 2, 0.4, { a: 0.6 }); W.emit('moteLost', p, null); }
   }
   under(ink) { ink.disc(this.x, this.y, this.r * 1.05, 0, 0, 0, 1); }
   over(ov) { const c = [0.75, 0.6, 1]; for (let k = 0; k < 3; k++) { const u = 1 - ((this.t * 0.33 + k / 3) % 1); ov.ring(this.x, this.y, this.r * (1.15 + u * 3.2), 1.3, c, 0.36 * (1 - u), this.t * 2 + k * 2.1, this.t * 2 + k * 2.1 + 4.4); } ov.ring(this.x, this.y, this.r * 1.12, 2.2, [1, 0.85, 0.7], 0.75); ov.glow(this.x, this.y, this.r * 3.4, c, 0.14, 1); }
@@ -845,7 +855,7 @@ export class Bubble extends Entity {
   }
 }
 
-export const ENT = { residue: Residue, bubble: Bubble, bumper: Bumper, valve: Valve, echo: Echo, geyser: Geyser, mimic: Mimic, sponge: Sponge, core: Core, rotor: Rotor, spinner: Spinner, mote: Mote, pore: Pore, pad: Pad, gate: Gate, film: Film, blade: Blade, grinder: Grinder, pool: Pool, current: Current, well: Well, crusher: Crusher, lantern: Lantern, watcher: Watcher, frost: Frost, vent: Vent, iceplug: IcePlug, magnet: Magnet };
+export const ENT = { pod: Pod, residue: Residue, bubble: Bubble, bumper: Bumper, valve: Valve, echo: Echo, geyser: Geyser, mimic: Mimic, sponge: Sponge, core: Core, rotor: Rotor, spinner: Spinner, mote: Mote, pore: Pore, pad: Pad, gate: Gate, film: Film, blade: Blade, grinder: Grinder, pool: Pool, current: Current, well: Well, crusher: Crusher, lantern: Lantern, watcher: Watcher, frost: Frost, vent: Vent, iceplug: IcePlug, magnet: Magnet };
 
 // helpers for room builders
 export function moteTrail(pts, n, value = 2, extra = {}) {

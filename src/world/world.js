@@ -38,7 +38,7 @@ export class World {
   load(spec, carry = {}) {
     const P = this.phys;
     P.clear(); this.fx.clear();
-    this.ents = []; this.pickups = []; this.colonies = []; this.player = null; this._nextGroup = 0;
+    this.ents = []; this.pickups = []; this.colonies = []; this.player = null; this._nextGroup = 0; this.schools = new Map(); this.fireflies = []; this._reb = [];
     this.spec = spec; this.rand = rng(spec.seed || 1);
     const m = 40;
     P.setBounds(-m, -m, spec.W + m, spec.H + m);
@@ -76,6 +76,8 @@ export class World {
   }
   entity(id) { return this.ents.find(e => e.id === id); }
   release(e) { if (e.baked) (this._rel || (this._rel = [])).push(e); }
+  settle(e) { (this._reb || (this._reb = [])).push(e); }                    // a light come to rest again: back into the plate
+  isPlayerNear(x, y, r) { const pl = this.player; if (pl) for (const O of pl.orgs) if (O.alive && Math.hypot(O.B.cx - x, O.B.cy - y) < r + O.B.r) return true; return false; }
   // is there something between two points that body B cannot simply go through? Walls and machines are; a soap film is not (a sibling coming home at a run
   // bursts it, as it always did — steering it round the film's end instead left the two halves of a body either side of it for good), nor is a membrane it is small enough for
   _wayBlocked(B, x0, y0, x1, y1) {
@@ -219,7 +221,7 @@ export class World {
     // the bloom's pull: nearby motes lift off the plate and drift in
     const B = F.B; const reach = B.r + 34 + 76 * f, r2 = reach * reach; const P = this.phys;
     for (const p of this.pickups) {
-      if (!p.isMote || p.dead || p.held || p.owner != null && p.owner !== B.group) continue;
+      if (!p.isMote || p.dead || p.held || p.owner != null && p.owner !== B.group || p.spawnT < 0 || p.living && p.kind !== 'drift' && p.kind !== 'seed') continue;      // (living light keeps its own mind)
       const dx = B.cx - p.x, dy = B.cy - p.y; const d2 = dx * dx + dy * dy; if (d2 > r2) continue;
       if (P.blocked(p.x, p.y, B.cx, B.cy, 1)) continue;                               // never through glass
       if (p.baked) { this.release(p); continue; }
@@ -513,7 +515,7 @@ export class World {
     R.frame(this, this.time);
   }
   // called by the renderer, in order
-  under(R) { if (this._rel && this._rel.length) { for (const e of this._rel) R.unbake(e); this._rel.length = 0; } const ink = R.ink; for (const e of this.ents) if (!e.dead && e.under) e.under(ink, R); }
+  under(R) { if (this._rel && this._rel.length) { for (const e of this._rel) R.unbake(e); this._rel.length = 0; } if (this._reb && this._reb.length) { for (const e of this._reb) if (!e.dead && !e.free && !e.held && !e.baked) R.rebake(e); this._reb.length = 0; } const ink = R.ink; for (const e of this.ents) if (!e.dead && e.under) e.under(ink, R); }
   inner(R) {
     const ink = R.ink, P = this.phys;
     // inner life: specks and micro-bubbles riding the internal flow (a text-free read of the body's motion)

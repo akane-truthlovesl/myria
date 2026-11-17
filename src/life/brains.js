@@ -41,7 +41,7 @@ export class Brain {
       if (pd < 170 && pd > 40 && this.dartT <= 0) { this.coil = (this.coil || 0) + dt; O.coil = Math.min(1, this.coil / 0.55); ix *= 0.1; iy *= 0.1; if (this.coil > 0.55) { O.dart(dx, dy, 1.25); O.coil = 0; this.coil = 0; this.dartT = 2.6; } }
       else { this.coil = 0; O.coil = 0; }
     } else if (k === 'grazer' || k === 'puffer') {
-      let best = null, bd = 420; for (const p of W.pickups) { if (p.dead || p.held) continue; const d = Math.hypot(p.x - B.cx, p.y - B.cy); if (d < bd) { bd = d; best = p; } }
+      let best = null, bd = 420; for (const p of W.pickups) { if (p.dead || p.held || p.spawnT < 0) continue; const d = Math.hypot(p.x - B.cx, p.y - B.cy); if (d < bd) { bd = d; best = p; } }
       if (best) { ix = (best.x - B.cx) / bd; iy = (best.y - B.cy) / bd; this.state = 'graze'; if (bd < B.r * 0.9 + best.r) best.absorb(O, null); }
     }
     if (!ix && !iy) {         // wander: slow loops around a home-ish point

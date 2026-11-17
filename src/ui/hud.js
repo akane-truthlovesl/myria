@@ -20,6 +20,8 @@ export class HUD {
     this.loader = el('div', 'h-loader', '<i></i>'); root.appendChild(this.loader);
     this.flash = el('div', 'h-flash'); root.appendChild(this.flash); this._fl = 0;
     this._top = ''; this.labelEls = [];
+    // what the words must never sit on: the creature and the way out (css px, handed over by the app every frame)
+    this.clear = []; this.hi = false;
     // the HUD is drawn for a ~900 px window and grows with a bigger one (a 4K desktop should not need a magnifying glass)
     this.k = 1; const fit = () => { const k = Math.max(1, Math.min(1.8, Math.min(window.innerWidth, window.innerHeight) / 900)); if (Math.abs(k - this.k) > 0.02 || k === 1 && this.k !== 1) { this.k = k; root.style.zoom = k === 1 ? '' : k.toFixed(3); root.style.setProperty('--k', k.toFixed(3)); } };
     if (typeof window !== 'undefined' && window.addEventListener) { fit(); window.addEventListener('resize', fit); }
@@ -31,7 +33,23 @@ export class HUD {
     s.opacity = a;
     s.background = r <= 0 ? '#010407' : `radial-gradient(circle at ${x.toFixed(0)}px ${y.toFixed(0)}px, rgba(1,4,7,0) ${Math.max(0, r - 26).toFixed(0)}px, rgba(1,4,7,1) ${r.toFixed(0)}px)`;
   }
+  // the toasts and the hint live low on the glass — unless the creature or the way out is down there and the top is free (a portrait window puts the
+  //  door of most chambers exactly where the toasts used to be). They only move while no toast is showing, so nothing jumps under the reader's eye.
+  layout() {
+    if (typeof innerHeight === 'undefined' || !this.clear.length) return;
+    const H = innerHeight, Wd = innerWidth, k = this.k; const lowY = H * 0.86, highY = 96 * k; let dl = 1e9, dh = 1e9;
+    for (const [x, y] of this.clear) { const dx = Math.max(0, Math.abs(x - Wd / 2) - 190 * k); dl = Math.min(dl, Math.hypot(dx, y - lowY)); dh = Math.min(dh, Math.hypot(dx, y - highY)); }
+    const want = this.hi ? !(dl > 150 * k || dl > dh + 60 * k) : dl < 110 * k && dh > dl + 60 * k;
+    if (want !== this.hi && !this.toasts.querySelector('.h-toast:not(.out)')) { this.hi = want; this.root.classList.toggle('hi', want); }
+  }
+  // a chamber's name is etched where it covers neither the newborn creature nor the way out
+  _titleTop() {
+    if (typeof innerHeight === 'undefined' || !this.clear.length) return 13; const H = innerHeight, Wd = innerWidth; let best = 13, bd = -1;
+    for (const c of [13, 36, 62]) { const y = H * (c / 100 + 0.04); let d = 1e9; for (const [x, py] of this.clear) { const dx = Math.max(0, Math.abs(x - Wd / 2) - 240 * this.k); d = Math.min(d, Math.hypot(dx, py - y)); } if (d > bd + (c === 13 ? 0 : 40)) { bd = d; best = c; } }
+    return best;
+  }
   showTitle(no, name, sub = '', dur = 3.0) {
+    this.title.style.top = this._titleTop() + '%';
     this.title.innerHTML = `${no ? `<div class="t-no">${no}</div>` : ''}<div class="t-name">${name}</div>${sub ? `<div class="t-sub">${sub}</div>` : ''}`;
     this.title.classList.add('in'); clearTimeout(this._tt);
     if (dur > 0) this._tt = setTimeout(() => this.title.classList.remove('in'), dur * 1000);

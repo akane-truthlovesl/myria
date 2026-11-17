@@ -101,7 +101,7 @@ export class Odyssey {
   poreProgress(p) { const W = this.app.world; return p.need ? Math.min(1, W.stats.motes / p.need) : 1; }
   tier(name) { this.app.hud.toast(name, '✺'); }
   ember(on) { if (on) this.wasEmber = true; this.app.hud.toast(on ? 'ember — nothing can drink you · light counts double' : 'whole again', '✺', on ? '' : 'cool'); }
-  mote(m, O, chain) { if (chain && chain % 8 === 0) this.app.hud.toast(`Chain ×${chain} <small>+${1 + Math.min(3, chain >> 3)}</small>`, '♪', 'cool'); if (chain === 24) this.trick('Comet'); }
+  mote(m, O, chain) { this.hintT = 0; if (chain && chain % 8 === 0) this.app.hud.toast(`Chain ×${chain} <small>+${1 + Math.min(3, chain >> 3)}</small>`, '♪', 'cool'); if (chain === 24) this.trick('Comet'); }
   moteLost() { for (const e of this.app.world.ents) if (e.d.type === 'pore' && e.need > 0) e.need--; }      // light a neighbour drank can no longer be asked of you
   film() { this.usedHint = this.room.hint === 'dart' || this.usedHint; }
   dart(O) { if (this.room.hint === 'jet' && O.morph && O.morph.jet) this.usedHint = true; }
@@ -131,7 +131,8 @@ export class Odyssey {
     if (this.thrownTo) { const age = W.time - this.thrownT; if (age > 1.7) this.thrownTo = null; else if (age > 0.25 && this.thrownTo.coat >= 8) { this.thrownTo = null; this.trick('Slingshot'); } }
     // the unbreakable floor: if nothing of you is left, the chamber gives you back a seed of light
     if (!W.player.orgs.some(o => o.alive)) { const sp = W.spec.spawn; W.player.spawn(sp.x, sp.y, 24); W.stats.lost += GRACE + 1; W.fx.ring(sp.x, sp.y, [1, 0.8, 0.6], 120, 0.9); this.app.sound.bloom(); this.app.hud.toast('rekindled', '✺'); }
-    // wordless hint after a stall
+    // wordless hint after a stall (eating is progress: every light taken resets the clock; squeezing through is what 'push' was asking for)
+    if (this.room.hint === 'push' && Ff && Ff.alive && Ff.squeeze > 0.4) this.usedHint = true;
     if (this.room.hint && !this.usedHint) { this.hintT += dt; this.app.hud.hint(this.hintT > 7 ? (this.app.input && this.app.input.device === 'touch' ? HINTS_TOUCH : HINTS)[this.room.hint] : ''); } else this.app.hud.hint('');
   }
   stars(W) { const s = W.stats; return [s.motes >= s.motesTotal, s.lost <= GRACE, W.roomTime <= this.room.par]; }

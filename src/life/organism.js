@@ -197,11 +197,11 @@ export class Organism {
         this.forageT = 0.06;
         const reach = crown.maxReach(B.r) + B.r;
         for (const it of W.pickups) {
-          if (it.dead || it.owner != null && it.owner !== B.group) continue;
+          if (it.dead || it.owner != null && it.owner !== B.group || it.spawnT < 0) continue;      // (a light that has not appeared yet cannot be eaten)
           const dx = it.x - B.cx, dy = it.y - B.cy; const d2 = dx * dx + dy * dy;
           if (d2 > reach * reach) continue;
           if (d2 < (B.r * 0.92 + it.r) * (B.r * 0.92 + it.r)) { if (!it.held || it.held && crown.rays.includes(it.held)) it.absorb(this, null); continue; }   // body contact: straight in
-          if (it.held || it.claim && it.claim.item === it && it.claim.mode === RAY.REACH) continue;
+          if (it.held || it.claim && it.claim.item === it && it.claim.mode === RAY.REACH || it.dim) continue;      // (a firefly between flashes cannot be found)
           if (it.shy > W.time) continue;
           if (W.phys.blocked(B.cx, B.cy, it.x, it.y, 1)) { it.shy = W.time + 0.3; continue; }      // glass is glass: no reaching through it
           const r = crown.reach(it.x, it.y, it, 1.0);

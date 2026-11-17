@@ -152,6 +152,10 @@ export class Sound {
   gulp() { if (!this._rate('gulp', 60)) return; this.blip(300, 120, 0.12, 0.12, 'sine', 0.25); }
   trick() { [0, 4, 7, 12].forEach((d, i) => setTimeout(() => this.bell(this.note(d, 1) , 0.22, 1.5, 1, 0.6), i * 55)); }
   swallow() { this.blip(400, 90, 0.2, 0.35, 'sine', 0.4); }
+  // living light (world/plankton.js)
+  skitter() { if (!this._rate('skitter', 110)) return; this.blip(1700 + Math.random() * 300, 2900, 0.06, 0.07, 'sine', 0.35); setTimeout(() => this.blip(2300, 3600, 0.045, 0.05, 'sine', 0.35), 42); }
+  firefly(pan = 0) { this.ffk = ((this.ffk || 0) + 1) % 5; this.bell(this.note([4, 6, 4, 7, 9][this.ffk], 2), 0.13, 2.6, 0.32, 0.92, pan); }
+  podPop(pan = 0) { if (!this._rate('podPop', 90)) return; this.noiseHit(1100, 1.4, 0.2, 0.13, 0.3, 0.45, 'lowpass'); this.blip(250, 640, 0.13, 0.12, 'sine', 0.3); [0, 2, 4].forEach((d, i) => setTimeout(() => this.bell(this.note(d + 7, 1), 0.11, 1.3, 0.8, 0.7, pan), 50 + i * 55)); }
   boom() { this.blip(90, 30, 0.5, 1.2, 'sine', 0.6); this.noiseHit(300, 0.6, 0.35, 1.0, 0.6, 0.2, 'lowpass'); }
 
   // ── continuous layers (glide whisper, tension hum, ambience) ──────────
