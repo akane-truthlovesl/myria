@@ -35,7 +35,10 @@ export class Bot {
     const hz = W.hazards();
     const risky = (x, y) => { for (const h of hz) if (Math.hypot(h.x - x, h.y - y) < h.r + 30) return true; return false; };
     const ready = pore && pore.open > 0.8;
-    if (!(ready && this.greed === 0)) for (const m of W.pickups) { if (m.dead || m.held) continue; if (this.greed < 2 && risky(m.x, m.y)) continue; add(m.x, m.y, 'mote', m, 4, 8); }
+    const dared = [];
+    if (!(ready && this.greed === 0)) for (const m of W.pickups) { if (m.dead || m.held) continue; if (this.greed < 2 && risky(m.x, m.y)) { dared.push(m); continue; } add(m.x, m.y, 'mote', m, 4, 8); }
+    // the door is still shut and the only light left is beside something with teeth: then that is the light to take (the planner keeps to the safe side of it)
+    if (!ready && !cands.some(c => c.kind === 'mote')) for (const m of dared) add(m.x, m.y, 'mote', m, 4, 8);
     // neighbours: prey is food, especially when the pore asks for it
     // (prey sheltering beside something that would drink us is not prey yet)
     const guarded = (x, y) => { for (const C of W.colonies) { if (C === pl || C.ally || !C.kind || C.kind === 'oil') continue; for (const O of C.orgs) if (O.alive && O.B.count > B.count * 1.1 && MATS[O.B.mat].phase === MATS[B.mat].phase && Math.hypot(O.B.cx - x, O.B.cy - y) < O.B.r + 120) return true; } return false; };
@@ -105,6 +108,8 @@ export class Bot {
       if (inThere || B.count <= T.ref.need * 2 + 8) { if (others) { this.rallyT = 2.8; this.budT = 3.4; this.note('regroup'); } }
       else { ctl.buds = [{ x: T.ref.x, y: T.ref.y, frac: Math.min(0.42, (T.ref.need + 10) / B.count) }]; this.budT = 2.4; this.replan = 0; this.note('sow'); }
     }
+    // the way out is open and this morsel has outrun us for nine seconds: let it go
+    if (T.kind === 'prey') { this.chaseT = this.chaseRef === T.ref ? this.chaseT + dt : 0; this.chaseRef = T.ref; if (this.chaseT > 9) { const pore = W.ents.find(e => e.d.type === 'pore' && !e.taken); if (pore && pore.open > 0.8) { this.skip.set(T.ref, this.t + 30); this.replan = 0; this.note('let-go'); } this.chaseT = 0; } }
     if (T.kind === 'pad' && dT < T.r && !T.ref.active && pl.orgs.some(o => o.alive && o !== F)) { this.lightT = (this.lightT || 0) + dt; if (this.lightT > 2.5) { this.lightT = 0; this.rallyT = 2.8; this.budT = 3.4; this.note('regroup'); } } else this.lightT = 0;
     if (T.kind === 'bait' && T.ref.alive && this.budT <= 0) { const edge = dT - T.ref.B.r - B.r; if (edge < 200) { const k = Math.min(0.42, Math.max(0.22, 16 / B.count)), reach = Math.max(40, edge * 0.45 + B.r); ctl.buds = [{ x: B.cx + (T.x - B.cx) / dT * reach, y: B.cy + (T.y - B.cy) / dT * reach, frac: k }]; this.budT = 5; this.skip.set(T.ref, this.t + 5); this.replan = 0; this.fleeT = this.t + 2.2; this.fleeFrom = T.ref; this.note('decoy'); } }
     if (this.fleeT > this.t && this.fleeFrom && this.fleeFrom.alive) { const ex = B.cx - this.fleeFrom.B.cx, ey = B.cy - this.fleeFrom.B.cy, ed = Math.hypot(ex, ey) + 1; if (ed < 420) { ctl.intent.x = ex / ed; ctl.intent.y = ey / ed; } }      // …and be elsewhere
