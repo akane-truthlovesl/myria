@@ -34,6 +34,8 @@ export const OMENS = {
   eclipse: { name: 'The Eclipse', tell: 'the light is going out — be still against the rim when the eyes look', col: [0.82, 0.86, 1], glyph: '●' },
 };
 const IDS = Object.keys(OMENS);
+// the score: a deep slow bed between omens; while one rages, music of its own (a pair always brings the warden's beat)
+const SCORE = { drought: ['chem'], frost: ['glass'], glass: ['glass', 50], quake: ['iris'], maelstrom: ['heart'], eclipse: ['abyss', 43] };
 const mmss = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
 export class Vigil {
@@ -214,8 +216,9 @@ export class Vigil {
   }
   update(dt, W) {
     if (this.over) return; const pl = W.player; this.t += dt; this.pt += dt;
+    if (!this.scored && this.app.sound.ready) { this.scored = true; this._music(); }      // (opened from a link, the sound wakes only with the first touch)
     if (this.phase === 'calm' && this.pt >= CALM) this._warn(W);
-    else if (this.phase === 'warn' && this.pt >= WARN) { this.phase = 'storm'; this.pt = 0; const k = this.round; this.active = this.cur.map(id => this._begin(W, id, k)); W.shake = Math.max(W.shake, 0.4); }
+    else if (this.phase === 'warn' && this.pt >= WARN) { this.phase = 'storm'; this.pt = 0; const k = this.round; this.active = this.cur.map(id => this._begin(W, id, k)); W.shake = Math.max(W.shake, 0.4); this._music(); }
     else if (this.phase === 'storm') { for (const s of this.active) this._step(W, s, dt); if (this.pt >= STORM) this._weather(W); }
     else if (this.phase === 'lull' && this.pt >= LULL) this._warn(W);
     // the dark comes and goes with the eclipse
@@ -237,6 +240,7 @@ export class Vigil {
   }
   // the colour the way is drawn in on the picture at the end: candlelight between omens, the omen's own colour while it rages
   _hue() { if (this.phase !== 'storm' || !this.cur) return [1, 0.8, 0.55]; const c = [0, 0, 0]; for (const id of this.cur) for (let j = 0; j < 3; j++) c[j] += OMENS[id].col[j] / this.cur.length; return c; }
+  _music() { const snd = this.app.sound; if (this.over) return; if (this.phase !== 'storm' || !this.cur) return snd.ambience('abyss'); if (this.cur.length > 1) return snd.ambience('warden'); const [n, r] = SCORE[this.cur[0]] || ['abyss']; snd.ambience(n, r); }
   _warn(W) {
     const ids = this._next(); this.cur = ids; this.phase = 'warn'; this.pt = 0; const n = this.story.length + 1, hud = this.app.hud;
     this.story.push({ ids, at: this.t, ok: null });
@@ -245,7 +249,7 @@ export class Vigil {
   }
   _weather(W) {
     for (const s of this.active) this._end(W, s); const st = this.story[this.story.length - 1]; if (st) { st.ok = true; this.seenN += st.ids.length; }
-    this.active = []; this.phase = 'lull'; this.pt = 0; this.app.sound.bloom();
+    this.active = []; this.phase = 'lull'; this.pt = 0; this.app.sound.bloom(); this._music();
     this.app.hud.toast(`${st ? st.ids.map(id => OMENS[id].name).join(' + ') : 'the omen'} passes <small>${mmss(this.t)}</small>`, '✓', 'cool');
     // a lull of light: a ring of it round you (a thinner ring as the end goes on), and the dish breathes
     const F = W.player.focus, sw = W.spec.W, sh = W.spec.H; const fx = F && F.alive ? F.B.cx : sw / 2, fy = F && F.alive ? F.B.cy : sh / 2, n = Math.max(6, 14 - 2 * this.round);
@@ -329,7 +333,7 @@ export class Vigil {
     for (const s of this.active) this._end(W, s); this.active = []; this.dark = 0;
     const weathered = this.story.filter(q => q.ok).length, prev = save.get('vigilBest', 0), best = secs > prev; if (best) save.set('vigilBest', secs); if (weathered > save.get('vigilOmens', 0)) save.set('vigilOmens', weathered);
     let medal = ''; for (const [s, n] of VIGIL_MEDALS) if (secs >= s) medal = n; const next = VIGIL_MEDALS.find(([s]) => secs < s);
-    app.hud.setTop(null); app.sound.portal();
+    app.hud.setTop(null); app.sound.portal(); app.sound.ambience('abyss');
     const short = typeof innerHeight === 'number' && innerHeight < 800, pic = exposure(app.R, W.spec, this.rec, { zoom: app.hud.k || 1, cols: this.recC, maxH: short ? 150 : 220 });
     if (medal && app.moment) app.moment(medal, `Vigil · ${mmss(secs)} · ${weathered} omen${weathered === 1 ? '' : 's'} seen through`, 'vigil:' + medal, pic);
     const name = (q) => q.ids.map(id => OMENS[id].name).join(' + '), glyph = (q) => q.ids.map(id => OMENS[id].glyph).join('');
